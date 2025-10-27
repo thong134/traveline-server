@@ -6,7 +6,9 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { RefreshToken } from './dto/refresh-token.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
+import { PasswordReset } from './entities/password-reset.entity';
+import { PhoneOtp } from './entities/phone-otp.entity';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { RefreshToken } from './dto/refresh-token.entity';
       signOptions: { expiresIn: '1h' },
     }),
     TypeOrmModule.forFeature([RefreshToken]),
+    TypeOrmModule.forFeature([PasswordReset]),
+    TypeOrmModule.forFeature([PhoneOtp]),
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
