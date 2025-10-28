@@ -1,4 +1,12 @@
-import { Controller, Post, Body, UseGuards, Get, Request, UnauthorizedException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Request,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
@@ -6,6 +14,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Request as ExpressRequest } from 'express';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
@@ -15,6 +24,14 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RequestResetDto } from './dto/request-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import type { AuthTokens } from './dto/auth-tokens.dto';
+
+interface AuthenticatedRequest extends ExpressRequest {
+  user: {
+    userId: number;
+    username: string;
+  };
+}
 
 @ApiTags('auth')
 @Controller('auth')
@@ -31,8 +48,11 @@ export class AuthController {
   @Post('login')
   @ApiOperation({ summary: 'Authenticate user and issue tokens' })
   @ApiOkResponse({ description: 'Login successful' })
-  async login(@Body() dto: LoginDto) {
-    const user = await this.authService.validateUser(dto.username, dto.password);
+  async login(@Body() dto: LoginDto): Promise<AuthTokens> {
+    const user = await this.authService.validateUser(
+      dto.username,
+      dto.password,
+    );
     if (!user) throw new UnauthorizedException('Invalid credentials');
     return this.authService.login(user);
   }
@@ -63,14 +83,21 @@ export class AuthController {
   @ApiOperation({ summary: 'Start phone verification' })
   @ApiOkResponse({ description: 'OTP sent or logged for development' })
   async phoneStart(@Body() dto: PhoneStartDto) {
-    return this.authService.startPhoneVerification(dto.phone, dto.recaptchaToken);
+    return this.authService.startPhoneVerification(
+      dto.phone,
+      dto.recaptchaToken,
+    );
   }
 
   @Post('phone/verify')
   @ApiOperation({ summary: 'Verify phone with OTP' })
   @ApiOkResponse({ description: 'Phone verified' })
   async phoneVerify(@Body() dto: PhoneVerifyDto) {
-    return this.authService.verifyPhoneCode(dto.phone, dto.sessionInfo, dto.code);
+    return this.authService.verifyPhoneCode(
+      dto.phone,
+      dto.sessionInfo,
+      dto.code,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -78,7 +105,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiOkResponse({ description: 'Authenticated user payload' })
-  profile(@Request() req) {
+  profile(@Request() req: AuthenticatedRequest) {
     return req.user; // từ JwtStrategy.validate()
   }
 
@@ -87,7 +114,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Revoke refresh tokens for current user' })
   @ApiOkResponse({ description: 'Logout confirmation' })
-  async logout(@Request() req) {
+  async logout(@Request() req: AuthenticatedRequest) {
     return this.authService.logout(req.user.userId);
   }
 }

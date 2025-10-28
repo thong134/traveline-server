@@ -7,7 +7,7 @@ import {
 import axios from 'axios';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
+import { compare, hash } from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { addMinutes } from 'date-fns';
 import { Repository } from 'typeorm';
@@ -17,6 +17,30 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { PasswordReset } from './entities/password-reset.entity';
 import { PhoneOtp } from './entities/phone-otp.entity';
 import { SignupDto } from './dto/signup.dto';
+import { User } from '../users/entities/user.entity';
+import type { AuthTokens } from './dto/auth-tokens.dto';
+
+type SafeUser = Pick<User, 'id' | 'username'>;
+
+interface JwtPayload {
+  sub: number;
+  username: string;
+}
+
+interface FirebaseSendVerificationResponse {
+  sessionInfo?: string;
+}
+
+interface FirebaseSignInResponse {
+  phoneNumber?: string;
+}
+
+interface FirebaseErrorResponse {
+  error?: {
+    message?: string;
+    status?: string;
+  };
+}
 
 @Injectable()
 export class AuthService {
@@ -35,26 +59,34 @@ export class AuthService {
     return Number(process.env.OTP_EXPIRES_MIN || 5);
   }
 
-  async signup(dto: SignupDto) {
+  async signup(dto: SignupDto): Promise<{ id: number; username: string }> {
     const existing = await this.usersService.findByUsername(dto.username);
     if (existing) throw new ConflictException('Username already exists');
 
-    const hashed = await bcrypt.hash(dto.password, 10);
-    const user = await this.usersService.create({ username: dto.username, password: hashed });
+    const hashed = await hash(dto.password, 10);
+    const user = await this.usersService.create({
+      username: dto.username,
+      password: hashed,
+    });
     return { id: user.id, username: user.username };
   }
 
-  async validateUser(username: string, pass: string) {
+  async validateUser(username: string, pass: string): Promise<SafeUser | null> {
     const user = await this.usersService.findByUsername(username);
-    if (user && (await bcrypt.compare(pass, user.password))) {
-      const { password, ...result } = user;
-      return result;
+    if (!user) {
+      return null;
     }
-    return null;
+
+    const isValid = await compare(pass, user.password);
+    if (!isValid) {
+      return null;
+    }
+
+    return { id: user.id, username: user.username };
   }
 
-  async login(user: any) {
-    const payload = { username: user.username, sub: user.id };
+  async login(user: SafeUser): Promise<AuthTokens> {
+    const payload: JwtPayload = { username: user.username, sub: user.id };
 
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
@@ -66,13 +98,13 @@ export class AuthService {
       expiresIn: '7d',
     });
 
-    const hashed = await bcrypt.hash(refreshToken, 6);
+    const hashedRefresh = await hash(refreshToken, 6);
 
     await this.refreshTokenRepository.delete({ userId: user.id });
 
     const rt = this.refreshTokenRepository.create({
-      user: { id: user.id } as any,
-      token: hashed,
+      userId: user.id,
+      token: hashedRefresh,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     });
     await this.refreshTokenRepository.save(rt);
@@ -83,25 +115,28 @@ export class AuthService {
     };
   }
 
-  async refresh(refreshToken: string) {
+  async refresh(refreshToken: string): Promise<{ accessToken: string }> {
     try {
-      const payload = this.jwtService.verify(refreshToken, {
+      const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
 
       const tokens = await this.refreshTokenRepository.find({
-        where: { user: { id: payload.sub } },
-        relations: ['user'],
+        where: { userId: payload.sub },
       });
 
       let isValid = false;
-      for (const t of tokens) {
-        const ok = await bcrypt.compare(refreshToken, t.token);
-        if (ok && t.expiresAt > new Date()) {
+      for (const token of tokens) {
+        const matches = await compare(refreshToken, token.token);
+        if (matches && token.expiresAt > new Date()) {
           isValid = true;
+          break;
         }
       }
-      if (!isValid) throw new UnauthorizedException();
+
+      if (!isValid) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
 
       const newAccessToken = this.jwtService.sign(
         { sub: payload.sub, username: payload.username },
@@ -125,9 +160,11 @@ export class AuthService {
 
     // create a secure random token (plaintext will be sent by email)
     const token = randomBytes(32).toString('hex'); // 64 chars
-    const tokenHash = await bcrypt.hash(token, 10);
+    const tokenHash = await hash(token, 10);
 
-    const expiresMinutes = Number(process.env.PASSWORD_RESET_TOKEN_EXPIRES_MIN || 60);
+    const expiresMinutes = Number(
+      process.env.PASSWORD_RESET_TOKEN_EXPIRES_MIN || 60,
+    );
     const expiresAt = addMinutes(new Date(), expiresMinutes);
 
     const entity = this.passwordResetRepo.create({
@@ -145,7 +182,10 @@ export class AuthService {
   }
 
   // reset password: client sends token + newPassword
-  async resetPassword(token: string, newPassword: string): Promise<{ ok: boolean }> {
+  async resetPassword(
+    token: string,
+    newPassword: string,
+  ): Promise<{ ok: boolean }> {
     // Find all not-used token rows not expired (small) — we must compare hashed token
     const now = new Date();
     const rows = await this.passwordResetRepo.find({
@@ -153,19 +193,23 @@ export class AuthService {
     });
 
     for (const row of rows) {
-      const ok = await bcrypt.compare(token, row.tokenHash);
+      const ok = await compare(token, row.tokenHash);
       if (!ok) continue;
       if (row.expiresAt < now) continue; // expired
 
       // everything good — update user password
-      const hashed = await bcrypt.hash(newPassword, 10);
+      const hashed = await hash(newPassword, 10);
       await this.usersService.updatePassword(row.userId, hashed);
 
       // mark token used
       row.used = true;
       await this.passwordResetRepo.save(row);
 
-      await this.refreshTokenRepository.delete({ userId: row.userId }).catch(() => undefined);
+      try {
+        await this.refreshTokenRepository.delete({ userId: row.userId });
+      } catch {
+        // Ignore cleanup errors
+      }
 
       return { ok: true };
     }
@@ -173,7 +217,10 @@ export class AuthService {
     throw new UnauthorizedException('Invalid or expired token');
   }
 
-  async startPhoneVerification(phone: string, recaptchaToken: string) {
+  async startPhoneVerification(
+    phone: string,
+    recaptchaToken: string,
+  ): Promise<{ ok: boolean; sessionInfo: string; expiresAt: Date }> {
     const apiKey = process.env.FIREBASE_API_KEY;
     if (!apiKey) {
       throw new BadRequestException('FIREBASE_API_KEY is not configured');
@@ -183,7 +230,7 @@ export class AuthService {
     }
 
     try {
-      const response = await axios.post(
+      const response = await axios.post<FirebaseSendVerificationResponse>(
         `https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=${apiKey}`,
         {
           phoneNumber: phone,
@@ -191,14 +238,14 @@ export class AuthService {
         },
       );
 
-      const { sessionInfo } = response.data as { sessionInfo?: string };
+      const { sessionInfo } = response.data;
       if (!sessionInfo) {
         throw new UnauthorizedException('Firebase did not return sessionInfo');
       }
 
       const expiresMin = this.getOtpExpiresMinutes();
       const expiresAt = addMinutes(new Date(), expiresMin);
-      const sessionHash = await bcrypt.hash(sessionInfo, 8);
+      const sessionHash = await hash(sessionInfo, 8);
 
       const otp = this.phoneOtpRepo.create({
         phone,
@@ -209,19 +256,24 @@ export class AuthService {
       await this.phoneOtpRepo.save(otp);
 
       return { ok: true, sessionInfo, expiresAt };
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
+    } catch (error: unknown) {
+      if (axios.isAxiosError<FirebaseErrorResponse>(error)) {
+        const firebaseError = error.response?.data?.error;
         const message =
-          error.response?.data?.error?.message ||
-          error.response?.data?.error?.status ||
+          firebaseError?.message ||
+          firebaseError?.status ||
           'Failed to initiate phone verification';
         throw new UnauthorizedException(message);
       }
-      throw error;
+      throw new UnauthorizedException('Failed to initiate phone verification');
     }
   }
 
-  async verifyPhoneCode(phone: string, sessionInfo: string, code: string) {
+  async verifyPhoneCode(
+    phone: string,
+    sessionInfo: string,
+    code: string,
+  ): Promise<{ ok: boolean; phoneNumber: string }> {
     const apiKey = process.env.FIREBASE_API_KEY;
     if (!apiKey) {
       throw new BadRequestException('FIREBASE_API_KEY is not configured');
@@ -237,7 +289,7 @@ export class AuthService {
     let matched: PhoneOtp | null = null;
     for (const row of rows) {
       if (row.expiresAt < now) continue;
-      const ok = await bcrypt.compare(sessionInfo, row.sessionHash);
+      const ok = await compare(sessionInfo, row.sessionHash);
       if (ok) {
         matched = row;
         break;
@@ -249,7 +301,7 @@ export class AuthService {
     }
 
     try {
-      const response = await axios.post(
+      const response = await axios.post<FirebaseSignInResponse>(
         `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber?key=${apiKey}`,
         {
           sessionInfo,
@@ -257,7 +309,7 @@ export class AuthService {
         },
       );
 
-      const { phoneNumber } = response.data as { phoneNumber?: string };
+      const { phoneNumber } = response.data;
 
       matched.used = true;
       await this.phoneOtpRepo.save(matched);
@@ -269,19 +321,20 @@ export class AuthService {
       }
 
       return { ok: true, phoneNumber: normalizedPhone };
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
+    } catch (error: unknown) {
+      if (axios.isAxiosError<FirebaseErrorResponse>(error)) {
+        const firebaseError = error.response?.data?.error;
         const message =
-          error.response?.data?.error?.message ||
-          error.response?.data?.error?.status ||
+          firebaseError?.message ||
+          firebaseError?.status ||
           'Invalid verification code';
         throw new UnauthorizedException(message);
       }
-      throw error;
+      throw new UnauthorizedException('Invalid verification code');
     }
   }
 
-  async logout(userId: number) {
+  async logout(userId: number): Promise<{ message: string }> {
     await this.refreshTokenRepository.delete({ userId });
     return { message: 'Logged out' };
   }

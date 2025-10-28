@@ -8,11 +8,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Bật validation cho DTO
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,                // tự bỏ field lạ
-    forbidNonWhitelisted: true,     // chặn field không khai báo
-    transform: true,                // tự convert kiểu (e.g. string->number)
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // tự bỏ field lạ
+      forbidNonWhitelisted: true, // chặn field không khai báo
+      transform: true, // tự convert kiểu (e.g. string->number)
+    }),
+  );
 
   const config = new DocumentBuilder()
     .setTitle('Traveline API')
@@ -29,4 +31,4 @@ async function bootstrap() {
   console.log(`\nAPI đang chạy: http://localhost:3000`);
   console.log(`Swagger UI: http://localhost:3000/docs`);
 }
-bootstrap();
+void bootstrap();

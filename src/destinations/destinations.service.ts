@@ -17,6 +17,7 @@ export class DestinationsService {
       ...dto,
       categories: dto.categories ?? [],
       photos: dto.photos ?? [],
+      videos: dto.videos ?? [],
       favouriteTimes: dto.favouriteTimes ?? 0,
       userRatingsTotal: dto.userRatingsTotal ?? 0,
       available: dto.available ?? true,
@@ -24,7 +25,12 @@ export class DestinationsService {
     return this.repo.save(destination);
   }
 
-  async findAll(params?: { q?: string; available?: boolean; limit?: number; offset?: number }): Promise<Destination[]> {
+  async findAll(params?: {
+    q?: string;
+    available?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<Destination[]> {
     const { q, available, limit = 50, offset = 0 } = params || {};
     const qb = this.repo.createQueryBuilder('destination');
 
@@ -49,13 +55,22 @@ export class DestinationsService {
 
   async findOne(id: number): Promise<Destination> {
     const destination = await this.repo.findOne({ where: { id } });
-    if (!destination) throw new NotFoundException(`Địa điểm #${id} không tồn tại`);
+    if (!destination)
+      throw new NotFoundException(`Địa điểm #${id} không tồn tại`);
     return destination;
   }
 
   async update(id: number, dto: UpdateDestinationDto): Promise<Destination> {
     const destination = await this.findOne(id);
-    const { categories, photos, favouriteTimes, userRatingsTotal, available, ...rest } = dto;
+    const {
+      categories,
+      photos,
+      videos,
+      favouriteTimes,
+      userRatingsTotal,
+      available,
+      ...rest
+    } = dto;
 
     const destinationRecord = destination as unknown as Record<string, unknown>;
 
@@ -70,6 +85,9 @@ export class DestinationsService {
     }
     if (photos !== undefined) {
       destination.photos = photos;
+    }
+    if (videos !== undefined) {
+      destination.videos = videos;
     }
     if (favouriteTimes !== undefined) {
       destination.favouriteTimes = favouriteTimes;

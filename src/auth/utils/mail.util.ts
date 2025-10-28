@@ -1,8 +1,9 @@
-import nodemailer from 'nodemailer';
+import { createTransport, getTestMessageUrl } from 'nodemailer';
+import type { SentMessageInfo, Transporter } from 'nodemailer';
 
 export async function sendResetEmail(to: string, link: string) {
   // create transporter from env
-  const transporter = nodemailer.createTransport({
+  const transporter: Transporter<SentMessageInfo> = createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT || 587),
     secure: false,
@@ -12,7 +13,7 @@ export async function sendResetEmail(to: string, link: string) {
     },
   });
 
-  const info = await transporter.sendMail({
+  const info: SentMessageInfo = await transporter.sendMail({
     from: `"No Reply" <${process.env.SMTP_USER}>`,
     to,
     subject: 'Password reset',
@@ -22,9 +23,8 @@ export async function sendResetEmail(to: string, link: string) {
   });
 
   // In dev, Ethereal returns preview URL
-  try {
-    // @ts-ignore
-    const preview = nodemailer.getTestMessageUrl(info);
-    if (preview) console.log('Preview email URL:', preview);
-  } catch (e) {}
+  const preview = getTestMessageUrl(info);
+  if (preview) {
+    console.log('Preview email URL:', preview);
+  }
 }

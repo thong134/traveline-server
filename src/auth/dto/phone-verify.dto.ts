@@ -11,7 +11,9 @@ export class PhoneVerifyDto {
   @Length(4, 6)
   code: string;
 
-  @ApiProperty({ description: 'sessionInfo returned by Firebase sendVerificationCode' })
+  @ApiProperty({
+    description: 'sessionInfo returned by Firebase sendVerificationCode',
+  })
   @IsString()
   sessionInfo: string;
 }

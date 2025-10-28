@@ -15,7 +15,7 @@ import { PhoneOtp } from './entities/phone-otp.entity';
     UsersModule,
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'uittraveline', 
+      secret: process.env.JWT_SECRET || 'uittraveline',
       signOptions: { expiresIn: '1h' },
     }),
     TypeOrmModule.forFeature([RefreshToken]),

@@ -18,6 +18,11 @@ export class CreateDestinationDto {
   @MinLength(1)
   name: string;
 
+  @ApiPropertyOptional({ description: 'Legacy destination external id' })
+  @IsOptional()
+  @IsString()
+  externalId?: string;
+
   @ApiPropertyOptional({ description: 'Destination type label' })
   @IsOptional()
   @IsString()
@@ -59,7 +64,10 @@ export class CreateDestinationDto {
   @IsNumber()
   rating?: number;
 
-  @ApiPropertyOptional({ description: 'How many times favourited', example: 120 })
+  @ApiPropertyOptional({
+    description: 'How many times favourited',
+    example: 120,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -73,7 +81,10 @@ export class CreateDestinationDto {
   @Min(0)
   userRatingsTotal?: number;
 
-  @ApiPropertyOptional({ description: 'Destination categories', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Destination categories',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -85,17 +96,20 @@ export class CreateDestinationDto {
   @IsUrl(undefined, { each: true })
   photos?: string[];
 
-  @ApiPropertyOptional({ description: 'Video URL' })
+  @ApiPropertyOptional({ description: 'Video URLs', type: [String] })
   @IsOptional()
-  @IsUrl()
-  videoUrl?: string;
+  @IsArray()
+  @IsUrl(undefined, { each: true })
+  videos?: string[];
 
   @ApiPropertyOptional({ description: 'Google Places ID' })
   @IsOptional()
   @IsString()
   googlePlaceId?: string;
 
-  @ApiPropertyOptional({ description: 'Whether destination is available for booking' })
+  @ApiPropertyOptional({
+    description: 'Whether destination is available for booking',
+  })
   @IsOptional()
   @IsBoolean()
   available?: boolean;

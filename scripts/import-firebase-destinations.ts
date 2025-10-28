@@ -116,8 +116,9 @@ async function bootstrap() {
     }
 
     //const externalId = (data.destinationId || doc.id)?.toString();
-    const photos = coerceStringArray(data.photo ?? data.photos);
-    const categories = coerceStringArray(data.categories);
+  const photos = coerceStringArray(data.photo ?? data.photos);
+  const categories = coerceStringArray(data.categories);
+  const videos = coerceStringArray(data.video ?? data.videos);
 
     const payload: Partial<Destination> = {
       name,
@@ -135,8 +136,7 @@ async function bootstrap() {
       userRatingsTotal: coerceNumber(data.userRatingsTotal) ?? 0,
       categories,
       photos,
-      videoUrl:
-        typeof data.video === 'string' && data.video.trim().length > 0 ? data.video.trim() : undefined,
+      videos,
       googlePlaceId: typeof data.place_id === 'string' ? data.place_id : undefined,
       available: typeof data.available === 'boolean' ? data.available : true,
       sourceCreatedAt: parseDate(data.createdDate),

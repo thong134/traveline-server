@@ -1,4 +1,13 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { RouteStop } from '../travel-routes/route-stop.entity';
+import { Feedback } from '../feedback/feedback.entity';
 
 @Entity()
 export class Destination {
@@ -7,6 +16,9 @@ export class Destination {
 
   @Column()
   name: string;
+
+  @Column({ nullable: true, unique: true })
+  externalId?: string;
 
   @Column({ nullable: true })
   type?: string;
@@ -44,8 +56,8 @@ export class Destination {
   @Column('text', { array: true, default: '{}' })
   photos: string[] = [];
 
-  @Column({ nullable: true })
-  videoUrl?: string;
+  @Column('text', { array: true, default: '{}' })
+  videos: string[] = [];
 
   @Column({ nullable: true })
   googlePlaceId?: string;
@@ -61,4 +73,10 @@ export class Destination {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(() => RouteStop, (stop: RouteStop) => stop.destination)
+  routeStops: RouteStop[];
+
+  @OneToMany(() => Feedback, (feedback: Feedback) => feedback.destination)
+  feedbacks: Feedback[];
 }

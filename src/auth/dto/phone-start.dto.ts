@@ -6,7 +6,9 @@ export class PhoneStartDto {
   @IsMobilePhone('vi-VN') // null => any locale; you can set 'vi-VN'
   phone: string;
 
-  @ApiProperty({ description: 'reCAPTCHA verification token from Firebase client SDK' })
+  @ApiProperty({
+    description: 'reCAPTCHA verification token from Firebase client SDK',
+  })
   @IsString()
   recaptchaToken: string;
 }
