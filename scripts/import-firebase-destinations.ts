@@ -67,12 +67,12 @@ function coerceStringArray(value: unknown): string[] {
 }
 
 async function bootstrap() {
-  const dbHost = requireEnv('DB_HOST');
-  const dbUser = requireEnv('DB_USER');
-  const dbPass = requireEnv('DB_PASS');
-  const dbName = requireEnv('DB_NAME');
-  const dbPort = Number(process.env.DB_PORT ?? '5432');
-  const dbSsl = process.env.DB_SSL === 'true';
+  // const dbHost = requireEnv('DB_HOST');
+  // const dbUser = requireEnv('DB_USER');
+  // const dbPass = requireEnv('DB_PASS');
+  // const dbName = requireEnv('DB_NAME');
+  // const dbPort = Number(process.env.DB_PORT ?? '5432');
+  // const dbSsl = process.env.DB_SSL === 'true';
   const collectionName = process.env.FIREBASE_COLLECTION ?? 'DESTINATION';
 
   initializeApp({
@@ -81,12 +81,8 @@ async function bootstrap() {
 
   const dataSource = new DataSource({
     type: 'postgres',
-    host: dbHost,
-    port: dbPort,
-    username: dbUser,
-    password: dbPass,
-    database: dbName,
-    ssl: dbSsl ? { rejectUnauthorized: false } : undefined,
+    url: process.env.DATABASE_URL,  
+    ssl: { rejectUnauthorized: false },
     entities: [Destination],
     synchronize: false,
   });
