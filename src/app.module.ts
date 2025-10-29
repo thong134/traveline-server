@@ -29,11 +29,12 @@ import { FlightModule } from './flight/flight.module';
       inject: [ConfigService],
       useFactory: () => ({
         type: 'postgres',
-        host: process.env.DB_HOST,
-        port: Number(process.env.DB_PORT),
-        username: process.env.DB_USER,
-        password: process.env.DB_PASS,
-        database: process.env.DB_NAME,
+        url: process.env.DATABASE_URL,
+        // host: process.env.DB_HOST,
+        // port: Number(process.env.DB_PORT),
+        // username: process.env.DB_USER,
+        // password: process.env.DB_PASS,
+        // database: process.env.DB_NAME,
         autoLoadEntities: true,
         synchronize: true, // tự tạo bảng dựa trên entity (dev thôi, production thì nên tắt)
       }),
