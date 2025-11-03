@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -46,12 +47,19 @@ export class RentalVehiclesService {
     return price.toFixed(2);
   }
 
-  async create(dto: CreateRentalVehicleDto): Promise<RentalVehicle> {
+  async create(
+    dto: CreateRentalVehicleDto,
+    requesterId?: number,
+  ): Promise<RentalVehicle> {
     const contract = await this.contractRepo.findOne({
       where: { id: dto.contractId },
     });
     if (!contract) {
       throw new NotFoundException(`Contract ${dto.contractId} not found`);
+    }
+
+    if (requesterId !== undefined && contract.userId !== requesterId) {
+      throw new ForbiddenException('Cannot register vehicles for another user');
     }
 
     if (contract.status !== RentalContractStatus.APPROVED) {
@@ -132,9 +140,13 @@ export class RentalVehiclesService {
       status?: RentalVehicleApprovalStatus;
       availability?: RentalVehicleAvailabilityStatus;
     } = {},
+    requesterId?: number,
   ): Promise<RentalVehicle[]> {
     const { contractId, status, availability } = params;
-    const qb = this.repo.createQueryBuilder('vehicle');
+    const qb = this.repo
+      .createQueryBuilder('vehicle')
+      .leftJoinAndSelect('vehicle.vehicleInformation', 'definition')
+      .leftJoinAndSelect('vehicle.contract', 'contract');
 
     if (contractId) {
       qb.andWhere('vehicle.contractId = :contractId', { contractId });
@@ -148,14 +160,17 @@ export class RentalVehiclesService {
       qb.andWhere('vehicle.availability = :availability', { availability });
     }
 
-    return qb
-      .leftJoinAndSelect('vehicle.vehicleInformation', 'definition')
-      .leftJoinAndSelect('vehicle.contract', 'contract')
-      .orderBy('vehicle.createdAt', 'DESC')
-      .getMany();
+    if (requesterId !== undefined) {
+      qb.andWhere('contract.userId = :ownerId', { ownerId: requesterId });
+    }
+
+    return qb.orderBy('vehicle.createdAt', 'DESC').getMany();
   }
 
-  async findOne(licensePlate: string): Promise<RentalVehicle> {
+  async findOne(
+    licensePlate: string,
+    requesterId?: number,
+  ): Promise<RentalVehicle> {
     const vehicle = await this.repo.findOne({
       where: { licensePlate },
       relations: ['vehicleInformation', 'contract'],
@@ -163,14 +178,18 @@ export class RentalVehiclesService {
     if (!vehicle) {
       throw new NotFoundException(`Vehicle ${licensePlate} not found`);
     }
+    if (requesterId !== undefined && vehicle.contract.userId !== requesterId) {
+      throw new ForbiddenException('You can only access your own vehicles');
+    }
     return vehicle;
   }
 
   async update(
     licensePlate: string,
     dto: UpdateRentalVehicleDto,
+    requesterId?: number,
   ): Promise<RentalVehicle> {
-    const vehicle = await this.findOne(licensePlate);
+    const vehicle = await this.findOne(licensePlate, requesterId);
 
     if (
       dto.vehicleInformationId &&
@@ -231,8 +250,8 @@ export class RentalVehiclesService {
     return this.repo.save(vehicle);
   }
 
-  async remove(licensePlate: string): Promise<void> {
-    const vehicle = await this.findOne(licensePlate);
+  async remove(licensePlate: string, requesterId?: number): Promise<void> {
+    const vehicle = await this.findOne(licensePlate, requesterId);
     await this.repo.remove(vehicle);
     await this.contractRepo.decrement(
       { id: vehicle.contractId },
@@ -244,8 +263,9 @@ export class RentalVehiclesService {
   async updateAvailability(
     licensePlate: string,
     availability: RentalVehicleAvailabilityStatus,
+    requesterId?: number,
   ): Promise<RentalVehicle> {
-    const vehicle = await this.findOne(licensePlate);
+    const vehicle = await this.findOne(licensePlate, requesterId);
     vehicle.availability = availability;
     return this.repo.save(vehicle);
   }
@@ -254,8 +274,9 @@ export class RentalVehiclesService {
     licensePlate: string,
     status: RentalVehicleApprovalStatus,
     statusReason?: string,
+    requesterId?: number,
   ): Promise<RentalVehicle> {
-    const vehicle = await this.findOne(licensePlate);
+    const vehicle = await this.findOne(licensePlate, requesterId);
     vehicle.status = status;
     vehicle.statusReason = statusReason;
     return this.repo.save(vehicle);

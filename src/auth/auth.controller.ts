@@ -14,7 +14,6 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import type { Request as ExpressRequest } from 'express';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
@@ -25,13 +24,7 @@ import { RequestResetDto } from './dto/request-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import type { AuthTokens } from './dto/auth-tokens.dto';
-
-interface AuthenticatedRequest extends ExpressRequest {
-  user: {
-    userId: number;
-    username: string;
-  };
-}
+import type { AuthenticatedRequest } from './types/authenticated-request';
 
 @ApiTags('auth')
 @Controller('auth')

@@ -15,7 +15,7 @@ export enum RentalContractStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
   REJECTED = 'rejected',
-  SUSPENDED = 'suspended',
+  //SUSPENDED = 'suspended',
 }
 
 @Entity('rental_contracts')

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -20,7 +21,14 @@ export class RentalContractsService {
     private readonly userRepo: Repository<User>,
   ) {}
 
-  async create(dto: CreateRentalContractDto): Promise<RentalContract> {
+  async create(
+    dto: CreateRentalContractDto,
+    requesterId?: number,
+  ): Promise<RentalContract> {
+    if (requesterId !== undefined && requesterId !== dto.userId) {
+      throw new ForbiddenException('Cannot create contract for another user');
+    }
+
     if (!dto.termsAccepted) {
       throw new BadRequestException(
         'termsAccepted must be true to register a rental contract',
@@ -47,6 +55,7 @@ export class RentalContractsService {
 
   async findAll(
     params: { userId?: number; status?: RentalContractStatus } = {},
+    requesterId?: number,
   ): Promise<RentalContract[]> {
     const { userId, status } = params;
     const qb = this.repo.createQueryBuilder('contract');
@@ -59,6 +68,10 @@ export class RentalContractsService {
       qb.andWhere('contract.status = :status', { status });
     }
 
+    if (requesterId !== undefined) {
+      qb.andWhere('contract.userId = :ownerId', { ownerId: requesterId });
+    }
+
     return qb
       .leftJoinAndSelect('contract.vehicles', 'vehicles')
       .leftJoinAndSelect('contract.user', 'user')
@@ -66,7 +79,10 @@ export class RentalContractsService {
       .getMany();
   }
 
-  async findOne(id: number): Promise<RentalContract> {
+  async findOne(
+    id: number,
+    requesterId?: number,
+  ): Promise<RentalContract> {
     const contract = await this.repo.findOne({
       where: { id },
       relations: ['vehicles', 'user'],
@@ -74,14 +90,18 @@ export class RentalContractsService {
     if (!contract) {
       throw new NotFoundException(`Rental contract ${id} not found`);
     }
+    if (requesterId !== undefined && contract.userId !== requesterId) {
+      throw new ForbiddenException('You can only access your own contracts');
+    }
     return contract;
   }
 
   async update(
     id: number,
     dto: UpdateRentalContractDto,
+    requesterId?: number,
   ): Promise<RentalContract> {
-    const contract = await this.findOne(id);
+    const contract = await this.findOne(id, requesterId);
 
     assignDefined(contract, {
       externalId: dto.externalId,
@@ -127,8 +147,8 @@ export class RentalContractsService {
     return this.repo.save(contract);
   }
 
-  async remove(id: number): Promise<void> {
-    const contract = await this.findOne(id);
+  async remove(id: number, requesterId?: number): Promise<void> {
+    const contract = await this.findOne(id, requesterId);
     await this.repo.remove(contract);
   }
 

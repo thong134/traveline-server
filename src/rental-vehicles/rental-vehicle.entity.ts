@@ -13,7 +13,6 @@ import { VehicleInformation } from '../vehicle-information/vehicle-information.e
 import { RentalBillDetail } from '../rental-bills/rental-bill-detail.entity';
 
 export enum RentalVehicleApprovalStatus {
-  DRAFT = 'draft',
   PENDING = 'pending',
   APPROVED = 'approved',
   REJECTED = 'rejected',
@@ -22,7 +21,7 @@ export enum RentalVehicleApprovalStatus {
 
 export enum RentalVehicleAvailabilityStatus {
   AVAILABLE = 'available',
-  UNAVAILABLE = 'unavailable',
+  //UNAVAILABLE = 'unavailable',
   RENTED = 'rented',
   MAINTENANCE = 'maintenance',
 }

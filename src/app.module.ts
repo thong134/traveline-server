@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { DestinationsModule } from './destinations/destinations.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -20,6 +21,7 @@ import { RestaurantModule } from './restaurant/restaurant.module';
 import { BusModule } from './bus/bus.module';
 import { TrainModule } from './train/train.module';
 import { FlightModule } from './flight/flight.module';
+import { ChatModule } from './chatbot/chat.module';
 
 @Module({
   imports: [
@@ -39,6 +41,7 @@ import { FlightModule } from './flight/flight.module';
         synchronize: true, // tự tạo bảng dựa trên entity (dev thôi, production thì nên tắt)
       }),
     }),
+    ThrottlerModule.forRoot([{ ttl: 60, limit: 10 }]),
     DestinationsModule,
     AuthModule,
     UsersModule,
@@ -58,6 +61,7 @@ import { FlightModule } from './flight/flight.module';
     BusModule,
     TrainModule,
     FlightModule,
+    ChatModule,
   ],
 })
 export class AppModule {}
