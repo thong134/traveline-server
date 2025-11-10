@@ -16,7 +16,7 @@ import {
   RentalContract,
   RentalContractStatus,
 } from '../rental-contracts/rental-contract.entity';
-import { VehicleInformation } from '../vehicle-information/vehicle-information.entity';
+import { VehicleCatalog } from '../vehicle-catalog/vehicle-catalog.entity';
 import { User } from '../users/entities/user.entity';
 import { assignDefined } from '../common/utils/object.util';
 
@@ -27,8 +27,8 @@ export class RentalVehiclesService {
     private readonly repo: Repository<RentalVehicle>,
     @InjectRepository(RentalContract)
     private readonly contractRepo: Repository<RentalContract>,
-    @InjectRepository(VehicleInformation)
-    private readonly vehicleInfoRepo: Repository<VehicleInformation>,
+    @InjectRepository(VehicleCatalog)
+    private readonly vehicleCatalogRepo: Repository<VehicleCatalog>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
   ) {}
@@ -69,50 +69,31 @@ export class RentalVehiclesService {
       );
     }
 
-    let vehicleInfo: VehicleInformation | null = null;
-    if (dto.vehicleInformationId) {
-      vehicleInfo = await this.vehicleInfoRepo.findOne({
-        where: { id: dto.vehicleInformationId },
+    let vehicleCatalog: VehicleCatalog | null = null;
+    if (dto.vehicleCatalogId) {
+      vehicleCatalog = await this.vehicleCatalogRepo.findOne({
+        where: { id: dto.vehicleCatalogId },
       });
-      if (!vehicleInfo) {
+      if (!vehicleCatalog) {
         throw new NotFoundException(
-          `Vehicle definition ${dto.vehicleInformationId} not found`,
+          `Vehicle catalog ${dto.vehicleCatalogId} not found`,
         );
       }
     }
 
-    const defaultRequirements =
-      dto.requirements ??
-      (vehicleInfo?.defaultRequirements?.length
-        ? vehicleInfo.defaultRequirements.join('\n')
-        : undefined);
-
     const entity = this.repo.create({
       licensePlate: dto.licensePlate.trim(),
       contractId: dto.contractId,
-      vehicleInformationId: dto.vehicleInformationId,
-      vehicleInformation: vehicleInfo ?? undefined,
-      vehicleType: vehicleInfo?.type ?? dto.vehicleType,
-      vehicleBrand: vehicleInfo?.brand ?? dto.vehicleBrand,
-      vehicleModel: vehicleInfo?.model ?? dto.vehicleModel,
-      vehicleColor: vehicleInfo?.color ?? dto.vehicleColor,
-      manufactureYear: dto.manufactureYear,
+      vehicleCatalogId: dto.vehicleCatalogId,
+      vehicleCatalog: vehicleCatalog ?? undefined,
       pricePerHour: this.ensurePrice(dto.pricePerHour),
       pricePerDay: this.ensurePrice(dto.pricePerDay),
-      requirements: defaultRequirements,
-      vehicleRegistrationFront: dto.vehicleRegistrationFront,
-      vehicleRegistrationBack: dto.vehicleRegistrationBack,
-      photoUrls: dto.photoUrls?.length
-        ? dto.photoUrls
-        : vehicleInfo?.photo
-          ? [vehicleInfo.photo]
-          : [],
+      requirements: dto.requirements,
       description: dto.description,
       status: dto.status ?? RentalVehicleApprovalStatus.PENDING,
       availability:
         dto.availability ?? RentalVehicleAvailabilityStatus.AVAILABLE,
-      externalId: dto.externalId,
-      statusReason: undefined,
+      rejectedReason: undefined,
       totalRentals: 0,
       averageRating: '0.00',
     });
@@ -149,7 +130,7 @@ export class RentalVehiclesService {
     }
 
     return qb
-      .leftJoinAndSelect('vehicle.vehicleInformation', 'definition')
+      .leftJoinAndSelect('vehicle.vehicleCatalog', 'definition')
       .leftJoinAndSelect('vehicle.contract', 'contract')
       .orderBy('vehicle.createdAt', 'DESC')
       .getMany();
@@ -158,7 +139,7 @@ export class RentalVehiclesService {
   async findOne(licensePlate: string): Promise<RentalVehicle> {
     const vehicle = await this.repo.findOne({
       where: { licensePlate },
-      relations: ['vehicleInformation', 'contract'],
+      relations: ['vehicleCatalog', 'contract'],
     });
     if (!vehicle) {
       throw new NotFoundException(`Vehicle ${licensePlate} not found`);
@@ -173,23 +154,19 @@ export class RentalVehiclesService {
     const vehicle = await this.findOne(licensePlate);
 
     if (
-      dto.vehicleInformationId &&
-      dto.vehicleInformationId !== vehicle.vehicleInformationId
+      dto.vehicleCatalogId &&
+      dto.vehicleCatalogId !== vehicle.vehicleCatalogId
     ) {
-      const info = await this.vehicleInfoRepo.findOne({
-        where: { id: dto.vehicleInformationId },
+      const info = await this.vehicleCatalogRepo.findOne({
+        where: { id: dto.vehicleCatalogId },
       });
       if (!info) {
         throw new NotFoundException(
-          `Vehicle definition ${dto.vehicleInformationId} not found`,
+          `Vehicle catalog ${dto.vehicleCatalogId} not found`,
         );
       }
-      vehicle.vehicleInformation = info;
-      vehicle.vehicleInformationId = info.id;
-      vehicle.vehicleType = info.type;
-      vehicle.vehicleBrand = info.brand;
-      vehicle.vehicleModel = info.model;
-      vehicle.vehicleColor = info.color;
+      vehicle.vehicleCatalog = info;
+      vehicle.vehicleCatalogId = info.id;
     }
 
     if (dto.pricePerHour !== undefined) {
@@ -200,15 +177,11 @@ export class RentalVehiclesService {
       vehicle.pricePerDay = this.ensurePrice(dto.pricePerDay);
     }
 
-    if (dto.photoUrls) {
-      vehicle.photoUrls = dto.photoUrls;
-    }
-
     if (dto.status && dto.status !== vehicle.status) {
       vehicle.status = dto.status;
-      vehicle.statusReason = dto.statusReason;
-    } else if (dto.statusReason) {
-      vehicle.statusReason = dto.statusReason;
+      vehicle.rejectedReason = dto.rejectedReason;
+    } else if (dto.rejectedReason) {
+      vehicle.rejectedReason = dto.rejectedReason;
     }
 
     if (dto.availability) {
@@ -216,16 +189,8 @@ export class RentalVehiclesService {
     }
 
     assignDefined(vehicle, {
-      vehicleType: dto.vehicleType,
-      vehicleBrand: dto.vehicleBrand,
-      vehicleModel: dto.vehicleModel,
-      vehicleColor: dto.vehicleColor,
-      manufactureYear: dto.manufactureYear,
       requirements: dto.requirements,
-      vehicleRegistrationFront: dto.vehicleRegistrationFront,
-      vehicleRegistrationBack: dto.vehicleRegistrationBack,
       description: dto.description,
-      externalId: dto.externalId,
     });
 
     return this.repo.save(vehicle);
@@ -253,11 +218,11 @@ export class RentalVehiclesService {
   async updateStatus(
     licensePlate: string,
     status: RentalVehicleApprovalStatus,
-    statusReason?: string,
+    rejectedReason?: string,
   ): Promise<RentalVehicle> {
     const vehicle = await this.findOne(licensePlate);
     vehicle.status = status;
-    vehicle.statusReason = statusReason;
+    vehicle.rejectedReason = rejectedReason;
     return this.repo.save(vehicle);
   }
 }

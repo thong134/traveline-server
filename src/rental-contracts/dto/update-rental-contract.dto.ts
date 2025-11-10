@@ -12,8 +12,8 @@ export class UpdateRentalContractDto extends PartialType(
   @IsEnum(RentalContractStatus)
   status?: RentalContractStatus;
 
-  @ApiPropertyOptional({ description: 'Admin reason when status changes' })
+  @ApiPropertyOptional({ description: 'Reason for rejecting the contract' })
   @IsOptional()
   @IsString()
-  statusReason?: string;
+  rejectedReason?: string;
 }

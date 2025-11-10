@@ -8,7 +8,7 @@ import { UsersModule } from './users/users.module';
 import { ProvincesModule } from './provinces/provinces.module';
 import { TravelRoutesModule } from './travel-routes/travel-routes.module';
 import { FeedbackModule } from './feedback/feedback.module';
-import { VehicleInformationModule } from './vehicle-information/vehicle-information.module';
+import { VehicleCatalogModule } from './vehicle-catalog/vehicle-catalog.module';
 import { RentalContractsModule } from './rental-contracts/rental-contracts.module';
 import { RentalVehiclesModule } from './rental-vehicles/rental-vehicles.module';
 import { RentalBillsModule } from './rental-bills/rental-bills.module';
@@ -48,7 +48,7 @@ import { ChatModule } from './chatbot/chat.module';
     ProvincesModule,
     TravelRoutesModule,
     FeedbackModule,
-    VehicleInformationModule,
+    VehicleCatalogModule,
     RentalContractsModule,
     RentalVehiclesModule,
     RentalBillsModule,

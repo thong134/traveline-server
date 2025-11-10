@@ -35,22 +35,12 @@ export class CreateFeedbackDto {
   @IsString()
   userUid?: string;
 
-  @ApiPropertyOptional({ description: 'Legacy feedback identifier' })
-  @IsOptional()
-  @IsString()
-  externalId?: string;
-
   @ApiPropertyOptional({ description: 'Destination internal id' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   destinationId?: number;
-
-  @ApiPropertyOptional({ description: 'Destination external id' })
-  @IsOptional()
-  @IsString()
-  destinationExternalId?: string;
 
   @ApiPropertyOptional({ description: 'Travel route id' })
   @IsOptional()

@@ -99,18 +99,10 @@ export class ChatService {
       );
     }
     if (classification.intent === 'restaurant') {
-      return this.handleRestaurantQuery(
-        classification,
-        message,
-        preferredLang,
-      );
+      return this.handleRestaurantQuery(classification, message, preferredLang);
     }
     if (classification.intent === 'hotel') {
-      return this.handleHotelQuery(
-        classification,
-        message,
-        preferredLang,
-      );
+      return this.handleHotelQuery(classification, message, preferredLang);
     }
 
     return this.generateConversationalReply(
@@ -558,11 +550,13 @@ export class ChatService {
     };
     const message = (err.message ?? '').toLowerCase();
     const statusText = (err.statusText ?? '').toLowerCase();
-    const causeMessage =
-      typeof err.cause === 'object' && err.cause && 'message' in err.cause
-        ? String((err.cause as { message?: unknown }).message ?? '')
-            .toLowerCase()
-        : '';
+    let causeMessage = '';
+    if (typeof err.cause === 'object' && err.cause && 'message' in err.cause) {
+      const nestedMessage = (err.cause as { message?: unknown }).message;
+      if (typeof nestedMessage === 'string') {
+        causeMessage = nestedMessage.toLowerCase();
+      }
+    }
     return (
       err.status === 429 ||
       /quota|rate|resourceexhausted/.test(message) ||
@@ -575,7 +569,11 @@ export class ChatService {
     if (!error || typeof error !== 'object') {
       return false;
     }
-    const err = error as { status?: number; message?: string; statusText?: string };
+    const err = error as {
+      status?: number;
+      message?: string;
+      statusText?: string;
+    };
     const message = (err.message ?? '').toLowerCase();
     const statusText = (err.statusText ?? '').toLowerCase();
     return (

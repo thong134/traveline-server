@@ -4,7 +4,7 @@ import { RentalVehiclesService } from './rental-vehicles.service';
 import { RentalVehiclesController } from './rental-vehicles.controller';
 import { RentalVehicle } from './rental-vehicle.entity';
 import { RentalContract } from '../rental-contracts/rental-contract.entity';
-import { VehicleInformation } from '../vehicle-information/vehicle-information.entity';
+import { VehicleCatalog } from '../vehicle-catalog/vehicle-catalog.entity';
 import { User } from '../users/entities/user.entity';
 
 @Module({
@@ -12,7 +12,7 @@ import { User } from '../users/entities/user.entity';
     TypeOrmModule.forFeature([
       RentalVehicle,
       RentalContract,
-      VehicleInformation,
+      VehicleCatalog,
       User,
     ]),
   ],

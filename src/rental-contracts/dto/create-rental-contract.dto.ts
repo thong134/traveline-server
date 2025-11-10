@@ -1,13 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
-  IsEmail,
   IsEnum,
   IsInt,
   IsOptional,
   IsString,
-  MaxLength,
-  MinLength,
 } from 'class-validator';
 
 export enum BusinessType {
@@ -27,41 +24,10 @@ export class CreateRentalContractDto {
   @IsInt()
   userId: number;
 
-  @ApiPropertyOptional({
-    description: 'External identifier synced from legacy system',
-  })
+  @ApiPropertyOptional({ description: 'Citizen identification number' })
   @IsOptional()
   @IsString()
-  externalId?: string;
-
-  @ApiProperty({ description: 'Contact full name' })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(255)
-  fullName: string;
-
-  @ApiPropertyOptional({ description: 'Contact email' })
-  @IsOptional()
-  @IsEmail()
-  email?: string;
-
-  @ApiPropertyOptional({ description: 'Contact phone number' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  phone?: string;
-
-  @ApiPropertyOptional({
-    description: 'Identification number (Citizen ID/Passport)',
-  })
-  @IsOptional()
-  @IsString()
-  identificationNumber?: string;
-
-  @ApiPropertyOptional({ description: 'Identification document photo URL' })
-  @IsOptional()
-  @IsString()
-  identificationPhoto?: string;
+  citizenId?: string;
 
   @ApiProperty({ enum: BusinessType, default: BusinessType.PERSONAL })
   @IsEnum(BusinessType)
@@ -76,11 +42,6 @@ export class CreateRentalContractDto {
   @IsOptional()
   @IsString()
   businessProvince?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  businessCity?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

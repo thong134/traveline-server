@@ -84,16 +84,10 @@ export class RentalContractsService {
     const contract = await this.findOne(id);
 
     assignDefined(contract, {
-      externalId: dto.externalId,
-      fullName: dto.fullName,
-      email: dto.email,
-      phone: dto.phone,
-      identificationNumber: dto.identificationNumber,
-      identificationPhoto: dto.identificationPhoto,
+      citizenId: dto.citizenId,
       businessType: dto.businessType,
       businessName: dto.businessName,
       businessProvince: dto.businessProvince,
-      businessCity: dto.businessCity,
       businessAddress: dto.businessAddress,
       taxCode: dto.taxCode,
       businessRegisterPhoto: dto.businessRegisterPhoto,
@@ -112,16 +106,16 @@ export class RentalContractsService {
       contract.statusUpdatedAt = new Date();
       if (
         dto.status === RentalContractStatus.APPROVED &&
-        dto.statusReason === undefined
+        dto.rejectedReason === undefined
       ) {
-        contract.statusReason = undefined;
+        contract.rejectedReason = undefined;
       }
     } else if (dto.status) {
       contract.status = dto.status;
     }
 
-    if (dto.statusReason !== undefined) {
-      contract.statusReason = dto.statusReason;
+    if (dto.rejectedReason !== undefined) {
+      contract.rejectedReason = dto.rejectedReason;
     }
 
     return this.repo.save(contract);

@@ -1,0 +1,13 @@
+BEGIN;
+
+ALTER TABLE IF EXISTS vehicle_information DROP COLUMN IF EXISTS "externalId";
+ALTER TABLE IF EXISTS rental_vehicles DROP COLUMN IF EXISTS "externalId";
+ALTER TABLE IF EXISTS rental_contracts DROP COLUMN IF EXISTS "externalId";
+ALTER TABLE IF EXISTS travel_routes DROP COLUMN IF EXISTS "externalId";
+ALTER TABLE IF EXISTS route_stops DROP COLUMN IF EXISTS "destinationExternalId";
+ALTER TABLE IF EXISTS feedbacks DROP COLUMN IF EXISTS "externalId";
+ALTER TABLE IF EXISTS feedbacks DROP COLUMN IF EXISTS "destinationExternalId";
+ALTER TABLE IF EXISTS destinations DROP COLUMN IF EXISTS "externalId";
+ALTER TABLE IF EXISTS destination DROP COLUMN IF EXISTS "externalId";
+
+COMMIT;

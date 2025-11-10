@@ -111,14 +111,12 @@ async function bootstrap() {
       continue;
     }
 
-    //const externalId = (data.destinationId || doc.id)?.toString();
-  const photos = coerceStringArray(data.photo ?? data.photos);
-  const categories = coerceStringArray(data.categories);
-  const videos = coerceStringArray(data.video ?? data.videos);
+    const photos = coerceStringArray(data.photo ?? data.photos);
+    const categories = coerceStringArray(data.categories);
+    const videos = coerceStringArray(data.video ?? data.videos);
 
     const payload: Partial<Destination> = {
       name,
-      //externalId,
       type: typeof data.type === 'string' ? data.type : undefined,
       descriptionViet: typeof data.descriptionViet === 'string' ? data.descriptionViet : undefined,
       descriptionEng: typeof data.descriptionEng === 'string' ? data.descriptionEng : undefined,
@@ -138,9 +136,6 @@ async function bootstrap() {
       sourceCreatedAt: parseDate(data.createdDate),
     };
 
-    // let entity = externalId
-    //   ? await repo.findOne({ where: { externalId } })
-    //   : await repo.findOne({ where: { name, latitude, longitude } });
     let entity = await repo.findOne({ where: { name, latitude, longitude } });
 
     if (!entity) {

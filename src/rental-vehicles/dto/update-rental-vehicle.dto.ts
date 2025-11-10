@@ -16,11 +16,11 @@ export class UpdateRentalVehicleDto extends PartialType(
   status?: RentalVehicleApprovalStatus;
 
   @ApiPropertyOptional({
-    description: 'Admin reason for approval status change',
+    description: 'Admin reason for rejecting the vehicle',
   })
   @IsOptional()
   @IsString()
-  statusReason?: string;
+  rejectedReason?: string;
 
   @ApiPropertyOptional({ enum: RentalVehicleAvailabilityStatus })
   @IsOptional()

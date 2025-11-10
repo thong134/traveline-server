@@ -18,11 +18,6 @@ export class CreateDestinationDto {
   @MinLength(1)
   name: string;
 
-  @ApiPropertyOptional({ description: 'Legacy destination external id' })
-  @IsOptional()
-  @IsString()
-  externalId?: string;
-
   @ApiPropertyOptional({ description: 'Destination type label' })
   @IsOptional()
   @IsString()

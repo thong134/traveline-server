@@ -17,9 +17,6 @@ export class Destination {
   @Column()
   name: string;
 
-  @Column({ nullable: true, unique: true })
-  externalId?: string;
-
   @Column({ nullable: true })
   type?: string;
 

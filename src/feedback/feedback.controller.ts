@@ -47,11 +47,6 @@ export class FeedbackController {
     type: Number,
   })
   @ApiQuery({
-    name: 'destinationExternalId',
-    required: false,
-    description: 'Filter by destination external id',
-  })
-  @ApiQuery({
     name: 'travelRouteId',
     required: false,
     description: 'Filter by travel route id',
@@ -78,7 +73,6 @@ export class FeedbackController {
   findAll(
     @Query('userId') userId?: string,
     @Query('destinationId') destinationId?: string,
-    @Query('destinationExternalId') destinationExternalId?: string,
     @Query('travelRouteId') travelRouteId?: string,
     @Query('status') status?: string,
     @Query('limit') limit?: string,
@@ -87,7 +81,6 @@ export class FeedbackController {
     return this.feedbackService.findAll({
       userId: userId ? Number(userId) : undefined,
       destinationId: destinationId ? Number(destinationId) : undefined,
-      destinationExternalId: destinationExternalId || undefined,
       travelRouteId: travelRouteId ? Number(travelRouteId) : undefined,
       status: status || undefined,
       limit: limit ? Number(limit) : undefined,

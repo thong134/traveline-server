@@ -16,9 +16,6 @@ export class Feedback {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true, nullable: true })
-  externalId?: string;
-
   @ManyToOne(() => User, (user) => user.feedbacks, {
     nullable: true,
     onDelete: 'SET NULL',
@@ -51,9 +48,6 @@ export class Feedback {
 
   @Column({ name: 'destination_id', nullable: true })
   destinationId?: number;
-
-  @Column({ nullable: true })
-  destinationExternalId?: string;
 
   @Column({ nullable: true })
   licensePlate?: string;

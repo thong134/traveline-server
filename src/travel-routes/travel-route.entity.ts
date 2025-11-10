@@ -17,9 +17,6 @@ export class TravelRoute {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true, nullable: true })
-  externalId?: string;
-
   @Column({ nullable: true })
   ownerUid?: string;
 

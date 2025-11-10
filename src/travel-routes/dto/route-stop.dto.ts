@@ -33,11 +33,6 @@ export class RouteStopDto {
   @Min(1)
   destinationId?: number;
 
-  @ApiPropertyOptional({ description: 'Legacy destination external id' })
-  @IsOptional()
-  @IsString()
-  destinationExternalId?: string;
-
   @ApiPropertyOptional({ description: 'Unique key from client' })
   @IsOptional()
   @IsString()

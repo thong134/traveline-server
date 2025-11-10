@@ -32,9 +32,6 @@ export class RouteStop {
   @Column({ name: 'destination_id', nullable: true })
   destinationId?: number;
 
-  @Column({ nullable: true })
-  destinationExternalId?: string;
-
   @Column({ type: 'int' })
   dayOrder: number;
 

@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { RentalContract } from '../rental-contracts/rental-contract.entity';
-import { VehicleInformation } from '../vehicle-information/vehicle-information.entity';
+import { VehicleCatalog } from '../vehicle-catalog/vehicle-catalog.entity';
 import { RentalBillDetail } from '../rental-bills/rental-bill-detail.entity';
 
 export enum RentalVehicleApprovalStatus {
@@ -31,9 +31,6 @@ export class RentalVehicle {
   @PrimaryColumn({ length: 32 })
   licensePlate: string;
 
-  @Column({ nullable: true, unique: true })
-  externalId?: string;
-
   @ManyToOne(
     () => RentalContract,
     (contract: RentalContract) => contract.vehicles,
@@ -45,31 +42,15 @@ export class RentalVehicle {
   @Column()
   contractId: number;
 
-  @ManyToOne(
-    () => VehicleInformation,
-    (info: VehicleInformation) => info.rentalVehicles,
-    { nullable: true, onDelete: 'SET NULL' },
-  )
-  @JoinColumn({ name: 'vehicleInformationId' })
-  vehicleInformation?: VehicleInformation;
+  @ManyToOne(() => VehicleCatalog, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'vehicleCatalogId' })
+  vehicleCatalog?: VehicleCatalog;
 
   @Column({ nullable: true })
-  vehicleInformationId?: number;
-
-  @Column({ nullable: true })
-  vehicleType?: string;
-
-  @Column({ nullable: true })
-  vehicleBrand?: string;
-
-  @Column({ nullable: true })
-  vehicleModel?: string;
-
-  @Column({ nullable: true })
-  vehicleColor?: string;
-
-  @Column({ nullable: true })
-  manufactureYear?: string;
+  vehicleCatalogId?: number;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   pricePerHour: string;
@@ -79,15 +60,6 @@ export class RentalVehicle {
 
   @Column({ nullable: true })
   requirements?: string;
-
-  @Column({ nullable: true })
-  vehicleRegistrationFront?: string;
-
-  @Column({ nullable: true })
-  vehicleRegistrationBack?: string;
-
-  @Column({ type: 'text', array: true, default: '{}' })
-  photoUrls: string[];
 
   @Column({ nullable: true })
   description?: string;
@@ -100,7 +72,7 @@ export class RentalVehicle {
   status: RentalVehicleApprovalStatus;
 
   @Column({ nullable: true })
-  statusReason?: string;
+  rejectedReason?: string;
 
   @Column({
     type: 'enum',

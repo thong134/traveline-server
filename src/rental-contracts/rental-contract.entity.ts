@@ -15,16 +15,13 @@ export enum RentalContractStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
   REJECTED = 'rejected',
-  //SUSPENDED = 'suspended',
+  SUSPENDED = 'suspended',
 }
 
 @Entity('rental_contracts')
 export class RentalContract {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @Column({ nullable: true, unique: true })
-  externalId?: string;
 
   @ManyToOne(() => User, (user: User) => user.rentalContracts, {
     nullable: false,
@@ -37,19 +34,7 @@ export class RentalContract {
   userId: number;
 
   @Column({ nullable: true })
-  fullName?: string;
-
-  @Column({ nullable: true })
-  email?: string;
-
-  @Column({ nullable: true })
-  phone?: string;
-
-  @Column({ nullable: true })
-  identificationNumber?: string;
-
-  @Column({ nullable: true })
-  identificationPhoto?: string;
+  citizenId?: string;
 
   @Column({ default: 'personal' })
   businessType: string;
@@ -59,9 +44,6 @@ export class RentalContract {
 
   @Column({ nullable: true })
   businessProvince?: string;
-
-  @Column({ nullable: true })
-  businessCity?: string;
 
   @Column({ nullable: true })
   businessAddress?: string;
@@ -104,7 +86,7 @@ export class RentalContract {
   status: RentalContractStatus;
 
   @Column({ nullable: true })
-  statusReason?: string;
+  rejectedReason?: string;
 
   @Column({ type: 'timestamptz', nullable: true })
   statusUpdatedAt?: Date;

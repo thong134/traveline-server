@@ -141,7 +141,6 @@ export class TravelRoutesService {
     const {
       userId,
       ownerUid,
-      externalId,
       name,
       province,
       numberOfDays,
@@ -163,10 +162,6 @@ export class TravelRoutesService {
 
     if (ownerUid !== undefined) {
       route.ownerUid = ownerUid;
-    }
-
-    if (externalId !== undefined) {
-      route.externalId = externalId;
     }
 
     if (name !== undefined) {
@@ -221,7 +216,6 @@ export class TravelRoutesService {
       stop.notes = dto.notes;
       stop.images = dto.images ?? [];
       stop.videos = dto.videos ?? [];
-      stop.destinationExternalId = dto.destinationExternalId;
 
       if (dto.destinationId) {
         const destination = await destinationRepository.findOne({
@@ -234,16 +228,7 @@ export class TravelRoutesService {
         }
         stop.destinationId = destination.id;
         stop.destination = destination;
-        stop.destinationExternalId =
-          destination.externalId ?? stop.destinationExternalId;
-      } else if (dto.destinationExternalId) {
-        const destination = await destinationRepository.findOne({
-          where: { externalId: dto.destinationExternalId },
-        });
-        if (destination) {
-          stop.destinationId = destination.id;
-          stop.destination = destination;
-        }
+        stop.destination = destination;
       }
 
       stops.push(stop);

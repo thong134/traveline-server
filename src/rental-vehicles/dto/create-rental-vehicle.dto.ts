@@ -28,46 +28,13 @@ export class CreateRentalVehicleDto {
   contractId: number;
 
   @ApiPropertyOptional({
-    description: 'Vehicle information definition id',
+    description: 'Vehicle catalog definition id',
     example: 5,
   })
   @Type(() => Number)
   @IsOptional()
   @IsInt()
-  vehicleInformationId?: number;
-
-  @ApiPropertyOptional({
-    description: 'Vehicle type when no vehicleInformationId provided',
-  })
-  @IsOptional()
-  @IsString()
-  vehicleType?: string;
-
-  @ApiPropertyOptional({
-    description: 'Vehicle brand when no vehicleInformationId provided',
-  })
-  @IsOptional()
-  @IsString()
-  vehicleBrand?: string;
-
-  @ApiPropertyOptional({
-    description: 'Vehicle model when no vehicleInformationId provided',
-  })
-  @IsOptional()
-  @IsString()
-  vehicleModel?: string;
-
-  @ApiPropertyOptional({
-    description: 'Vehicle color when no vehicleInformationId provided',
-  })
-  @IsOptional()
-  @IsString()
-  vehicleColor?: string;
-
-  @ApiPropertyOptional({ description: 'Manufacture year', example: '2022' })
-  @IsOptional()
-  @IsString()
-  manufactureYear?: string;
+  vehicleCatalogId?: number;
 
   @ApiProperty({ description: 'Rental price per hour', example: 80000 })
   @Type(() => Number)
@@ -88,21 +55,6 @@ export class CreateRentalVehicleDto {
   @IsString()
   requirements?: string;
 
-  @ApiPropertyOptional({ description: 'Vehicle registration front photo url' })
-  @IsOptional()
-  @IsString()
-  vehicleRegistrationFront?: string;
-
-  @ApiPropertyOptional({ description: 'Vehicle registration back photo url' })
-  @IsOptional()
-  @IsString()
-  vehicleRegistrationBack?: string;
-
-  @ApiPropertyOptional({ description: 'Gallery photo urls', type: [String] })
-  @IsOptional()
-  @IsString({ each: true })
-  photoUrls?: string[];
-
   @ApiPropertyOptional({ description: 'Vehicle description' })
   @IsOptional()
   @IsString()
@@ -120,9 +72,4 @@ export class CreateRentalVehicleDto {
   @IsOptional()
   @IsEnum(RentalVehicleAvailabilityStatus)
   availability?: RentalVehicleAvailabilityStatus;
-
-  @ApiPropertyOptional({ description: 'Legacy identifier from Firebase' })
-  @IsOptional()
-  @IsString()
-  externalId?: string;
 }

@@ -18,11 +18,6 @@ export class CreateTravelRouteDto {
   @MinLength(1)
   name: string;
 
-  @ApiPropertyOptional({ description: 'Legacy travel route id from Firebase' })
-  @IsOptional()
-  @IsString()
-  externalId?: string;
-
   @ApiPropertyOptional({ description: 'Owner user id (internal)' })
   @IsOptional()
   @Type(() => Number)

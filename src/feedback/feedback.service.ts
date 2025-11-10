@@ -11,7 +11,6 @@ import { TravelRoute } from '../travel-routes/travel-route.entity';
 interface FeedbackQueryOptions {
   userId?: number;
   destinationId?: number;
-  destinationExternalId?: string;
   travelRouteId?: number;
   status?: string;
   limit?: number;
@@ -43,7 +42,6 @@ export class FeedbackService {
     const {
       userId,
       destinationId,
-      destinationExternalId,
       travelRouteId,
       status,
       limit = 50,
@@ -64,12 +62,6 @@ export class FeedbackService {
 
     if (destinationId) {
       qb.andWhere('feedback.destinationId = :destinationId', { destinationId });
-    }
-
-    if (destinationExternalId) {
-      qb.andWhere('feedback.destinationExternalId = :destinationExternalId', {
-        destinationExternalId,
-      });
     }
 
     if (travelRouteId) {
@@ -143,10 +135,6 @@ export class FeedbackService {
       feedback.userUid = dto.userUid;
     }
 
-    if (dto.externalId !== undefined) {
-      feedback.externalId = dto.externalId;
-    }
-
     if (dto.travelRouteId) {
       const route = await this.travelRouteRepo.findOne({
         where: { id: dto.travelRouteId },
@@ -174,23 +162,11 @@ export class FeedbackService {
       }
       feedback.destinationId = destination.id;
       feedback.destination = destination;
-      feedback.destinationExternalId =
-        destination.externalId ?? feedback.destinationExternalId;
-    } else if (dto.destinationExternalId) {
-      feedback.destinationExternalId = dto.destinationExternalId;
-      const destination = await this.destinationRepo.findOne({
-        where: { externalId: dto.destinationExternalId },
-      });
-      if (destination) {
-        feedback.destinationId = destination.id;
-        feedback.destination = destination;
-      }
     }
 
-    if (dto.destinationId === null && dto.destinationExternalId === null) {
+    if (dto.destinationId === null) {
       feedback.destinationId = undefined;
       feedback.destination = undefined;
-      feedback.destinationExternalId = undefined;
     }
 
     if (dto.licensePlate !== undefined) {

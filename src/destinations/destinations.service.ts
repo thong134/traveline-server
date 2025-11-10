@@ -40,7 +40,6 @@ export class DestinationsService {
           destination.name ILIKE :q
           OR destination.type ILIKE :q
           OR destination.province ILIKE :q
-          OR destination.externalId ILIKE :q
         )`,
         { q: `%${q}%` },
       );
