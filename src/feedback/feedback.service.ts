@@ -7,6 +7,8 @@ import { UpdateFeedbackDto } from './dto/update-feedback.dto';
 import { User } from '../users/entities/user.entity';
 import { Destination } from '../destinations/destinations.entity';
 import { TravelRoute } from '../travel-routes/travel-route.entity';
+import { RentalVehicle } from '../rental-vehicles/rental-vehicle.entity';
+import { Cooperation } from '../cooperations/cooperation.entity';
 
 interface FeedbackQueryOptions {
   userId?: number;
@@ -28,6 +30,10 @@ export class FeedbackService {
     private readonly destinationRepo: Repository<Destination>,
     @InjectRepository(TravelRoute)
     private readonly travelRouteRepo: Repository<TravelRoute>,
+    @InjectRepository(RentalVehicle)
+    private readonly rentalVehicleRepo: Repository<RentalVehicle>,
+    @InjectRepository(Cooperation)
+    private readonly cooperationRepo: Repository<Cooperation>,
   ) {}
 
   async create(dto: CreateFeedbackDto): Promise<Feedback> {
@@ -35,6 +41,7 @@ export class FeedbackService {
     await this.assignFeedbackFields(feedback, dto);
     const saved = await this.feedbackRepo.save(feedback);
     await this.recalculateDestinationRating(saved.destinationId);
+    await this.recalculateTravelRouteRating(saved.travelRouteId);
     return this.findOne(saved.id);
   }
 
@@ -52,6 +59,8 @@ export class FeedbackService {
       .leftJoinAndSelect('feedback.user', 'user')
       .leftJoinAndSelect('feedback.destination', 'destination')
       .leftJoinAndSelect('feedback.travelRoute', 'travelRoute')
+      .leftJoinAndSelect('feedback.rentalVehicle', 'rentalVehicle')
+      .leftJoinAndSelect('feedback.cooperation', 'cooperation')
       .take(limit)
       .skip(offset)
       .orderBy('feedback.createdAt', 'DESC');
@@ -78,7 +87,13 @@ export class FeedbackService {
   async findOne(id: number): Promise<Feedback> {
     const feedback = await this.feedbackRepo.findOne({
       where: { id },
-      relations: { user: true, destination: true, travelRoute: true },
+      relations: {
+        user: true,
+        destination: true,
+        travelRoute: true,
+        rentalVehicle: true,
+        cooperation: true,
+      },
     });
     if (!feedback) {
       throw new NotFoundException(`Feedback ${id} not found`);
@@ -92,11 +107,17 @@ export class FeedbackService {
       throw new NotFoundException(`Feedback ${id} not found`);
     }
     const previousDestinationId = feedback.destinationId;
+    const previousTravelRouteId = feedback.travelRouteId;
     await this.assignFeedbackFields(feedback, dto);
     await this.feedbackRepo.save(feedback);
     if (feedback.destinationId || previousDestinationId) {
       await this.recalculateDestinationRating(
         feedback.destinationId ?? previousDestinationId ?? undefined,
+      );
+    }
+    if (feedback.travelRouteId || previousTravelRouteId) {
+      await this.recalculateTravelRouteRating(
+        feedback.travelRouteId ?? previousTravelRouteId ?? undefined,
       );
     }
     return this.findOne(id);
@@ -108,11 +129,44 @@ export class FeedbackService {
       throw new NotFoundException(`Feedback ${id} not found`);
     }
     const destinationId = feedback.destinationId;
+    const travelRouteId = feedback.travelRouteId;
     await this.feedbackRepo.remove(feedback);
     if (destinationId) {
       await this.recalculateDestinationRating(destinationId);
     }
+    if (travelRouteId) {
+      await this.recalculateTravelRouteRating(travelRouteId);
+    }
     return { id, message: 'Feedback deleted' };
+  }
+
+  private async recalculateTravelRouteRating(
+    travelRouteId?: number,
+  ): Promise<void> {
+    if (!travelRouteId) return;
+
+    const aggregation = await this.feedbackRepo
+      .createQueryBuilder('feedback')
+      .select('COUNT(feedback.id)', 'count')
+      .addSelect('COALESCE(SUM(feedback.star), 0)', 'sum')
+      .where('feedback.travelRouteId = :travelRouteId', { travelRouteId })
+      .andWhere('feedback.status IN (:...statuses)', {
+        statuses: ['pending', 'approved'],
+      })
+      .getRawOne<{ count: string; sum: string }>();
+
+    const count = Number(aggregation?.count ?? 0);
+    const sum = Number(aggregation?.sum ?? 0);
+
+    const travelRoute = await this.travelRouteRepo.findOne({
+      where: { id: travelRouteId },
+    });
+    if (!travelRoute) return;
+
+    travelRoute.averageRating =
+      count > 0 ? Number((sum / count).toFixed(2)) : 0;
+
+    await this.travelRouteRepo.save(travelRoute);
   }
 
   private async assignFeedbackFields(
@@ -169,12 +223,36 @@ export class FeedbackService {
       feedback.destination = undefined;
     }
 
-    if (dto.licensePlate !== undefined) {
-      feedback.licensePlate = dto.licensePlate;
+    if (dto.licensePlate) {
+      const vehicle = await this.rentalVehicleRepo.findOne({
+        where: { licensePlate: dto.licensePlate },
+      });
+      if (!vehicle) {
+        throw new NotFoundException(
+          `Rental vehicle ${dto.licensePlate} not found`,
+        );
+      }
+      feedback.licensePlate = vehicle.licensePlate;
+      feedback.rentalVehicle = vehicle;
+    } else if (dto.licensePlate === null) {
+      feedback.licensePlate = undefined;
+      feedback.rentalVehicle = undefined;
     }
 
-    if (dto.cooperationId !== undefined) {
-      feedback.cooperationId = dto.cooperationId;
+    if (dto.cooperationId) {
+      const cooperation = await this.cooperationRepo.findOne({
+        where: { id: dto.cooperationId },
+      });
+      if (!cooperation) {
+        throw new NotFoundException(
+          `Cooperation ${dto.cooperationId} not found`,
+        );
+      }
+      feedback.cooperationId = cooperation.id;
+      feedback.cooperation = cooperation;
+    } else if (dto.cooperationId === null) {
+      feedback.cooperationId = undefined;
+      feedback.cooperation = undefined;
     }
 
     if (dto.star !== undefined) {
@@ -184,11 +262,6 @@ export class FeedbackService {
     if (dto.comment !== undefined) {
       feedback.comment = dto.comment;
     }
-
-    if (dto.date !== undefined) {
-      feedback.feedbackDate = dto.date ? new Date(dto.date) : undefined;
-    }
-
     if (dto.photos !== undefined) {
       feedback.photos = dto.photos ?? [];
     }

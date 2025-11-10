@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
-  IsDateString,
   IsIn,
   IsInt,
   IsOptional,
@@ -56,18 +55,15 @@ export class CreateFeedbackDto {
 
   @ApiPropertyOptional({ description: 'Cooperation id' })
   @IsOptional()
-  @IsString()
-  cooperationId?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  cooperationId?: number;
 
   @ApiPropertyOptional({ description: 'Feedback comment' })
   @IsOptional()
   @IsString()
   comment?: string;
-
-  @ApiPropertyOptional({ description: 'Feedback date (ISO string)' })
-  @IsOptional()
-  @IsDateString()
-  date?: string;
 
   @ApiPropertyOptional({ description: 'Photo URLs', type: [String] })
   @IsOptional()

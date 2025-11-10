@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -9,6 +10,7 @@ import {
   Matches,
   Min,
 } from 'class-validator';
+import { RouteStopStatus } from '../route-stop.entity';
 
 export class RouteStopDto {
   @ApiProperty({
@@ -37,6 +39,18 @@ export class RouteStopDto {
   @IsOptional()
   @IsString()
   uniqueKey?: string;
+
+  @ApiPropertyOptional({ enum: RouteStopStatus })
+  @IsOptional()
+  @IsEnum(RouteStopStatus)
+  status?: RouteStopStatus;
+
+  @ApiPropertyOptional({ description: 'Travel points awarded', default: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  travelPoints?: number;
 
   @ApiPropertyOptional({ description: 'Start time in HH:mm format' })
   @IsOptional()

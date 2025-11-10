@@ -53,6 +53,12 @@ export class TravelRoute {
   @OneToMany(() => Feedback, (feedback: Feedback) => feedback.travelRoute)
   feedbacks: Feedback[];
 
+  @Column({ type: 'int', default: 0 })
+  totalTravelPoints: number;
+
+  @Column({ type: 'double precision', default: 0 })
+  averageRating: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

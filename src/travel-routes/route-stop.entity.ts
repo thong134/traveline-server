@@ -10,6 +10,13 @@ import {
 import { TravelRoute } from './travel-route.entity';
 import { Destination } from '../destinations/destinations.entity';
 
+export enum RouteStopStatus {
+  UPCOMING = 'upcoming',
+  IN_PROGRESS = 'in_progress',
+  COMPLETED = 'completed',
+  MISSED = 'missed',
+}
+
 @Entity('route_stops')
 export class RouteStop {
   @PrimaryGeneratedColumn()
@@ -40,6 +47,16 @@ export class RouteStop {
 
   @Column({ nullable: true })
   uniqueKey?: string;
+
+  @Column({
+    type: 'enum',
+    enum: RouteStopStatus,
+    default: RouteStopStatus.UPCOMING,
+  })
+  status: RouteStopStatus;
+
+  @Column({ type: 'int', default: 0 })
+  travelPoints: number;
 
   @Column({ nullable: true })
   startTime?: string;

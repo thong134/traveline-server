@@ -10,6 +10,8 @@ import {
 import { User } from '../users/entities/user.entity';
 import { TravelRoute } from '../travel-routes/travel-route.entity';
 import { Destination } from '../destinations/destinations.entity';
+import { RentalVehicle } from '../rental-vehicles/rental-vehicle.entity';
+import { Cooperation } from '../cooperations/cooperation.entity';
 
 @Entity('feedbacks')
 export class Feedback {
@@ -49,11 +51,25 @@ export class Feedback {
   @Column({ name: 'destination_id', nullable: true })
   destinationId?: number;
 
+  @ManyToOne(() => RentalVehicle, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'licensePlate', referencedColumnName: 'licensePlate' })
+  rentalVehicle?: RentalVehicle;
+
   @Column({ nullable: true })
   licensePlate?: string;
 
+  @ManyToOne(() => Cooperation, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'cooperationId' })
+  cooperation?: Cooperation;
+
   @Column({ nullable: true })
-  cooperationId?: string;
+  cooperationId?: number;
 
   @Column({ type: 'int', default: 0 })
   star: number;
@@ -69,9 +85,6 @@ export class Feedback {
 
   @Column({ default: 'pending' })
   status: string;
-
-  @Column({ type: 'timestamp', nullable: true })
-  feedbackDate?: Date;
 
   @CreateDateColumn()
   createdAt: Date;

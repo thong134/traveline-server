@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { TravelRoute } from './travel-route.entity';
-import { RouteStop } from './route-stop.entity';
+import { RouteStop, RouteStopStatus } from './route-stop.entity';
 import { CreateTravelRouteDto } from './dto/create-travel-route.dto';
 import { UpdateTravelRouteDto } from './dto/update-travel-route.dto';
 import { RouteStopDto } from './dto/route-stop.dto';
@@ -42,8 +42,10 @@ export class TravelRoutesService {
           dto.stops,
           savedRoute.id,
           manager.getRepository(Destination),
+          savedRoute.startDate ?? undefined,
         );
         await manager.getRepository(RouteStop).save(stops);
+        await this.updateRouteAggregates(savedRoute.id, manager);
       }
 
       return this.findOne(savedRoute.id);
@@ -106,8 +108,12 @@ export class TravelRoutesService {
             dto.stops,
             id,
             manager.getRepository(Destination),
+            route.startDate ?? undefined,
           );
           await manager.getRepository(RouteStop).save(stops);
+          await this.updateRouteAggregates(id, manager);
+        } else {
+          await this.updateRouteAggregates(id, manager);
         }
       }
 
@@ -202,6 +208,7 @@ export class TravelRoutesService {
     dtos: RouteStopDto[],
     routeId: number,
     destinationRepository: Repository<Destination>,
+    routeStartDate?: Date,
   ): Promise<RouteStop[]> {
     const stops: RouteStop[] = [];
 
@@ -216,6 +223,13 @@ export class TravelRoutesService {
       stop.notes = dto.notes;
       stop.images = dto.images ?? [];
       stop.videos = dto.videos ?? [];
+      const status = this.determineStopStatus(
+        routeStartDate,
+        dto.dayOrder,
+        dto.status,
+      );
+      stop.status = status;
+      stop.travelPoints = this.resolveTravelPoints(status, dto.travelPoints);
 
       if (dto.destinationId) {
         const destination = await destinationRepository.findOne({
@@ -228,12 +242,70 @@ export class TravelRoutesService {
         }
         stop.destinationId = destination.id;
         stop.destination = destination;
-        stop.destination = destination;
       }
 
       stops.push(stop);
     }
 
     return stops;
+  }
+
+  private determineStopStatus(
+    routeStartDate: Date | undefined,
+    dayOrder: number,
+    providedStatus?: RouteStopStatus,
+  ): RouteStopStatus {
+    if (providedStatus) {
+      return providedStatus;
+    }
+    if (!routeStartDate) {
+      return RouteStopStatus.UPCOMING;
+    }
+
+    const stopDate = new Date(routeStartDate);
+    stopDate.setHours(0, 0, 0, 0);
+    stopDate.setDate(stopDate.getDate() + Math.max(0, dayOrder - 1));
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (stopDate > today) {
+      return RouteStopStatus.UPCOMING;
+    }
+    if (stopDate.getTime() === today.getTime()) {
+      return RouteStopStatus.IN_PROGRESS;
+    }
+    return RouteStopStatus.MISSED;
+  }
+
+  private resolveTravelPoints(
+    status: RouteStopStatus,
+    requestedPoints?: number,
+  ): number {
+    if (status === RouteStopStatus.COMPLETED) {
+      if (requestedPoints !== undefined) {
+        return Math.max(0, requestedPoints);
+      }
+      return 50;
+    }
+    return 0;
+  }
+
+  private async updateRouteAggregates(
+    routeId: number,
+    manager: EntityManager,
+  ): Promise<void> {
+    const stopRepo = manager.getRepository(RouteStop);
+    const aggregation = await stopRepo
+      .createQueryBuilder('stop')
+      .select('COALESCE(SUM(stop.travelPoints), 0)', 'total')
+      .where('stop.routeId = :routeId', { routeId })
+      .getRawOne<{ total: string }>();
+
+    const totalPoints = Number(aggregation?.total ?? 0);
+
+    await manager.getRepository(TravelRoute).update(routeId, {
+      totalTravelPoints: totalPoints,
+    });
   }
 }
