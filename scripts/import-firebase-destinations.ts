@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import { cert, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { DataSource } from 'typeorm';
-import { Destination } from '../src/destinations/destinations.entity';
+import { Destination } from '../src/modules/destination/entities/destinations.entity';
 
 function requireEnv(name: string): string {
   const value = process.env[name];
