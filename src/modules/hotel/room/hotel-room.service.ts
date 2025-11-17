@@ -309,9 +309,13 @@ export class HotelRoomsService {
     }
   }
 
-  async reserveRooms(contexts: { room: HotelRoom; quantity: number }[]): Promise<void> {
+  async reserveRooms(
+    contexts: { room: HotelRoom; quantity: number }[],
+  ): Promise<void> {
     for (const context of contexts) {
-      const room = await this.roomRepo.findOne({ where: { id: context.room.id } });
+      const room = await this.roomRepo.findOne({
+        where: { id: context.room.id },
+      });
       if (!room) {
         throw new NotFoundException(`Hotel room ${context.room.id} not found`);
       }
@@ -320,9 +324,13 @@ export class HotelRoomsService {
     }
   }
 
-  async releaseRooms(contexts: { room: HotelRoom; quantity: number }[]): Promise<void> {
+  async releaseRooms(
+    contexts: { room: HotelRoom; quantity: number }[],
+  ): Promise<void> {
     for (const context of contexts) {
-      const room = await this.roomRepo.findOne({ where: { id: context.room.id } });
+      const room = await this.roomRepo.findOne({
+        where: { id: context.room.id },
+      });
       if (!room) {
         throw new NotFoundException(`Hotel room ${context.room.id} not found`);
       }

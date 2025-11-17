@@ -36,10 +36,7 @@ export class DeliveryBillsController {
   @Post()
   @ApiOperation({ summary: 'Create delivery bill' })
   @ApiCreatedResponse({ description: 'Delivery bill created' })
-  create(
-    @Body() dto: CreateDeliveryBillDto,
-    @CurrentUser() user: RequestUser,
-  ) {
+  create(@Body() dto: CreateDeliveryBillDto, @CurrentUser() user: RequestUser) {
     return this.service.create(user.userId, dto);
   }
 

@@ -82,7 +82,12 @@ export type MockTrainRoute = {
   destination: string;
   departureTime: string;
   arrivalTime: string;
-  cabins: Array<{ class: string; seatsTotal: number; seatsBooked: number; price: number }>;
+  cabins: Array<{
+    class: string;
+    seatsTotal: number;
+    seatsBooked: number;
+    price: number;
+  }>;
 };
 
 export type MockTrainInventory = {
@@ -96,7 +101,12 @@ export type MockFlight = {
   destination: string;
   departureTime: string;
   arrivalTime: string;
-  fareClasses: Array<{ cabin: string; seatsTotal: number; seatsBooked: number; price: number }>;
+  fareClasses: Array<{
+    cabin: string;
+    seatsTotal: number;
+    seatsBooked: number;
+    price: number;
+  }>;
 };
 
 export type MockFlightInventory = {
@@ -144,7 +154,13 @@ export const MOCK_PARTNER_DATA: Record<string, MockPartnerData> = {
           totalRooms: 10,
           basePrice: 2890000,
           currency: 'VND',
-          amenities: ['wifi', 'breakfast', 'kitchenette', 'city-view', 'kids-corner'],
+          amenities: [
+            'wifi',
+            'breakfast',
+            'kitchenette',
+            'city-view',
+            'kids-corner',
+          ],
           photos: [
             'https://images.example.com/hotels/vinh-riverside/family-suite-01.jpg',
           ],
@@ -281,7 +297,13 @@ export const MOCK_PARTNER_DATA: Record<string, MockPartnerData> = {
           totalRooms: 6,
           basePrice: 6890000,
           currency: 'VND',
-          amenities: ['wifi', 'breakfast', 'private-pool', 'butler', 'sunset-cruise'],
+          amenities: [
+            'wifi',
+            'breakfast',
+            'private-pool',
+            'butler',
+            'sunset-cruise',
+          ],
           photos: [
             'https://images.example.com/hotels/dn-oceanic/sky-villa-01.jpg',
             'https://images.example.com/hotels/dn-oceanic/sky-villa-02.jpg',
@@ -325,7 +347,8 @@ export const MOCK_PARTNER_DATA: Record<string, MockPartnerData> = {
         {
           sku: 'SEAFOOD-TASTING',
           name: 'Oceanic Tasting Menu',
-          description: 'Seven-course seafood menu featuring central coast catch.',
+          description:
+            'Seven-course seafood menu featuring central coast catch.',
           price: 995000,
           isSignature: true,
         },
@@ -341,8 +364,18 @@ export const MOCK_PARTNER_DATA: Record<string, MockPartnerData> = {
           departureTime: addDays(new Date(), 1).toISOString(),
           arrivalTime: addDays(new Date(), 1).toISOString(),
           fareClasses: [
-            { cabin: 'Economy', seatsTotal: 150, seatsBooked: 112, price: 1650000 },
-            { cabin: 'Business', seatsTotal: 24, seatsBooked: 14, price: 4650000 },
+            {
+              cabin: 'Economy',
+              seatsTotal: 150,
+              seatsBooked: 112,
+              price: 1650000,
+            },
+            {
+              cabin: 'Business',
+              seatsTotal: 24,
+              seatsBooked: 14,
+              price: 4650000,
+            },
           ],
         },
       ],
@@ -384,8 +417,18 @@ export const MOCK_PARTNER_DATA: Record<string, MockPartnerData> = {
           departureTime: addDays(new Date(), 1).toISOString(),
           arrivalTime: addDays(new Date(), 1.5).toISOString(),
           cabins: [
-            { class: '4-berth', seatsTotal: 64, seatsBooked: 40, price: 980000 },
-            { class: 'soft-seat', seatsTotal: 120, seatsBooked: 67, price: 620000 },
+            {
+              class: '4-berth',
+              seatsTotal: 64,
+              seatsBooked: 40,
+              price: 980000,
+            },
+            {
+              class: 'soft-seat',
+              seatsTotal: 120,
+              seatsBooked: 67,
+              price: 620000,
+            },
           ],
         },
       ],
@@ -430,8 +473,18 @@ export const MOCK_PARTNER_DATA: Record<string, MockPartnerData> = {
           departureTime: addDays(new Date(), 4).toISOString(),
           arrivalTime: addDays(new Date(), 4).toISOString(),
           fareClasses: [
-            { cabin: 'Economy', seatsTotal: 162, seatsBooked: 88, price: 2250000 },
-            { cabin: 'PremiumEconomy', seatsTotal: 28, seatsBooked: 12, price: 3980000 },
+            {
+              cabin: 'Economy',
+              seatsTotal: 162,
+              seatsBooked: 88,
+              price: 2250000,
+            },
+            {
+              cabin: 'PremiumEconomy',
+              seatsTotal: 28,
+              seatsBooked: 12,
+              price: 3980000,
+            },
           ],
         },
       ],

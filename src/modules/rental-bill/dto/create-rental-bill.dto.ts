@@ -14,15 +14,12 @@ import {
   Min,
 } from 'class-validator';
 import { RentalBillDetailDto } from './rental-bill-detail.dto';
-import { RentalBillStatus, RentalBillType } from '../entities/rental-bill.entity';
+import {
+  RentalBillStatus,
+  RentalBillType,
+} from '../entities/rental-bill.entity';
 
 export class CreateRentalBillDto {
-  @ApiPropertyOptional({ description: 'Contract id of the vehicle owner' })
-  @Type(() => Number)
-  @IsOptional()
-  @IsInt()
-  contractId?: number;
-
   @ApiProperty({
     enum: RentalBillType,
     description: 'Rental type indicates hourly or daily pricing',

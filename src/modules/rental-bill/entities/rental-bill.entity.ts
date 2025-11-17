@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { RentalBillDetail } from './rental-bill-detail.entity';
-import { RentalContract } from '../../rental-contract/entities/rental-contract.entity';
+import { Voucher } from '../../voucher/entities/voucher.entity';
 
 export enum RentalBillType {
   HOURLY = 'hourly',
@@ -43,13 +43,6 @@ export class RentalBill {
   @Column()
   userId: number;
 
-  @ManyToOne(() => RentalContract, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'contractId' })
-  contract?: RentalContract;
-
-  @Column({ nullable: true })
-  contractId?: number;
-
   @Column({ type: 'enum', enum: RentalBillType, default: RentalBillType.DAILY })
   rentalType: RentalBillType;
 
@@ -77,8 +70,15 @@ export class RentalBill {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   total: string;
 
+  @ManyToOne(() => Voucher, (voucher: Voucher) => voucher.rentalBills, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'voucherId' })
+  voucher?: Voucher;
+
   @Column({ nullable: true })
-  voucherCode?: string;
+  voucherId?: number;
 
   @Column({ type: 'int', default: 0 })
   travelPointsUsed: number;

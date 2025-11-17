@@ -36,26 +36,20 @@ export class RentalBillsController {
   @Post()
   @ApiOperation({ summary: 'Create rental bill for customer booking' })
   @ApiCreatedResponse({ description: 'Rental bill created' })
-  create(
-    @Body() dto: CreateRentalBillDto,
-    @CurrentUser() user: RequestUser,
-  ) {
+  create(@Body() dto: CreateRentalBillDto, @CurrentUser() user: RequestUser) {
     return this.service.create(user.userId, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'List rental bills' })
   @ApiQuery({ name: 'status', required: false, enum: RentalBillStatus })
-  @ApiQuery({ name: 'contractId', required: false, type: Number })
   @ApiOkResponse({ description: 'Rental bill list' })
   findAll(
     @CurrentUser() user: RequestUser,
     @Query('status') status?: RentalBillStatus,
-    @Query('contractId') contractId?: string,
   ) {
     return this.service.findAll(user.userId, {
       status,
-      contractId: contractId ? Number(contractId) : undefined,
     });
   }
 

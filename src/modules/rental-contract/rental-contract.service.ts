@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RentalContract, RentalContractStatus } from './entities/rental-contract.entity';
+import {
+  RentalContract,
+  RentalContractStatus,
+} from './entities/rental-contract.entity';
 import { CreateRentalContractDto } from './dto/create-rental-contract.dto';
 import { UpdateRentalContractDto } from './dto/update-rental-contract.dto';
 import { User } from '../user/entities/user.entity';

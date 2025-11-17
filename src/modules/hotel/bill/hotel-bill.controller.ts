@@ -36,10 +36,7 @@ export class HotelBillsController {
   @Post()
   @ApiOperation({ summary: 'Create hotel booking bill' })
   @ApiCreatedResponse({ description: 'Hotel bill created' })
-  create(
-    @Body() dto: CreateHotelBillDto,
-    @CurrentUser() user: RequestUser,
-  ) {
+  create(@Body() dto: CreateHotelBillDto, @CurrentUser() user: RequestUser) {
     return this.hotelBillsService.create(user.userId, dto);
   }
 

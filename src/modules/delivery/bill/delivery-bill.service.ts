@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { DeliveryBill, DeliveryBillStatus } from './entities/delivery-bill.entity';
+import {
+  DeliveryBill,
+  DeliveryBillStatus,
+} from './entities/delivery-bill.entity';
 import { DeliveryVehicle } from '../delivery-vehicle/entities/delivery-vehicle.entity';
 import { CreateDeliveryBillDto } from './dto/create-delivery-bill.dto';
 import { UpdateDeliveryBillDto } from './dto/update-delivery-bill.dto';
@@ -73,7 +76,10 @@ export class DeliveryBillsService {
     return status === DeliveryBillStatus.COMPLETED;
   }
 
-  async create(userId: number, dto: CreateDeliveryBillDto): Promise<DeliveryBill> {
+  async create(
+    userId: number,
+    dto: CreateDeliveryBillDto,
+  ): Promise<DeliveryBill> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
@@ -215,7 +221,9 @@ export class DeliveryBillsService {
       throw new NotFoundException(`Delivery bill ${id} not found`);
     }
     if (bill.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this delivery bill');
+      throw new ForbiddenException(
+        'You do not have access to this delivery bill',
+      );
     }
     return bill;
   }

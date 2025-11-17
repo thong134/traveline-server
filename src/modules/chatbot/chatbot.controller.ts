@@ -14,6 +14,10 @@ export class ChatController {
   @ApiOperation({ summary: 'Send a message to the travel chatbot' })
   @Throttle({ default: { limit: 1, ttl: 3 } })
   async handleChat(@Body() dto: ChatRequestDto) {
-    return this.chatService.handleChat(dto.message, dto.lang);
+    return this.chatService.handleChat(dto.message, dto.lang, {
+      userId: dto.userId,
+      sessionId: dto.sessionId,
+      images: dto.images,
+    });
   }
 }

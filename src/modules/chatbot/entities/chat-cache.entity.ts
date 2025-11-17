@@ -1,4 +1,12 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  RelationId,
+} from 'typeorm';
+import { User } from '../../user/entities/user.entity';
 
 @Entity()
 export class ChatCache {
@@ -10,6 +18,16 @@ export class ChatCache {
 
   @Column({ type: 'text' })
   response: string;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user?: User | null;
+
+  @RelationId((cache: ChatCache) => cache.user)
+  userId?: number | null;
+
+  @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
+  metadata: Record<string, unknown>;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;

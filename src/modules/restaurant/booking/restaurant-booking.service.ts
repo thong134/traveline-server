@@ -64,8 +64,8 @@ export class RestaurantBookingsService {
 
     const booking = this.bookingRepo.create({
       code: this.generateBookingCode(),
-  user,
-  userId: user.id,
+      user,
+      userId: user.id,
       table,
       tableId: table.id,
       cooperationId: table.cooperationId,

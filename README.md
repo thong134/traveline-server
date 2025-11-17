@@ -31,6 +31,41 @@
 $ npm install
 ```
 
+## Vietnam administrative mapping seed
+
+1. Populate the file `src/data/admin-mapping.json` with an array of mapping definitions that match the structure below:
+
+```json
+[
+  {
+    "newProvinceCode": "48",
+    "newCommuneCode": "480101",
+    "old": [
+      {
+        "province": "48",
+        "district": "4801",
+        "ward": "480101"
+      }
+    ],
+    "note": "Optional note",
+    "resolutionRef": "NQ123/QH15"
+  }
+]
+```
+
+2. Execute the seed command:
+
+```bash
+ts-node scripts/run-seed-admin-mapping.ts
+```
+
+3. Verify the inserted data by inspecting the database, for example with psql:
+
+```sql
+SELECT COUNT(*) AS total_mappings FROM vn_admin_unit_mappings;
+SELECT * FROM vn_admin_unit_mappings ORDER BY id DESC LIMIT 10;
+```
+
 ## Compile and run the project
 
 ```bash

@@ -140,7 +140,7 @@ export class VouchersService {
     await this.voucherRepo.save(voucher);
   }
 
-  async decrementUsage(id: number, _reactivate = false): Promise<void> {
+  async decrementUsage(id: number): Promise<void> {
     const voucher = await this.findOne(id);
     if (voucher.usedCount > 0) {
       voucher.usedCount -= 1;

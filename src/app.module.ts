@@ -22,6 +22,8 @@ import { BusModule } from './modules/bus/bus.module';
 import { TrainModule } from './modules/train/train.module';
 import { FlightModule } from './modules/flight/flight.module';
 import { ChatModule } from './modules/chatbot/chatbot.module';
+import { BlockchainModule } from './modules/blockchain/blockchain.module';
+import { VnAdministrativeModule } from './modules/vn-administrative/vn-administrative.module';
 
 @Module({
   imports: [
@@ -62,6 +64,8 @@ import { ChatModule } from './modules/chatbot/chatbot.module';
     TrainModule,
     FlightModule,
     ChatModule,
+    BlockchainModule,
+    VnAdministrativeModule,
   ],
 })
 export class AppModule {}

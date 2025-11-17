@@ -564,11 +564,8 @@ export class HotelBillsService {
         -1,
       );
       await this.hotelRoomsService.releaseRooms(contexts);
-      if (voucher) {
-        await this.vouchersService.decrementUsage(
-          voucher.id,
-          removeVoucherUsage,
-        );
+      if (voucher && removeVoucherUsage) {
+        await this.vouchersService.decrementUsage(voucher.id);
       }
     }
   }

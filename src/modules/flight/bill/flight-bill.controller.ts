@@ -36,10 +36,7 @@ export class FlightBillsController {
   @Post()
   @ApiOperation({ summary: 'Create flight bill' })
   @ApiCreatedResponse({ description: 'Flight bill created' })
-  create(
-    @Body() dto: CreateFlightBillDto,
-    @CurrentUser() user: RequestUser,
-  ) {
+  create(@Body() dto: CreateFlightBillDto, @CurrentUser() user: RequestUser) {
     return this.service.create(user.userId, dto);
   }
 

@@ -81,7 +81,9 @@ export class DestinationsController {
   @Get('favorites')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Danh sách địa điểm yêu thích của người dùng hiện tại' })
+  @ApiOperation({
+    summary: 'Danh sách địa điểm yêu thích của người dùng hiện tại',
+  })
   @ApiOkResponse({ description: 'Danh sách địa điểm được yêu thích' })
   findFavorites(@CurrentUser() user: RequestUser) {
     return this.destinationsService.findFavoritesByUser(user.userId);
@@ -98,8 +100,12 @@ export class DestinationsController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(200)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Thêm địa điểm vào danh sách yêu thích của người dùng' })
-  @ApiOkResponse({ description: 'Địa điểm sau khi được cập nhật lượt yêu thích' })
+  @ApiOperation({
+    summary: 'Thêm địa điểm vào danh sách yêu thích của người dùng',
+  })
+  @ApiOkResponse({
+    description: 'Địa điểm sau khi được cập nhật lượt yêu thích',
+  })
   favoriteDestination(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,

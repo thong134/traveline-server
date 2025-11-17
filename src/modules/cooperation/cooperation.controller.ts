@@ -83,7 +83,8 @@ export class CooperationsController {
 
   @Get(':id/hotel-availability')
   @ApiOperation({
-    summary: 'Demo: pull hotel inventory directly from partner API via cooperation',
+    summary:
+      'Demo: pull hotel inventory directly from partner API via cooperation',
     description:
       'Giả lập gọi sang hệ thống đối tác để lấy thông tin phòng trống dựa trên cooperation đã ký kết.',
   })

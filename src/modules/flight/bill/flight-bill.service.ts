@@ -195,7 +195,9 @@ export class FlightBillsService {
       throw new NotFoundException(`Flight bill ${id} not found`);
     }
     if (bill.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this flight bill');
+      throw new ForbiddenException(
+        'You do not have access to this flight bill',
+      );
     }
     return bill;
   }

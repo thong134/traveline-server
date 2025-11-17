@@ -3,7 +3,10 @@ import { CreateRentalBillDto } from './create-rental-bill.dto';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
-import { RentalBillStatus, RentalBillType } from '../entities/rental-bill.entity';
+import {
+  RentalBillStatus,
+  RentalBillType,
+} from '../entities/rental-bill.entity';
 import { RentalBillDetailDto } from './rental-bill-detail.dto';
 
 export class UpdateRentalBillDto extends PartialType(CreateRentalBillDto) {

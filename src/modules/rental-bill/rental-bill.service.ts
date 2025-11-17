@@ -19,9 +19,10 @@ import {
   RentalVehicleApprovalStatus,
   RentalVehicleAvailabilityStatus,
 } from '../rental-vehicle/entities/rental-vehicle.entity';
-import { RentalContract } from '../rental-contract/entities/rental-contract.entity';
 import { User } from '../user/entities/user.entity';
 import { assignDefined } from '../../common/utils/object.util';
+import { VouchersService } from '../voucher/voucher.service';
+import { Voucher } from '../voucher/entities/voucher.entity';
 
 @Injectable()
 export class RentalBillsService {
@@ -32,10 +33,9 @@ export class RentalBillsService {
     private readonly detailRepo: Repository<RentalBillDetail>,
     @InjectRepository(RentalVehicle)
     private readonly vehicleRepo: Repository<RentalVehicle>,
-    @InjectRepository(RentalContract)
-    private readonly contractRepo: Repository<RentalContract>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly vouchersService: VouchersService,
   ) {}
 
   private formatMoney(value: number | undefined): string {
@@ -51,20 +51,21 @@ export class RentalBillsService {
     return `RB${timestamp}${random}`;
   }
 
+  private async resolveVoucher(voucherCode?: string): Promise<Voucher | null> {
+    if (!voucherCode) {
+      return null;
+    }
+    const voucher = await this.vouchersService.findByCode(voucherCode);
+    if (!voucher) {
+      throw new NotFoundException(`Voucher ${voucherCode} not found`);
+    }
+    return voucher;
+  }
+
   async create(userId: number, dto: CreateRentalBillDto): Promise<RentalBill> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
-    }
-
-    let contract: RentalContract | null = null;
-    if (dto.contractId) {
-      contract = await this.contractRepo.findOne({
-        where: { id: dto.contractId },
-      });
-      if (!contract) {
-        throw new NotFoundException(`Contract ${dto.contractId} not found`);
-      }
     }
 
     if (new Date(dto.endDate) <= new Date(dto.startDate)) {
@@ -102,26 +103,15 @@ export class RentalBillsService {
     }
 
     const referenceContractId = vehicles[0].contractId;
-
-    if (!contract) {
-      contract = await this.contractRepo.findOne({
-        where: { id: referenceContractId },
-      });
-    }
-
-    if (dto.contractId && dto.contractId !== referenceContractId) {
-      throw new BadRequestException(
-        'Selected vehicles do not belong to the provided contract',
-      );
-    }
-
     if (
       vehicles.some((vehicle) => vehicle.contractId !== referenceContractId)
     ) {
       throw new BadRequestException(
-        'All vehicles in a bill must belong to the same contract',
+        'All vehicles in a bill must belong to the same rental contract',
       );
     }
+
+    const voucher = await this.resolveVoucher(dto.voucherCode);
 
     const totalFromDetails = dto.details.reduce(
       (sum, detail) => sum + detail.price * (detail.quantity ?? 1),
@@ -138,14 +128,14 @@ export class RentalBillsService {
       contactName: dto.contactName,
       contactPhone: dto.contactPhone,
       contactEmail: dto.contactEmail,
-      voucherCode: dto.voucherCode,
+      voucherId: voucher?.id,
+      voucher: voucher ?? undefined,
       travelPointsUsed: dto.travelPointsUsed ?? 0,
       status: dto.status ?? RentalBillStatus.PENDING,
       statusReason: dto.statusReason,
       citizenBackPhoto: dto.citizenBackPhoto,
       verifiedSelfiePhoto: dto.verifiedSelfiePhoto,
       notes: dto.notes,
-      contractId: dto.contractId ?? referenceContractId,
       total: this.formatMoney(dto.total ?? totalFromDetails),
       details: dto.details.map((detail) =>
         this.detailRepo.create({
@@ -177,7 +167,7 @@ export class RentalBillsService {
         },
         {},
       );
-      await this.incrementVehicleRentals(vehicles, quantities, bill.contractId);
+      await this.incrementVehicleRentals(vehicles, quantities);
       await this.updateVehicleAvailability(
         vehicles,
         RentalVehicleAvailabilityStatus.AVAILABLE,
@@ -191,10 +181,9 @@ export class RentalBillsService {
     userId: number,
     params: {
       status?: RentalBillStatus;
-      contractId?: number;
     } = {},
   ): Promise<RentalBill[]> {
-    const { status, contractId } = params;
+    const { status } = params;
     const qb = this.billRepo.createQueryBuilder('bill');
 
     qb.andWhere('bill.userId = :userId', { userId });
@@ -203,15 +192,11 @@ export class RentalBillsService {
       qb.andWhere('bill.status = :status', { status });
     }
 
-    if (contractId) {
-      qb.andWhere('bill.contractId = :contractId', { contractId });
-    }
-
     return qb
       .leftJoinAndSelect('bill.details', 'details')
       .leftJoinAndSelect('details.vehicle', 'vehicle')
       .leftJoinAndSelect('bill.user', 'user')
-      .leftJoinAndSelect('bill.contract', 'contract')
+      .leftJoinAndSelect('bill.voucher', 'voucher')
       .orderBy('bill.createdAt', 'DESC')
       .getMany();
   }
@@ -219,13 +204,15 @@ export class RentalBillsService {
   async findOne(id: number, userId: number): Promise<RentalBill> {
     const bill = await this.billRepo.findOne({
       where: { id },
-      relations: ['details', 'details.vehicle', 'user', 'contract'],
+      relations: ['details', 'details.vehicle', 'user', 'voucher'],
     });
     if (!bill) {
       throw new NotFoundException(`Rental bill ${id} not found`);
     }
     if (bill.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this rental bill');
+      throw new ForbiddenException(
+        'You do not have access to this rental bill',
+      );
     }
     return bill;
   }
@@ -290,11 +277,9 @@ export class RentalBillsService {
         )
       ) {
         throw new BadRequestException(
-          'All vehicles in a bill must belong to the same contract',
+          'All vehicles in a bill must belong to the same rental contract',
         );
       }
-
-      bill.contractId = primaryContract;
 
       if (dto.total === undefined) {
         const calculated = dto.details.reduce(
@@ -324,39 +309,21 @@ export class RentalBillsService {
       contactName: dto.contactName,
       contactPhone: dto.contactPhone,
       contactEmail: dto.contactEmail,
-      voucherCode: dto.voucherCode,
       travelPointsUsed: dto.travelPointsUsed,
       citizenBackPhoto: dto.citizenBackPhoto,
       verifiedSelfiePhoto: dto.verifiedSelfiePhoto,
       notes: dto.notes,
     });
 
-    if (dto.contractId !== undefined) {
-      const contract = await this.contractRepo.findOne({
-        where: { id: dto.contractId },
-      });
-      if (!contract) {
-        throw new NotFoundException(`Contract ${dto.contractId} not found`);
+    if (dto.voucherCode !== undefined) {
+      if (!dto.voucherCode) {
+        bill.voucher = undefined;
+        bill.voucherId = undefined;
+      } else {
+        const voucher = await this.resolveVoucher(dto.voucherCode);
+        bill.voucher = voucher ?? undefined;
+        bill.voucherId = voucher?.id;
       }
-
-      const vehicles = await Promise.all(
-        bill.details.map(async (detail) =>
-          this.vehicleRepo.findOne({
-            where: { licensePlate: detail.licensePlate },
-          }),
-        ),
-      );
-      if (
-        vehicles.some(
-          (vehicle) => vehicle && vehicle.contractId !== contract.id,
-        )
-      ) {
-        throw new BadRequestException(
-          'All vehicles must belong to the target contract',
-        );
-      }
-
-      bill.contractId = contract.id;
     }
 
     if (dto.status) {
@@ -404,7 +371,6 @@ export class RentalBillsService {
           await this.incrementVehicleRentals(
             vehicles.filter((vehicle): vehicle is RentalVehicle => !!vehicle),
             quantities,
-            bill.contractId,
           );
         }
       }
@@ -447,7 +413,6 @@ export class RentalBillsService {
   private async incrementVehicleRentals(
     vehicles: RentalVehicle[],
     quantities: Record<string, number>,
-    contractId?: number,
   ): Promise<void> {
     await Promise.all(
       vehicles.map(async (vehicle) => {
@@ -456,15 +421,5 @@ export class RentalBillsService {
         await this.vehicleRepo.save(vehicle);
       }),
     );
-
-    if (contractId) {
-      const totalCount =
-        Object.values(quantities).reduce((sum, qty) => sum + qty, 0) || 1;
-      await this.contractRepo.increment(
-        { id: contractId },
-        'totalRentalTimes',
-        totalCount,
-      );
-    }
   }
 }

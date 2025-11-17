@@ -11,6 +11,7 @@ import { DeliveryBill } from '../../delivery/bill/entities/delivery-bill.entity'
 import { BusBill } from '../../bus/bill/entities/bus-bill.entity';
 import { TrainBill } from '../../train/bill/entities/train-bill.entity';
 import { FlightBill } from '../../flight/bill/entities/flight-bill.entity';
+import { RentalBill } from '../../rental-bill/entities/rental-bill.entity';
 
 export type VoucherDiscountType = 'percentage' | 'fixed';
 
@@ -66,6 +67,9 @@ export class Voucher {
 
   @OneToMany(() => FlightBill, (bill: FlightBill) => bill.voucher)
   flightBills: FlightBill[];
+
+  @OneToMany(() => RentalBill, (bill: RentalBill) => bill.voucher)
+  rentalBills: RentalBill[];
 
   @CreateDateColumn()
   createdAt: Date;

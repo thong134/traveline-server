@@ -4,7 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { differenceInCalendarDays, isBefore, isValid, parseISO } from 'date-fns';
+import {
+  differenceInCalendarDays,
+  isBefore,
+  isValid,
+  parseISO,
+} from 'date-fns';
 import { Repository } from 'typeorm';
 import { Cooperation } from './entities/cooperation.entity';
 import {
@@ -76,7 +81,9 @@ export class PartnerCatalogService {
 
     const nights = differenceInCalendarDays(checkOut, checkIn);
     if (nights <= 0) {
-      throw new BadRequestException('checkOut must be at least one day after checkIn');
+      throw new BadRequestException(
+        'checkOut must be at least one day after checkIn',
+      );
     }
 
     const partnerCode = cooperation.code ?? `HOTEL-${cooperationId}`;
@@ -108,7 +115,9 @@ export class PartnerCatalogService {
 
     const roomsRequested = query.rooms ?? 1;
     const filteredAvailability = availability.filter(
-      (item) => item.availableRooms >= roomsRequested && item.maxGuests >= (query.guests ?? 1),
+      (item) =>
+        item.availableRooms >= roomsRequested &&
+        item.maxGuests >= (query.guests ?? 1),
     );
 
     return {
@@ -135,7 +144,12 @@ export class PartnerCatalogService {
     nights: number,
   ): HotelAvailabilityItem {
     const overlappingBookings = bookings.filter((booking) =>
-      this.hasOverlap(checkIn, checkOut, parseISO(booking.start), parseISO(booking.end)),
+      this.hasOverlap(
+        checkIn,
+        checkOut,
+        parseISO(booking.start),
+        parseISO(booking.end),
+      ),
     );
 
     const roomsBooked = overlappingBookings.reduce(
