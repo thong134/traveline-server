@@ -12,10 +12,15 @@ export class LegacyAdministrativeRegion {
   @Column({ name: 'name_en', length: 255 })
   nameEn: string;
 
-  @Column({ name: 'code_name', length: 255, nullable: true })
+  @Column({ name: 'code_name', type: 'varchar', length: 255, nullable: true })
   codeName?: string | null;
 
-  @Column({ name: 'code_name_en', length: 255, nullable: true })
+  @Column({
+    name: 'code_name_en',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   codeNameEn?: string | null;
 
   @OneToMany(() => LegacyProvince, (province) => province.region)

@@ -11,25 +11,53 @@ export class AdminUnitMapping {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'old_province_code', length: 20 })
+  @Column({
+    name: 'old_province_code',
+    type: 'varchar',
+    length: 20,
+  })
   oldProvinceCode: string;
 
-  @Column({ name: 'old_district_code', length: 20, nullable: true })
+  @Column({
+    name: 'old_district_code',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
   oldDistrictCode?: string | null;
 
-  @Column({ name: 'old_ward_code', length: 20, nullable: true })
+  @Column({
+    name: 'old_ward_code',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
   oldWardCode?: string | null;
 
-  @Column({ name: 'new_province_code', length: 20 })
+  @Column({
+    name: 'new_province_code',
+    type: 'varchar',
+    length: 20,
+  })
   newProvinceCode: string;
 
-  @Column({ name: 'new_commune_code', length: 20, nullable: true })
+  @Column({
+    name: 'new_commune_code',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
   newCommuneCode?: string | null;
 
   @Column({ type: 'text', nullable: true })
   note?: string | null;
 
-  @Column({ name: 'resolution_ref', length: 255, nullable: true })
+  @Column({
+    name: 'resolution_ref',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   resolutionRef?: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
