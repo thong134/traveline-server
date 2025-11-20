@@ -26,7 +26,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
-import { UpdateFavoriteDestinationsDto } from './dto/update-favorite-destinations.dto';
 
 @ApiTags('destinations')
 @Controller('destinations')
@@ -116,22 +115,21 @@ export class DestinationsController {
     return this.destinationsService.favoriteDestination(user.userId, id);
   }
 
-  @Patch('favorites')
-  @RequireAuth()
+  @Delete(':id/favorite')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Cập nhật danh sách địa điểm yêu thích của người dùng',
+    summary: 'Loại bỏ địa điểm khỏi danh sách yêu thích của người dùng',
   })
   @ApiOkResponse({
-    description: 'Danh sách địa điểm yêu thích sau khi cập nhật',
+    description: 'Địa điểm sau khi được cập nhật lượt yêu thích',
   })
-  updateFavorites(
-    @Body() dto: UpdateFavoriteDestinationsDto,
+  unfavoriteDestination(
+    @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.destinationsService.updateFavoriteDestinations(
-      user.userId,
-      dto.destinationIds,
-    );
+    return this.destinationsService.unfavoriteDestination(user.userId, id);
   }
 
   @Patch(':id')
