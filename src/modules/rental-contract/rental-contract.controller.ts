@@ -8,7 +8,6 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -16,26 +15,29 @@ import {
   ApiOperation,
   ApiQuery,
   ApiTags,
-  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { RentalContractsService } from './rental-contract.service';
 import { CreateRentalContractDto } from './dto/create-rental-contract.dto';
 import { UpdateRentalContractDto } from './dto/update-rental-contract.dto';
 import { RentalContractStatus } from './entities/rental-contract.entity';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
+import { RequireAuth } from '../auth/decorators/require-auth.decorator';
+import {
+  RenewRentalContractDto,
+  RejectRentalContractDto,
+  UpdateRentalContractStatusDto,
+} from './dto/manage-rental-contract.dto';
 
 @ApiTags('rental-contracts')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@RequireAuth()
 @Controller('rental-contracts')
 export class RentalContractsController {
   constructor(private readonly service: RentalContractsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Register a rental contract for vehicle owners' })
-  @ApiCreatedResponse({ description: 'Contract created' })
+  @ApiOperation({ summary: 'Đăng ký hợp đồng cho thuê xe' })
+  @ApiCreatedResponse({ description: 'Tạo hợp đồng thành công' })
   create(
     @Body() dto: CreateRentalContractDto,
     @CurrentUser() user: RequestUser,
@@ -44,9 +46,9 @@ export class RentalContractsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List rental contracts' })
+  @ApiOperation({ summary: 'Danh sách hợp đồng cho thuê' })
   @ApiQuery({ name: 'status', required: false, enum: RentalContractStatus })
-  @ApiOkResponse({ description: 'Contract list' })
+  @ApiOkResponse({ description: 'Danh sách hợp đồng' })
   findAll(
     @CurrentUser() user: RequestUser,
     @Query('status') status?: RentalContractStatus,
@@ -57,8 +59,8 @@ export class RentalContractsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get rental contract detail' })
-  @ApiOkResponse({ description: 'Contract detail' })
+  @ApiOperation({ summary: 'Chi tiết hợp đồng cho thuê' })
+  @ApiOkResponse({ description: 'Chi tiết hợp đồng' })
   findOne(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
@@ -67,8 +69,8 @@ export class RentalContractsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update rental contract (admin or owner)' })
-  @ApiOkResponse({ description: 'Contract updated' })
+  @ApiOperation({ summary: 'Cập nhật hợp đồng (chủ xe hoặc quản trị viên)' })
+  @ApiOkResponse({ description: 'Cập nhật hợp đồng thành công' })
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRentalContractDto,
@@ -77,9 +79,48 @@ export class RentalContractsController {
     return this.service.update(id, user.userId, dto);
   }
 
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Cập nhật trạng thái hợp đồng cho thuê' })
+  @ApiOkResponse({ description: 'Trạng thái hợp đồng đã được cập nhật' })
+  updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateRentalContractStatusDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.service.updateStatus(id, user.userId, dto);
+  }
+
+  @Patch(':id/approve')
+  @ApiOperation({ summary: 'Duyệt hợp đồng cho thuê (quản trị viên)' })
+  @ApiOkResponse({ description: 'Hợp đồng đã được duyệt' })
+  approve(@Param('id', ParseIntPipe) id: number) {
+    return this.service.approve(id);
+  }
+
+  @Patch(':id/reject')
+  @ApiOperation({ summary: 'Từ chối hợp đồng cho thuê (quản trị viên)' })
+  @ApiOkResponse({ description: 'Hợp đồng đã bị từ chối' })
+  reject(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RejectRentalContractDto,
+  ) {
+    return this.service.reject(id, dto);
+  }
+
+  @Patch(':id/renew')
+  @ApiOperation({ summary: 'Gia hạn hợp đồng đang tạm ngưng' })
+  @ApiOkResponse({ description: 'Hợp đồng đã được gia hạn' })
+  renew(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RenewRentalContractDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.service.renew(id, user.userId, dto);
+  }
+
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete rental contract' })
-  @ApiOkResponse({ description: 'Contract removed' })
+  @ApiOperation({ summary: 'Xóa hợp đồng cho thuê' })
+  @ApiOkResponse({ description: 'Đã xóa hợp đồng' })
   remove(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,

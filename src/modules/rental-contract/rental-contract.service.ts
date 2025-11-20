@@ -12,6 +12,11 @@ import {
 } from './entities/rental-contract.entity';
 import { CreateRentalContractDto } from './dto/create-rental-contract.dto';
 import { UpdateRentalContractDto } from './dto/update-rental-contract.dto';
+import {
+  RenewRentalContractDto,
+  RejectRentalContractDto,
+  UpdateRentalContractStatusDto,
+} from './dto/manage-rental-contract.dto';
 import { User } from '../user/entities/user.entity';
 import { assignDefined } from '../../common/utils/object.util';
 
@@ -23,6 +28,17 @@ export class RentalContractsService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
   ) {}
+
+  private async getContractOrFail(id: number): Promise<RentalContract> {
+    const contract = await this.repo.findOne({
+      where: { id },
+      relations: ['vehicles', 'user'],
+    });
+    if (!contract) {
+      throw new NotFoundException(`Rental contract ${id} not found`);
+    }
+    return contract;
+  }
 
   async create(
     userId: number,
@@ -74,15 +90,13 @@ export class RentalContractsService {
       .getMany();
   }
 
-  async findOne(id: number, userId: number): Promise<RentalContract> {
-    const contract = await this.repo.findOne({
-      where: { id },
-      relations: ['vehicles', 'user'],
-    });
-    if (!contract) {
-      throw new NotFoundException(`Rental contract ${id} not found`);
-    }
-    if (contract.userId !== userId) {
+  async findOne(
+    id: number,
+    userId: number,
+    options: { asAdmin?: boolean } = {},
+  ): Promise<RentalContract> {
+    const contract = await this.getContractOrFail(id);
+    if (!options.asAdmin && contract.userId !== userId) {
       throw new ForbiddenException('You do not have access to this contract');
     }
     return contract;
@@ -113,23 +127,64 @@ export class RentalContractsService {
       termsAccepted: dto.termsAccepted,
     });
 
-    if (dto.status && dto.status !== contract.status) {
-      contract.status = dto.status;
-      contract.statusUpdatedAt = new Date();
-      if (
-        dto.status === RentalContractStatus.APPROVED &&
-        dto.rejectedReason === undefined
-      ) {
-        contract.rejectedReason = undefined;
-      }
-    } else if (dto.status) {
-      contract.status = dto.status;
-    }
-
-    if (dto.rejectedReason !== undefined) {
+    if (dto.status) {
+      this.applyStatusUpdate(contract, dto.status, {
+        rejectedReason: dto.rejectedReason,
+      });
+    } else if (dto.rejectedReason !== undefined) {
       contract.rejectedReason = dto.rejectedReason;
     }
 
+    return this.repo.save(contract);
+  }
+
+  async updateStatus(
+    id: number,
+    userId: number,
+    dto: UpdateRentalContractStatusDto,
+  ): Promise<RentalContract> {
+    const contract = await this.findOne(id, userId);
+    this.applyStatusUpdate(contract, dto.status, {
+      rejectedReason: dto.rejectedReason,
+    });
+    return this.repo.save(contract);
+  }
+
+  async approve(id: number): Promise<RentalContract> {
+    const contract = await this.getContractOrFail(id);
+    this.applyStatusUpdate(contract, RentalContractStatus.APPROVED);
+    return this.repo.save(contract);
+  }
+
+  async reject(
+    id: number,
+    dto: RejectRentalContractDto,
+  ): Promise<RentalContract> {
+    const contract = await this.getContractOrFail(id);
+    this.applyStatusUpdate(contract, RentalContractStatus.REJECTED, {
+      rejectedReason: dto.rejectedReason,
+    });
+    return this.repo.save(contract);
+  }
+
+  async renew(
+    id: number,
+    userId: number,
+    dto: RenewRentalContractDto,
+  ): Promise<RentalContract> {
+    const contract = await this.findOne(id, userId);
+    if (contract.status !== RentalContractStatus.SUSPENDED) {
+      throw new BadRequestException(
+        'Contract must be suspended before it can be renewed',
+      );
+    }
+
+    assignDefined(contract, {
+      contractTerm: dto.contractTerm,
+      notes: dto.notes,
+    });
+
+    this.applyStatusUpdate(contract, RentalContractStatus.APPROVED);
     return this.repo.save(contract);
   }
 
@@ -167,6 +222,28 @@ export class RentalContractsService {
         contract.averageRating = newAverage.toFixed(2);
         await this.repo.save(contract);
       }
+    }
+  }
+
+  private applyStatusUpdate(
+    contract: RentalContract,
+    status: RentalContractStatus,
+    options: { rejectedReason?: string } = {},
+  ): void {
+    if (status === RentalContractStatus.REJECTED && !options.rejectedReason) {
+      throw new BadRequestException('Rejected contracts require a reason');
+    }
+
+    const statusChanged = contract.status !== status;
+    contract.status = status;
+    if (statusChanged) {
+      contract.statusUpdatedAt = new Date();
+    }
+
+    if (status === RentalContractStatus.APPROVED) {
+      contract.rejectedReason = undefined;
+    } else if (options.rejectedReason !== undefined) {
+      contract.rejectedReason = options.rejectedReason;
     }
   }
 }

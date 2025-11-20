@@ -23,6 +23,10 @@ import {
   RentalVehicleAvailabilityStatus,
 } from './entities/rental-vehicle.entity';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
+import {
+  RejectRentalVehicleDto,
+  UpdateRentalVehicleStatusDto,
+} from './dto/manage-rental-vehicle.dto';
 
 @ApiTags('rental-vehicles')
 @Controller('rental-vehicles')
@@ -31,14 +35,14 @@ export class RentalVehiclesController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Register a vehicle for rental' })
-  @ApiCreatedResponse({ description: 'Vehicle registered' })
+  @ApiOperation({ summary: 'Đăng ký xe cho thuê' })
+  @ApiCreatedResponse({ description: 'Đăng ký xe thành công' })
   create(@Body() dto: CreateRentalVehicleDto) {
     return this.service.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List rental vehicles' })
+  @ApiOperation({ summary: 'Danh sách xe cho thuê' })
   @ApiQuery({ name: 'contractId', required: false, type: Number })
   @ApiQuery({
     name: 'status',
@@ -50,7 +54,7 @@ export class RentalVehiclesController {
     required: false,
     enum: RentalVehicleAvailabilityStatus,
   })
-  @ApiOkResponse({ description: 'Vehicle list' })
+  @ApiOkResponse({ description: 'Danh sách xe' })
   findAll(
     @Query('contractId') contractId?: string,
     @Query('status') status?: RentalVehicleApprovalStatus,
@@ -64,16 +68,16 @@ export class RentalVehiclesController {
   }
 
   @Get(':licensePlate')
-  @ApiOperation({ summary: 'Get rental vehicle detail' })
-  @ApiOkResponse({ description: 'Vehicle detail' })
+  @ApiOperation({ summary: 'Chi tiết xe cho thuê' })
+  @ApiOkResponse({ description: 'Chi tiết xe' })
   findOne(@Param('licensePlate') licensePlate: string) {
     return this.service.findOne(licensePlate);
   }
 
   @Patch(':licensePlate')
   @RequireAuth()
-  @ApiOperation({ summary: 'Update rental vehicle data' })
-  @ApiOkResponse({ description: 'Vehicle updated' })
+  @ApiOperation({ summary: 'Cập nhật thông tin xe cho thuê' })
+  @ApiOkResponse({ description: 'Cập nhật xe thành công' })
   update(
     @Param('licensePlate') licensePlate: string,
     @Body() dto: UpdateRentalVehicleDto,
@@ -81,10 +85,54 @@ export class RentalVehiclesController {
     return this.service.update(licensePlate, dto);
   }
 
+  @Patch(':licensePlate/status')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Cập nhật trạng thái xe cho thuê' })
+  @ApiOkResponse({ description: 'Trạng thái xe đã được cập nhật' })
+  updateStatus(
+    @Param('licensePlate') licensePlate: string,
+    @Body() dto: UpdateRentalVehicleStatusDto,
+  ) {
+    return this.service.updateStatus(licensePlate, {
+      status: dto.status,
+      availability: dto.availability,
+      rejectedReason: dto.rejectedReason,
+    });
+  }
+
+  @Patch(':licensePlate/approve')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Duyệt xe cho thuê (quản trị viên)' })
+  @ApiOkResponse({ description: 'Xe đã được duyệt' })
+  approve(@Param('licensePlate') licensePlate: string) {
+    return this.service.approve(licensePlate);
+  }
+
+  @Patch(':licensePlate/reject')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Từ chối xe cho thuê (quản trị viên)' })
+  @ApiOkResponse({ description: 'Xe đã bị từ chối' })
+  reject(
+    @Param('licensePlate') licensePlate: string,
+    @Body() dto: RejectRentalVehicleDto,
+  ) {
+    return this.service.reject(licensePlate, dto.rejectedReason);
+  }
+
+  @Patch(':licensePlate/disable')
+  @RequireAuth()
+  @ApiOperation({
+    summary: 'Tạm ngưng xe để bảo dưỡng hoặc bảo trì',
+  })
+  @ApiOkResponse({ description: 'Xe đã được chuyển sang trạng thái bảo trì' })
+  disable(@Param('licensePlate') licensePlate: string) {
+    return this.service.disable(licensePlate);
+  }
+
   @Delete(':licensePlate')
   @RequireAuth()
-  @ApiOperation({ summary: 'Remove rental vehicle' })
-  @ApiOkResponse({ description: 'Vehicle removed' })
+  @ApiOperation({ summary: 'Xóa xe cho thuê' })
+  @ApiOkResponse({ description: 'Đã xóa xe' })
   remove(@Param('licensePlate') licensePlate: string) {
     return this.service.remove(licensePlate);
   }

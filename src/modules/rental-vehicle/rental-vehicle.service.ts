@@ -217,12 +217,55 @@ export class RentalVehiclesService {
 
   async updateStatus(
     licensePlate: string,
-    status: RentalVehicleApprovalStatus,
-    rejectedReason?: string,
+    params: {
+      status: RentalVehicleApprovalStatus;
+      availability?: RentalVehicleAvailabilityStatus;
+      rejectedReason?: string;
+    },
   ): Promise<RentalVehicle> {
     const vehicle = await this.findOne(licensePlate);
-    vehicle.status = status;
-    vehicle.rejectedReason = rejectedReason;
+
+    if (
+      params.status === RentalVehicleApprovalStatus.REJECTED &&
+      !params.rejectedReason
+    ) {
+      throw new BadRequestException('Rejected vehicles require a reason');
+    }
+
+    vehicle.status = params.status;
+    if (params.status === RentalVehicleApprovalStatus.APPROVED) {
+      vehicle.rejectedReason = undefined;
+    } else if (params.rejectedReason !== undefined) {
+      vehicle.rejectedReason = params.rejectedReason;
+    } else if (params.status !== RentalVehicleApprovalStatus.REJECTED) {
+      vehicle.rejectedReason = undefined;
+    }
+
+    if (params.availability) {
+      vehicle.availability = params.availability;
+    }
+
     return this.repo.save(vehicle);
+  }
+
+  async approve(licensePlate: string): Promise<RentalVehicle> {
+    return this.updateStatus(licensePlate, {
+      status: RentalVehicleApprovalStatus.APPROVED,
+      availability: RentalVehicleAvailabilityStatus.AVAILABLE,
+    });
+  }
+
+  async reject(licensePlate: string, reason: string): Promise<RentalVehicle> {
+    return this.updateStatus(licensePlate, {
+      status: RentalVehicleApprovalStatus.REJECTED,
+      rejectedReason: reason,
+    });
+  }
+
+  async disable(licensePlate: string): Promise<RentalVehicle> {
+    return this.updateStatus(licensePlate, {
+      status: RentalVehicleApprovalStatus.INACTIVE,
+      availability: RentalVehicleAvailabilityStatus.MAINTENANCE,
+    });
   }
 }
