@@ -168,4 +168,90 @@ export class DestinationsService {
 
     return this.findOne(destinationId);
   }
+
+  async updateFavoriteDestinations(
+    userId: number,
+    destinationIds: number[],
+  ): Promise<Destination[]> {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const normalized = Array.from(
+      new Set(
+        (destinationIds ?? [])
+          .map((value) => Number(value))
+          .filter((value) => Number.isInteger(value) && value > 0),
+      ),
+    );
+
+    const currentFavorites = Array.from(
+      new Set(
+        (user.favoriteDestinationIds ?? [])
+          .map((raw) => Number(raw))
+          .filter((value) => Number.isInteger(value) && value > 0),
+      ),
+    );
+
+    const currentSet = new Set(currentFavorites);
+    const nextSet = new Set(normalized);
+
+    const toAdd = normalized.filter((id) => !currentSet.has(id));
+    const toRemove = currentFavorites.filter((id) => !nextSet.has(id));
+
+    const destinationMap = new Map<number, Destination>();
+    let additions: Destination[] = [];
+    if (toAdd.length) {
+      additions = await this.repo.find({ where: { id: In(toAdd) } });
+      const foundIds = new Set(additions.map((item) => item.id));
+      const missing = toAdd.filter((id) => !foundIds.has(id));
+      if (missing.length) {
+        throw new NotFoundException(`Destination ${missing[0]} not found`);
+      }
+      for (const item of additions) {
+        destinationMap.set(item.id, item);
+      }
+    }
+
+    let removals: Destination[] = [];
+    if (toRemove.length) {
+      removals = await this.repo.find({ where: { id: In(toRemove) } });
+      for (const item of removals) {
+        destinationMap.set(item.id, item);
+      }
+    }
+
+    await this.repo.manager.transaction(async (manager) => {
+      const destinationRepo = manager.getRepository(Destination);
+      const userRepo = manager.getRepository(User);
+
+      for (const id of toAdd) {
+        const destination = destinationMap.get(id);
+        if (destination) {
+          destination.favouriteTimes = (destination.favouriteTimes ?? 0) + 1;
+        }
+      }
+
+      for (const id of toRemove) {
+        const destination = destinationMap.get(id);
+        if (destination) {
+          destination.favouriteTimes = Math.max(
+            0,
+            (destination.favouriteTimes ?? 0) - 1,
+          );
+        }
+      }
+
+      if (destinationMap.size) {
+        await destinationRepo.save(Array.from(destinationMap.values()));
+      }
+
+      await userRepo.update(userId, {
+        favoriteDestinationIds: normalized.map((id) => id.toString()),
+      });
+    });
+
+    return this.findFavoritesByUser(userId);
+  }
 }
