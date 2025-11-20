@@ -22,6 +22,7 @@ import {
   RentalVehicleApprovalStatus,
   RentalVehicleAvailabilityStatus,
 } from './entities/rental-vehicle.entity';
+import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 
 @ApiTags('rental-vehicles')
 @Controller('rental-vehicles')
@@ -29,6 +30,7 @@ export class RentalVehiclesController {
   constructor(private readonly service: RentalVehiclesService) {}
 
   @Post()
+  @RequireAuth()
   @ApiOperation({ summary: 'Register a vehicle for rental' })
   @ApiCreatedResponse({ description: 'Vehicle registered' })
   create(@Body() dto: CreateRentalVehicleDto) {
@@ -69,6 +71,7 @@ export class RentalVehiclesController {
   }
 
   @Patch(':licensePlate')
+  @RequireAuth()
   @ApiOperation({ summary: 'Update rental vehicle data' })
   @ApiOkResponse({ description: 'Vehicle updated' })
   update(
@@ -79,6 +82,7 @@ export class RentalVehiclesController {
   }
 
   @Delete(':licensePlate')
+  @RequireAuth()
   @ApiOperation({ summary: 'Remove rental vehicle' })
   @ApiOkResponse({ description: 'Vehicle removed' })
   remove(@Param('licensePlate') licensePlate: string) {

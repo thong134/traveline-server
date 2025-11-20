@@ -17,8 +17,10 @@ import {
 import { UsersService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 
 @ApiTags('users')
+@RequireAuth()
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

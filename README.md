@@ -33,25 +33,55 @@ $ npm install
 
 ## Vietnam administrative mapping seed
 
-1. Populate the file `src/data/admin-mapping.json` with an array of mapping definitions that match the structure below:
+1. Populate the file `src/data/admin-mapping.json` with an array of mapping definitions. Each entry links one or more legacy units (before the reform) to a single reform unit. You can omit `district`, `ward` or `newCommuneCode` when they are not needed. A few illustrative cases:
 
 ```json
 [
   {
-    "newProvinceCode": "48",
-    "newCommuneCode": "480101",
+    "newProvinceCode": "08",
     "old": [
-      {
-        "province": "48",
-        "district": "4801",
-        "ward": "480101"
-      }
+      { "province": "02" },
+      { "province": "08" }
     ],
-    "note": "Optional note",
-    "resolutionRef": "NQ123/QH15"
+    "note": "Hop nhat toan bo tinh Ha Giang (02) vao tinh Tuyen Quang (08).",
+    "resolutionRef": "NQ/2025/QH15-08"
+  },
+  {
+    "newProvinceCode": "31",
+    "old": [
+      { "province": "30" },
+      { "province": "31" }
+    ],
+    "note": "Sap nhap tinh Hai Duong (30) vao Thanh pho Hai Phong (31).",
+    "resolutionRef": "NQ/2025/QH15-HP"
+  },
+  {
+    "newProvinceCode": "01",
+    "newCommuneCode": "00070",
+    "old": [
+      { "province": "01", "district": "002", "ward": "00061" },
+      { "province": "01", "district": "002", "ward": "00052" },
+      { "province": "01", "district": "002", "ward": "00046" },
+      { "province": "01", "district": "002", "ward": "00049" },
+      { "province": "01", "district": "002", "ward": "00064" },
+      { "province": "01", "district": "002", "ward": "00043" },
+      { "province": "01", "district": "002", "ward": "00058" },
+      { "province": "01", "district": "002", "ward": "00055" },
+      { "province": "01", "district": "002", "ward": "00073" },
+      { "province": "01", "district": "001", "ward": "00019" },
+      { "province": "01", "district": "002", "ward": "00040" },
+      { "province": "01", "district": "002", "ward": "00076" },
+      { "province": "01", "district": "002", "ward": "00070" },
+      { "province": "01", "district": "002", "ward": "00079" }
+    ],
+    "note": "Tao phuong Hoan Kiem (00070) tu cac phuong Hang Bac, Hang Bo, Hang Buom, Hang Dao, Hang Gai, Hang Ma, Ly Thai To va mot phan cua Cua Dong, Cua Nam, Dien Bien, Dong Xuan, Hang Bong, Hang Trong, Trang Tien.",
+    "resolutionRef": "NQ/2025/QH15-HN"
   }
 ]
 ```
+
+   - When a legacy unit is split across multiple reform units, repeat the legacy code in multiple entries and use the `note` field to document the split.
+   - The helper APIs under `vn-admin/legacy` and `vn-admin/reform` let you search by name to confirm the correct codes before populating the JSON.
 
 2. Execute the seed command:
 

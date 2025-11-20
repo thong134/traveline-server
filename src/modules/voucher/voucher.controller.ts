@@ -20,6 +20,7 @@ import {
 import { VouchersService } from './voucher.service';
 import { CreateVoucherDto } from './dto/create-voucher.dto';
 import { UpdateVoucherDto } from './dto/update-voucher.dto';
+import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 
 @ApiTags('vouchers')
 @Controller('vouchers')
@@ -27,6 +28,7 @@ export class VouchersController {
   constructor(private readonly vouchersService: VouchersService) {}
 
   @Post()
+  @RequireAuth()
   @ApiOperation({ summary: 'Create voucher' })
   @ApiCreatedResponse({ description: 'Voucher created' })
   create(@Body() dto: CreateVoucherDto) {
@@ -53,6 +55,7 @@ export class VouchersController {
   }
 
   @Patch(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Update voucher' })
   @ApiOkResponse({ description: 'Voucher updated' })
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateVoucherDto) {
@@ -60,6 +63,7 @@ export class VouchersController {
   }
 
   @Delete(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Delete voucher' })
   @ApiOkResponse({ description: 'Voucher removed' })
   remove(@Param('id', ParseIntPipe) id: number) {

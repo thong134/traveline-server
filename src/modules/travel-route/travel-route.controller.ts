@@ -19,6 +19,7 @@ import {
 import { TravelRoutesService } from './travel-route.service';
 import { CreateTravelRouteDto } from './dto/create-travel-route.dto';
 import { UpdateTravelRouteDto } from './dto/update-travel-route.dto';
+import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 
 @ApiTags('travel-routes')
 @Controller('travel-routes')
@@ -26,6 +27,7 @@ export class TravelRoutesController {
   constructor(private readonly travelRoutesService: TravelRoutesService) {}
 
   @Post()
+  @RequireAuth()
   @ApiOperation({ summary: 'Create a travel route with optional stops' })
   @ApiCreatedResponse({ description: 'Travel route created' })
   create(@Body() dto: CreateTravelRouteDto) {
@@ -67,6 +69,7 @@ export class TravelRoutesController {
   }
 
   @Patch(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Update a travel route' })
   @ApiOkResponse({ description: 'Travel route updated' })
   update(
@@ -77,6 +80,7 @@ export class TravelRoutesController {
   }
 
   @Delete(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Delete a travel route' })
   @ApiOkResponse({ description: 'Travel route removed' })
   remove(@Param('id', ParseIntPipe) id: number) {

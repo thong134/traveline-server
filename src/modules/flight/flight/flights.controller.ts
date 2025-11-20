@@ -19,6 +19,7 @@ import {
 import { FlightsService } from './flights.service';
 import { CreateFlightDto } from './dto/create-flight.dto';
 import { UpdateFlightDto } from './dto/update-flight.dto';
+import { RequireAuth } from '../../auth/decorators/require-auth.decorator';
 
 @ApiTags('flights')
 @Controller('flight/flights')
@@ -26,6 +27,7 @@ export class FlightsController {
   constructor(private readonly service: FlightsService) {}
 
   @Post()
+  @RequireAuth()
   @ApiOperation({ summary: 'Create flight' })
   @ApiCreatedResponse({ description: 'Flight created' })
   create(@Body() dto: CreateFlightDto) {
@@ -61,6 +63,7 @@ export class FlightsController {
   }
 
   @Patch(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Update flight' })
   @ApiOkResponse({ description: 'Flight updated' })
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateFlightDto) {
@@ -68,6 +71,7 @@ export class FlightsController {
   }
 
   @Delete(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Remove flight' })
   @ApiOkResponse({ description: 'Flight removed' })
   remove(@Param('id', ParseIntPipe) id: number) {

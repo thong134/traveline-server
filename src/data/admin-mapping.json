@@ -1,1 +1,325 @@
-[]
+[
+	{
+		"newProvinceCode": "01",
+		"old": [
+			{ "province": "01" }
+		],
+		"note": "Thanh pho Ha Noi giu nguyen, khong sap nhap.",
+		"resolutionRef": "NQ/2025/QH15-01"
+	},
+	{
+		"newProvinceCode": "04",
+		"old": [
+			{ "province": "04" }
+		],
+		"note": "Tinh Cao Bang giu nguyen, khong sap nhap.",
+		"resolutionRef": "NQ/2025/QH15-04"
+	},
+	{
+		"newProvinceCode": "08",
+		"old": [
+			{ "province": "02" },
+			{ "province": "08" }
+		],
+		"note": "Hop nhat toan bo tinh Ha Giang (02) vao tinh Tuyen Quang (08) theo nghi quyet sap xep don vi hanh chinh nam 2025.",
+		"resolutionRef": "NQ/2025/QH15-08"
+	},
+	{
+		"newProvinceCode": "11",
+		"old": [
+			{ "province": "11" }
+		],
+		"note": "Tinh Dien Bien giu nguyen, khong sap nhap.",
+		"resolutionRef": "NQ/2025/QH15-11"
+	},
+	{
+		"newProvinceCode": "12",
+		"old": [
+			{ "province": "12" }
+		],
+		"note": "Tinh Lai Chau giu nguyen, khong sap nhap.",
+		"resolutionRef": "NQ/2025/QH15-12"
+	},
+	{
+		"newProvinceCode": "14",
+		"old": [
+			{ "province": "14" }
+		],
+		"note": "Tinh Son La giu nguyen, khong sap nhap.",
+		"resolutionRef": "NQ/2025/QH15-14"
+	},
+	{
+		"newProvinceCode": "15",
+		"old": [
+			{ "province": "10" },
+			{ "province": "15" }
+		],
+		"note": "Hop nhat tinh Lao Cai (10) va tinh Yen Bai (15) de hinh thanh tinh Lao Cai moi.",
+		"resolutionRef": "NQ/2025/QH15-15"
+	},
+	{
+		"newProvinceCode": "19",
+		"old": [
+			{ "province": "06" },
+			{ "province": "19" }
+		],
+		"note": "Hop nhat tinh Bac Kan (06) va tinh Thai Nguyen (19) de hinh thanh tinh Thai Nguyen moi.",
+		"resolutionRef": "NQ/2025/QH15-19"
+	},
+	{
+		"newProvinceCode": "20",
+		"old": [
+			{ "province": "20" }
+		],
+		"note": "Tinh Lang Son giu nguyen, khong sap nhap.",
+		"resolutionRef": "NQ/2025/QH15-20"
+	},
+	{
+		"newProvinceCode": "22",
+		"old": [
+			{ "province": "22" }
+		],
+		"note": "Tinh Quang Ninh giu nguyen, khong sap nhap.",
+		"resolutionRef": "NQ/2025/QH15-22"
+	},
+	{
+		"newProvinceCode": "24",
+		"old": [
+			{ "province": "24" },
+			{ "province": "27" }
+		],
+		"note": "Hop nhat tinh Bac Giang (24) va tinh Bac Ninh (27) de hinh thanh tinh Bac Ninh moi.",
+		"resolutionRef": "NQ/2025/QH15-24"
+	},
+	{
+		"newProvinceCode": "25",
+		"old": [
+			{ "province": "17" },
+			{ "province": "25" },
+			{ "province": "26" }
+		],
+		"note": "Hop nhat tinh Hoa Binh (17), tinh Phu Tho (25) va tinh Vinh Phuc (26) de hinh thanh tinh Phu Tho moi.",
+		"resolutionRef": "NQ/2025/QH15-25"
+	},
+	{
+		"newProvinceCode": "31",
+		"old": [
+			{ "province": "30" },
+			{ "province": "31" }
+		],
+		"note": "Sap nhap tinh Hai Duong (30) vao thanh pho Hai Phong (31) de hinh thanh don vi hanh chinh cap tinh moi.",
+		"resolutionRef": "NQ/2025/QH15-31"
+	},
+	{
+		"newProvinceCode": "33",
+		"old": [
+			{ "province": "33" },
+			{ "province": "34" }
+		],
+		"note": "Hop nhat tinh Hung Yen (33) va tinh Thai Binh (34) de hinh thanh tinh Hung Yen moi.",
+		"resolutionRef": "NQ/2025/QH15-33"
+	},
+	{
+		"newProvinceCode": "37",
+		"old": [
+			{ "province": "35" },
+			{ "province": "36" },
+			{ "province": "37" }
+		],
+		"note": "Hop nhat tinh Ha Nam (35), tinh Nam Dinh (36) va tinh Ninh Binh (37) de hinh thanh tinh Ninh Binh moi.",
+		"resolutionRef": "NQ/2025/QH15-37"
+	},
+	{
+		"newProvinceCode": "38",
+		"old": [
+			{ "province": "38" }
+		],
+		"note": "Tinh Thanh Hoa giu nguyen, khong sap nhap.",
+		"resolutionRef": "NQ/2025/QH15-38"
+	},
+	{
+		"newProvinceCode": "40",
+		"old": [
+			{ "province": "40" }
+		],
+		"note": "Tinh Nghe An giu nguyen, khong sap nhap.",
+		"resolutionRef": "NQ/2025/QH15-40"
+	},
+	{
+		"newProvinceCode": "42",
+		"old": [
+			{ "province": "42" }
+		],
+		"note": "Tinh Ha Tinh giu nguyen, khong sap nhap.",
+		"resolutionRef": "NQ/2025/QH15-42"
+	},
+	{
+		"newProvinceCode": "44",
+		"old": [
+			{ "province": "44" },
+			{ "province": "45" }
+		],
+		"note": "Hop nhat tinh Quang Binh (44) va tinh Quang Tri (45) de hinh thanh tinh Quang Tri moi.",
+		"resolutionRef": "NQ/2025/QH15-44"
+	},
+	{
+		"newProvinceCode": "46",
+		"old": [
+			{ "province": "46" }
+		],
+		"note": "Thanh pho Hue giu nguyen, khong sap nhap.",
+		"resolutionRef": "NQ/2025/QH15-46"
+	},
+	{
+		"newProvinceCode": "48",
+		"old": [
+			{ "province": "48" },
+			{ "province": "49" }
+		],
+		"note": "Hop nhat tinh Quang Nam (49) vao thanh pho Da Nang (48) de hinh thanh don vi Da Nang moi.",
+		"resolutionRef": "NQ/2025/QH15-48"
+	},
+	{
+		"newProvinceCode": "51",
+		"old": [
+			{ "province": "51" },
+			{ "province": "62" }
+		],
+		"note": "Hop nhat tinh Kon Tum (62) va tinh Quang Ngai (51) de hinh thanh tinh Quang Ngai moi.",
+		"resolutionRef": "NQ/2025/QH15-51"
+	},
+	{
+		"newProvinceCode": "52",
+		"old": [
+			{ "province": "52" },
+			{ "province": "64" }
+		],
+		"note": "Hop nhat tinh Binh Dinh (52) va tinh Gia Lai (64) de hinh thanh tinh Gia Lai moi.",
+		"resolutionRef": "NQ/2025/QH15-52"
+	},
+	{
+		"newProvinceCode": "56",
+		"old": [
+			{ "province": "56" },
+			{ "province": "58" }
+		],
+		"note": "Hop nhat tinh Ninh Thuan (58) vao tinh Khanh Hoa (56) de hinh thanh tinh Khanh Hoa moi.",
+		"resolutionRef": "NQ/2025/QH15-56"
+	},
+	{
+		"newProvinceCode": "66",
+		"old": [
+			{ "province": "54" },
+			{ "province": "66" }
+		],
+		"note": "Hop nhat tinh Phu Yen (54) vao tinh Dak Lak (66) de hinh thanh tinh Dak Lak moi.",
+		"resolutionRef": "NQ/2025/QH15-66"
+	},
+	{
+		"newProvinceCode": "68",
+		"old": [
+			{ "province": "60" },
+			{ "province": "67" },
+			{ "province": "68" }
+		],
+		"note": "Hop nhat tinh Binh Thuan (60) va tinh Dak Nong (67) vao tinh Lam Dong (68) de hinh thanh tinh Lam Dong moi.",
+		"resolutionRef": "NQ/2025/QH15-68"
+	},
+	{
+		"newProvinceCode": "75",
+		"old": [
+			{ "province": "70" },
+			{ "province": "75" }
+		],
+		"note": "Hop nhat tinh Binh Phuoc (70) vao tinh Dong Nai (75) de hinh thanh tinh Dong Nai moi.",
+		"resolutionRef": "NQ/2025/QH15-75"
+	},
+	{
+		"newProvinceCode": "79",
+		"old": [
+			{ "province": "74" },
+			{ "province": "77" },
+			{ "province": "79" }
+		],
+		"note": "Hop nhat tinh Ba Ria - Vung Tau (77) va tinh Binh Duong (74) vao thanh pho Ho Chi Minh (79).",
+		"resolutionRef": "NQ/2025/QH15-79"
+	},
+	{
+		"newProvinceCode": "80",
+		"old": [
+			{ "province": "72" },
+			{ "province": "80" }
+		],
+		"note": "Hop nhat tinh Tay Ninh (72) va tinh Long An (80) de hinh thanh tinh Tay Ninh moi.",
+		"resolutionRef": "NQ/2025/QH15-80"
+	},
+	{
+		"newProvinceCode": "82",
+		"old": [
+			{ "province": "82" },
+			{ "province": "87" }
+		],
+		"note": "Hop nhat tinh Tien Giang (82) va tinh Dong Thap (87) de hinh thanh tinh Dong Thap moi.",
+		"resolutionRef": "NQ/2025/QH15-82"
+	},
+	{
+		"newProvinceCode": "86",
+		"old": [
+			{ "province": "83" },
+			{ "province": "84" },
+			{ "province": "86" }
+		],
+		"note": "Hop nhat tinh Ben Tre (83), tinh Tra Vinh (84) va tinh Vinh Long (86) de hinh thanh tinh Vinh Long moi.",
+		"resolutionRef": "NQ/2025/QH15-86"
+	},
+	{
+		"newProvinceCode": "91",
+		"old": [
+			{ "province": "89" },
+			{ "province": "91" }
+		],
+		"note": "Hop nhat tinh An Giang (89) va tinh Kien Giang (91) de hinh thanh tinh An Giang moi.",
+		"resolutionRef": "NQ/2025/QH15-91"
+	},
+	{
+		"newProvinceCode": "92",
+		"old": [
+			{ "province": "92" },
+			{ "province": "93" },
+			{ "province": "94" }
+		],
+		"note": "Hop nhat thanh pho Can Tho (92) voi tinh Hau Giang (93) va tinh Soc Trang (94) de hinh thanh thanh pho Can Tho mo rong.",
+		"resolutionRef": "NQ/2025/QH15-92"
+	},
+	{
+		"newProvinceCode": "96",
+		"old": [
+			{ "province": "95" },
+			{ "province": "96" }
+		],
+		"note": "Hop nhat tinh Bac Lieu (95) vao tinh Ca Mau (96) de hinh thanh tinh Ca Mau moi.",
+		"resolutionRef": "NQ/2025/QH15-96"
+	},
+	{
+		"newProvinceCode": "01",
+		"newCommuneCode": "00070",
+		"old": [
+			{ "province": "01", "district": "002", "ward": "00061" },
+			{ "province": "01", "district": "002", "ward": "00052" },
+			{ "province": "01", "district": "002", "ward": "00046" },
+			{ "province": "01", "district": "002", "ward": "00049" },
+			{ "province": "01", "district": "002", "ward": "00064" },
+			{ "province": "01", "district": "002", "ward": "00043" },
+			{ "province": "01", "district": "002", "ward": "00058" },
+			{ "province": "01", "district": "002", "ward": "00055" },
+			{ "province": "01", "district": "002", "ward": "00073" },
+			{ "province": "01", "district": "001", "ward": "00019" },
+			{ "province": "01", "district": "002", "ward": "00040" },
+			{ "province": "01", "district": "002", "ward": "00076" },
+			{ "province": "01", "district": "002", "ward": "00070" },
+			{ "province": "01", "district": "002", "ward": "00079" }
+		],
+		"note": "Tao phuong Hoan Kiem (ma 00070) bang cach hop nhat cac phuong Hang Bac, Hang Bo, Hang Buom, Hang Dao, Hang Gai, Hang Ma, Ly Thai To va phan con lai cua Cua Dong, Cua Nam, Dien Bien, Dong Xuan, Hang Bong, Hang Trong, Trang Tien.",
+		"resolutionRef": "NQ/2025/QH15-HN"
+	}
+]

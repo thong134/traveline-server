@@ -15,6 +15,7 @@ import {
 } from '@nestjs/swagger';
 import { IsEthereumAddress, IsNotEmpty, IsString } from 'class-validator';
 import { BlockchainService } from './blockchain.service';
+import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 
 class DepositRequestDto {
   @ApiProperty({
@@ -56,6 +57,7 @@ class AdminActionRequestDto {
 }
 
 @ApiTags('blockchain')
+@RequireAuth()
 @Controller('blockchain')
 export class BlockchainController {
   constructor(private readonly blockchainService: BlockchainService) {}

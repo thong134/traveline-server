@@ -20,6 +20,7 @@ import {
 import { ProvincesService } from './province.service';
 import { CreateProvinceDto } from './dto/create-province.dto';
 import { UpdateProvinceDto } from './dto/update-province.dto';
+import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 
 @ApiTags('provinces')
 @Controller('provinces')
@@ -27,6 +28,7 @@ export class ProvincesController {
   constructor(private readonly provincesService: ProvincesService) {}
 
   @Post()
+  @RequireAuth()
   @ApiOperation({ summary: 'Create a province' })
   @ApiCreatedResponse({ description: 'Province created' })
   create(@Body() dto: CreateProvinceDto) {
@@ -68,6 +70,7 @@ export class ProvincesController {
   }
 
   @Patch(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Update province' })
   @ApiOkResponse({ description: 'Province updated' })
   update(
@@ -78,6 +81,7 @@ export class ProvincesController {
   }
 
   @Delete(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Remove province' })
   @ApiOkResponse({ description: 'Province removed' })
   remove(@Param('id', ParseIntPipe) id: number) {

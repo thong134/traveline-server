@@ -19,6 +19,7 @@ import {
 import { BusTypesService } from './bus-types.service';
 import { CreateBusTypeDto } from './dto/create-bus-type.dto';
 import { UpdateBusTypeDto } from './dto/update-bus-type.dto';
+import { RequireAuth } from '../../auth/decorators/require-auth.decorator';
 
 @ApiTags('bus-types')
 @Controller('bus/types')
@@ -26,6 +27,7 @@ export class BusTypesController {
   constructor(private readonly service: BusTypesService) {}
 
   @Post()
+  @RequireAuth()
   @ApiOperation({ summary: 'Create bus type' })
   @ApiCreatedResponse({ description: 'Bus type created' })
   create(@Body() dto: CreateBusTypeDto) {
@@ -50,6 +52,7 @@ export class BusTypesController {
   }
 
   @Patch(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Update bus type' })
   @ApiOkResponse({ description: 'Bus type updated' })
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateBusTypeDto) {
@@ -57,6 +60,7 @@ export class BusTypesController {
   }
 
   @Delete(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Remove bus type' })
   @ApiOkResponse({ description: 'Bus type removed' })
   remove(@Param('id', ParseIntPipe) id: number) {

@@ -25,6 +25,7 @@ import { UpdateDestinationDto } from './dto/update-destination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
+import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 
 @ApiTags('destinations')
 @Controller('destinations')
@@ -32,6 +33,7 @@ export class DestinationsController {
   constructor(private readonly destinationsService: DestinationsService) {}
 
   @Post()
+  @RequireAuth()
   @ApiOperation({ summary: 'Create a destination' })
   @ApiCreatedResponse({ description: 'Destination created' })
   create(@Body() dto: CreateDestinationDto) {
@@ -114,6 +116,7 @@ export class DestinationsController {
   }
 
   @Patch(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Update destination' })
   @ApiOkResponse({ description: 'Destination updated' })
   update(
@@ -124,6 +127,7 @@ export class DestinationsController {
   }
 
   @Delete(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Delete destination' })
   @ApiOkResponse({ description: 'Destination deleted' })
   remove(@Param('id', ParseIntPipe) id: number) {

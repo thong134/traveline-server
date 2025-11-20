@@ -19,6 +19,7 @@ import {
 import { TrainRoutesService } from './train.service';
 import { CreateTrainRouteDto } from './dto/create-train-route.dto';
 import { UpdateTrainRouteDto } from './dto/update-train-route.dto';
+import { RequireAuth } from '../../auth/decorators/require-auth.decorator';
 
 @ApiTags('train-routes')
 @Controller('train/routes')
@@ -26,6 +27,7 @@ export class TrainRoutesController {
   constructor(private readonly service: TrainRoutesService) {}
 
   @Post()
+  @RequireAuth()
   @ApiOperation({ summary: 'Create train route' })
   @ApiCreatedResponse({ description: 'Train route created' })
   create(@Body() dto: CreateTrainRouteDto) {
@@ -58,6 +60,7 @@ export class TrainRoutesController {
   }
 
   @Patch(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Update train route' })
   @ApiOkResponse({ description: 'Train route updated' })
   update(
@@ -68,6 +71,7 @@ export class TrainRoutesController {
   }
 
   @Delete(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Remove train route' })
   @ApiOkResponse({ description: 'Train route removed' })
   remove(@Param('id', ParseIntPipe) id: number) {

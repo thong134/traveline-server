@@ -19,6 +19,7 @@ import {
 import { HotelRoomsService } from './hotel-room.service';
 import { CreateHotelRoomDto } from './dto/create-hotel-room.dto';
 import { UpdateHotelRoomDto } from './dto/update-hotel-room.dto';
+import { RequireAuth } from '../../auth/decorators/require-auth.decorator';
 
 @ApiTags('hotel-rooms')
 @Controller('hotel-rooms')
@@ -26,6 +27,7 @@ export class HotelRoomsController {
   constructor(private readonly hotelRoomsService: HotelRoomsService) {}
 
   @Post()
+  @RequireAuth()
   @ApiOperation({ summary: 'Create hotel room' })
   @ApiCreatedResponse({ description: 'Hotel room created' })
   create(@Body() dto: CreateHotelRoomDto) {
@@ -91,6 +93,7 @@ export class HotelRoomsController {
   }
 
   @Patch(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Update hotel room information' })
   @ApiOkResponse({ description: 'Hotel room updated' })
   update(
@@ -101,6 +104,7 @@ export class HotelRoomsController {
   }
 
   @Delete(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Delete hotel room' })
   @ApiOkResponse({ description: 'Hotel room removed' })
   remove(@Param('id', ParseIntPipe) id: number) {

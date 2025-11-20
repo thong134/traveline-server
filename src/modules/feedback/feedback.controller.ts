@@ -19,6 +19,7 @@ import {
 import { FeedbackService } from './feedback.service';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 import { UpdateFeedbackDto } from './dto/update-feedback.dto';
+import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 
 @ApiTags('feedback')
 @Controller('feedback')
@@ -26,6 +27,7 @@ export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 
   @Post()
+  @RequireAuth()
   @ApiOperation({ summary: 'Submit feedback' })
   @ApiCreatedResponse({ description: 'Feedback created' })
   create(@Body() dto: CreateFeedbackDto) {
@@ -96,6 +98,7 @@ export class FeedbackController {
   }
 
   @Patch(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Update feedback' })
   @ApiOkResponse({ description: 'Feedback updated' })
   update(
@@ -106,6 +109,7 @@ export class FeedbackController {
   }
 
   @Delete(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Delete feedback' })
   @ApiOkResponse({ description: 'Feedback removed' })
   remove(@Param('id', ParseIntPipe) id: number) {

@@ -29,7 +29,9 @@ export class SeedAdminMappingCommand {
     };
 
     const resolvedPath = filePath ?? this.getDefaultSeedFilePath();
-    this.logger.log(`Seeding Vietnam administrative mappings from ${resolvedPath}`);
+    this.logger.log(
+      `Seeding Vietnam administrative mappings from ${resolvedPath}`,
+    );
 
     try {
       const payload = await this.loadPayload(resolvedPath);
@@ -39,7 +41,9 @@ export class SeedAdminMappingCommand {
         summary.invalidItems.push(...invalidItems);
         summary.errors += invalidItems.length;
         invalidItems.forEach((item) =>
-          this.logger.warn(`Skipping item #${item.index} due to ${item.reason}`),
+          this.logger.warn(
+            `Skipping item #${item.index} due to ${item.reason}`,
+          ),
         );
       }
 
@@ -116,20 +120,34 @@ export class SeedAdminMappingCommand {
 
   private validateItem(
     item: unknown,
-  ): { valid: true; value: AdminMappingSeedItem } | { valid: false; reason: string } {
+  ):
+    | { valid: true; value: AdminMappingSeedItem }
+    | { valid: false; reason: string } {
     if (!item || typeof item !== 'object') {
       return { valid: false, reason: 'item must be an object' };
     }
 
     const candidate = item as Partial<AdminMappingSeedItem>;
 
-    if (!candidate.newProvinceCode || typeof candidate.newProvinceCode !== 'string') {
-      return { valid: false, reason: 'newProvinceCode must be a non-empty string' };
+    if (
+      !candidate.newProvinceCode ||
+      typeof candidate.newProvinceCode !== 'string'
+    ) {
+      return {
+        valid: false,
+        reason: 'newProvinceCode must be a non-empty string',
+      };
     }
 
-    if (candidate.newCommuneCode !== undefined && candidate.newCommuneCode !== null) {
+    if (
+      candidate.newCommuneCode !== undefined &&
+      candidate.newCommuneCode !== null
+    ) {
       if (typeof candidate.newCommuneCode !== 'string') {
-        return { valid: false, reason: 'newCommuneCode must be a string or null' };
+        return {
+          valid: false,
+          reason: 'newCommuneCode must be a string or null',
+        };
       }
     }
 
@@ -164,7 +182,8 @@ export class SeedAdminMappingCommand {
     if (invalidLegacy) {
       return {
         valid: false,
-        reason: 'old entry must include province and optional district/ward strings',
+        reason:
+          'old entry must include province and optional district/ward strings',
       };
     }
 
@@ -174,9 +193,15 @@ export class SeedAdminMappingCommand {
       }
     }
 
-    if (candidate.resolutionRef !== undefined && candidate.resolutionRef !== null) {
+    if (
+      candidate.resolutionRef !== undefined &&
+      candidate.resolutionRef !== null
+    ) {
       if (typeof candidate.resolutionRef !== 'string') {
-        return { valid: false, reason: 'resolutionRef must be a string or null' };
+        return {
+          valid: false,
+          reason: 'resolutionRef must be a string or null',
+        };
       }
     }
 

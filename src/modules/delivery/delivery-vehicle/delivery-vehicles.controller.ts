@@ -19,6 +19,7 @@ import {
 import { DeliveryVehiclesService } from './delivery-vehicles.service';
 import { CreateDeliveryVehicleDto } from './dto/create-delivery-vehicle.dto';
 import { UpdateDeliveryVehicleDto } from './dto/update-delivery-vehicle.dto';
+import { RequireAuth } from '../../auth/decorators/require-auth.decorator';
 
 @ApiTags('delivery-vehicles')
 @Controller('delivery/vehicles')
@@ -26,6 +27,7 @@ export class DeliveryVehiclesController {
   constructor(private readonly service: DeliveryVehiclesService) {}
 
   @Post()
+  @RequireAuth()
   @ApiOperation({ summary: 'Create delivery vehicle type' })
   @ApiCreatedResponse({ description: 'Delivery vehicle created' })
   create(@Body() dto: CreateDeliveryVehicleDto) {
@@ -50,6 +52,7 @@ export class DeliveryVehiclesController {
   }
 
   @Patch(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Update delivery vehicle' })
   @ApiOkResponse({ description: 'Delivery vehicle updated' })
   update(
@@ -60,6 +63,7 @@ export class DeliveryVehiclesController {
   }
 
   @Delete(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Remove delivery vehicle' })
   @ApiOkResponse({ description: 'Delivery vehicle removed' })
   remove(@Param('id', ParseIntPipe) id: number) {

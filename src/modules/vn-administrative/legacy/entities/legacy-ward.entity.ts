@@ -27,7 +27,12 @@ export class LegacyWard {
   @Column({ name: 'code_name', type: 'varchar', length: 255, nullable: true })
   codeName?: string | null;
 
-  @Column({ name: 'district_code', type: 'varchar', length: 20, nullable: true })
+  @Column({
+    name: 'district_code',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
   districtCode?: string | null;
 
   @Column({ name: 'administrative_unit_id', type: 'int', nullable: true })

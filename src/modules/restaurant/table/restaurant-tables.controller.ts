@@ -19,6 +19,7 @@ import {
 import { RestaurantTablesService } from './restaurant-tables.service';
 import { CreateRestaurantTableDto } from './dto/create-restaurant-table.dto';
 import { UpdateRestaurantTableDto } from './dto/update-restaurant-table.dto';
+import { RequireAuth } from '../../auth/decorators/require-auth.decorator';
 
 @ApiTags('restaurant-tables')
 @Controller('restaurant/tables')
@@ -26,6 +27,7 @@ export class RestaurantTablesController {
   constructor(private readonly service: RestaurantTablesService) {}
 
   @Post()
+  @RequireAuth()
   @ApiOperation({ summary: 'Create restaurant table' })
   @ApiCreatedResponse({ description: 'Restaurant table created' })
   create(@Body() dto: CreateRestaurantTableDto) {
@@ -55,6 +57,7 @@ export class RestaurantTablesController {
   }
 
   @Patch(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Update restaurant table' })
   @ApiOkResponse({ description: 'Restaurant table updated' })
   update(
@@ -65,6 +68,7 @@ export class RestaurantTablesController {
   }
 
   @Delete(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Remove restaurant table' })
   @ApiOkResponse({ description: 'Restaurant table removed' })
   remove(@Param('id', ParseIntPipe) id: number) {

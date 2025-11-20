@@ -27,8 +27,12 @@ async function bootstrap() {
     swaggerOptions: { persistAuthorization: true },
   });
 
-  await app.listen(3000);
-  console.log(`\nAPI đang chạy: http://localhost:3000`);
-  console.log(`Swagger UI: http://localhost:3000/docs`);
+  const portValue =
+    process.env.PORT ?? process.env.APP_PORT ?? process.env.HTTP_PORT ?? '3000';
+  const port = Number.isFinite(Number(portValue)) ? Number(portValue) : 3000;
+
+  await app.listen(port);
+  console.log(`\nAPI đang chạy: http://localhost:${port}`);
+  console.log(`Swagger UI: http://localhost:${port}/docs`);
 }
 void bootstrap();

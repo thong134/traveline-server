@@ -6,10 +6,11 @@ import {
 } from '@nestjs/common';
 import axios from 'axios';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { compare, hash } from 'bcrypt';
 import { randomBytes } from 'crypto';
-import { addMinutes } from 'date-fns';
+import { addDays, addMinutes } from 'date-fns';
 import { Repository } from 'typeorm';
 import { sendResetEmail } from './utils/mail.util';
 import { UsersService } from '../user/user.service';
@@ -53,10 +54,47 @@ export class AuthService {
     private phoneOtpRepo: Repository<PhoneOtp>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
+    private readonly configService: ConfigService,
   ) {}
 
+  private getNumberConfig(key: string, fallback: number): number {
+    const value = this.configService.get<string | number | undefined>(key);
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return fallback;
+  }
+
   private getOtpExpiresMinutes(): number {
-    return Number(process.env.OTP_EXPIRES_MIN || 5);
+    return this.getNumberConfig('OTP_EXPIRES_MIN', 5);
+  }
+
+  private getAccessTokenSecret(): string {
+    const secret = this.configService.get<string>('JWT_SECRET')?.trim();
+    return secret && secret.length > 0 ? secret : 'uittraveline';
+  }
+
+  private getRefreshTokenSecret(): string {
+    const secret = this.configService.get<string>('JWT_REFRESH_SECRET')?.trim();
+    return secret && secret.length > 0 ? secret : this.getAccessTokenSecret();
+  }
+
+  private getAccessTokenTtl(): string {
+    return this.configService.get<string>('JWT_ACCESS_EXPIRES') ?? '15m';
+  }
+
+  private getRefreshTokenTtl(): string {
+    return this.configService.get<string>('JWT_REFRESH_EXPIRES') ?? '30d';
+  }
+
+  private getRefreshTokenStoreDays(): number {
+    return this.getNumberConfig('REFRESH_TOKEN_STORE_DAYS', 30);
   }
 
   async signup(dto: SignupDto): Promise<{ id: number; username: string }> {
@@ -89,23 +127,23 @@ export class AuthService {
     const payload: JwtPayload = { username: user.username, sub: user.id };
 
     const accessToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET,
-      expiresIn: '10s',
+      secret: this.getAccessTokenSecret(),
+      expiresIn: this.getAccessTokenTtl(),
     });
 
     const refreshToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_REFRESH_SECRET,
-      expiresIn: '30d',
+      secret: this.getRefreshTokenSecret(),
+      expiresIn: this.getRefreshTokenTtl(),
     });
 
-    const hashedRefresh = await hash(refreshToken, 6);
+    const hashedRefresh = await hash(refreshToken, 10);
 
     await this.refreshTokenRepository.delete({ userId: user.id });
 
     const rt = this.refreshTokenRepository.create({
       userId: user.id,
       token: hashedRefresh,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: addDays(new Date(), this.getRefreshTokenStoreDays()),
     });
     await this.refreshTokenRepository.save(rt);
 
@@ -118,7 +156,7 @@ export class AuthService {
   async refresh(refreshToken: string): Promise<{ accessToken: string }> {
     try {
       const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
-        secret: process.env.JWT_REFRESH_SECRET,
+        secret: this.getRefreshTokenSecret(),
       });
 
       const tokens = await this.refreshTokenRepository.find({
@@ -140,7 +178,10 @@ export class AuthService {
 
       const newAccessToken = this.jwtService.sign(
         { sub: payload.sub, username: payload.username },
-        { secret: process.env.JWT_SECRET, expiresIn: '15m' },
+        {
+          secret: this.getAccessTokenSecret(),
+          expiresIn: this.getAccessTokenTtl(),
+        },
       );
 
       return { accessToken: newAccessToken };

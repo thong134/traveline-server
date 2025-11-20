@@ -25,6 +25,7 @@ import {
 import { CreateCooperationDto } from './dto/create-cooperation.dto';
 import { UpdateCooperationDto } from './dto/update-cooperation.dto';
 import { HotelAvailabilityQueryDto } from './dto/hotel-availability-query.dto';
+import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 
 @ApiTags('cooperations')
 @Controller('cooperations')
@@ -35,6 +36,7 @@ export class CooperationsController {
   ) {}
 
   @Post()
+  @RequireAuth()
   @ApiOperation({ summary: 'Create a new cooperation partner' })
   @ApiCreatedResponse({ description: 'Cooperation created' })
   create(@Body() dto: CreateCooperationDto) {
@@ -65,6 +67,7 @@ export class CooperationsController {
   }
 
   @Patch(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Update cooperation information' })
   @ApiOkResponse({ description: 'Cooperation updated' })
   update(
@@ -75,6 +78,7 @@ export class CooperationsController {
   }
 
   @Delete(':id')
+  @RequireAuth()
   @ApiOperation({ summary: 'Delete cooperation' })
   @ApiOkResponse({ description: 'Cooperation removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
