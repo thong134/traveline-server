@@ -26,6 +26,8 @@ import { CreateCooperationDto } from './dto/create-cooperation.dto';
 import { UpdateCooperationDto } from './dto/update-cooperation.dto';
 import { HotelAvailabilityQueryDto } from './dto/hotel-availability-query.dto';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { RequestUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('cooperations')
 @Controller('cooperations')
@@ -83,6 +85,28 @@ export class CooperationsController {
   @ApiOkResponse({ description: 'Cooperation removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.cooperationsService.remove(id);
+  }
+
+  @Post(':id/favorite')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Thêm đối tác vào danh sách yêu thích' })
+  @ApiOkResponse({ description: 'Đã thêm đối tác vào yêu thích' })
+  favorite(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.cooperationsService.favorite(user.userId, id);
+  }
+
+  @Delete(':id/favorite')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Bỏ đối tác khỏi danh sách yêu thích' })
+  @ApiOkResponse({ description: 'Đã bỏ đối tác khỏi yêu thích' })
+  unfavorite(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.cooperationsService.unfavorite(user.userId, id);
   }
 
   @Get(':id/hotel-availability')

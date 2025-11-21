@@ -6,6 +6,7 @@ import { CreateCooperationDto } from './dto/create-cooperation.dto';
 import { UpdateCooperationDto } from './dto/update-cooperation.dto';
 import { User } from '../user/entities/user.entity';
 import { assignDefined } from '../../common/utils/object.util';
+import { UsersService } from '../user/user.service';
 
 @Injectable()
 export class CooperationsService {
@@ -14,6 +15,7 @@ export class CooperationsService {
     private readonly cooperationRepo: Repository<Cooperation>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly usersService: UsersService,
   ) {}
 
   private formatMoney(value: number | string | undefined): string {
@@ -183,5 +185,20 @@ export class CooperationsService {
     const updatedRevenue = currentRevenue + revenueDelta;
     cooperation.revenue = this.formatMoney(updatedRevenue);
     await this.cooperationRepo.save(cooperation);
+  }
+
+  async favorite(userId: number, cooperationId: number): Promise<Cooperation> {
+    await this.findOne(cooperationId);
+    await this.usersService.addFavoriteCooperation(userId, cooperationId);
+    return this.findOne(cooperationId);
+  }
+
+  async unfavorite(
+    userId: number,
+    cooperationId: number,
+  ): Promise<Cooperation> {
+    await this.findOne(cooperationId);
+    await this.usersService.removeFavoriteCooperation(userId, cooperationId);
+    return this.findOne(cooperationId);
   }
 }

@@ -14,6 +14,7 @@ import { User } from '../../user/entities/user.entity';
 import { VouchersService } from '../../voucher/voucher.service';
 import { Voucher } from '../../voucher/entities/voucher.entity';
 import { CooperationsService } from '../../cooperation/cooperation.service';
+import { UsersService } from '../../user/user.service';
 
 @Injectable()
 export class TrainBillsService {
@@ -293,6 +294,8 @@ export class TrainBillsService {
       } else {
         const refund = bill.travelPointsUsed - dto.travelPointsUsed;
         user.travelPoint += refund;
+        user.travelExp += refund;
+        user.userTier = UsersService.resolveTier(user.travelExp);
       }
       travelPointsUsed = dto.travelPointsUsed;
       bill.travelPointsUsed = dto.travelPointsUsed;
@@ -394,6 +397,8 @@ export class TrainBillsService {
       const user = await this.userRepo.findOne({ where: { id: bill.userId } });
       if (user) {
         user.travelPoint += bill.travelPointsUsed;
+        user.travelExp += bill.travelPointsUsed;
+        user.userTier = UsersService.resolveTier(user.travelExp);
         await this.userRepo.save(user);
       }
       bill.travelPointsRefunded = true;

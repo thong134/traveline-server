@@ -35,11 +35,6 @@ export class CreateUserDto {
   @IsEmail()
   email?: string;
 
-  @ApiPropertyOptional({ description: 'Firebase UID or external identity' })
-  @IsOptional()
-  @IsString()
-  uid?: string;
-
   @ApiPropertyOptional({ description: 'Display name' })
   @IsOptional()
   @IsString()
@@ -120,21 +115,17 @@ export class CreateUserDto {
   @IsString({ each: true })
   favoriteDestinationIds?: string[];
 
-  @ApiPropertyOptional({ description: 'Favourite hotel ids', type: [String] })
+  @ApiPropertyOptional({ description: 'Favourite eatery ids', type: [String] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  favoriteHotelIds?: string[];
+  favoriteEateries?: string[];
 
-  @ApiPropertyOptional({
-    description: 'Favourite restaurant ids',
-    type: [String],
-  })
+  @ApiPropertyOptional({ description: 'Favourite cooperation ids', type: [String] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  favoriteRestaurantIds?: string[];
-
+  cooperationIds?: string[];
   @ApiPropertyOptional({ description: 'User travel points balance' })
   @IsOptional()
   @Type(() => Number)
@@ -142,6 +133,12 @@ export class CreateUserDto {
   @Min(0)
   travelPoint?: number;
 
+  @ApiPropertyOptional({ description: 'User travel experience score' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  travelExp?: number;
   @ApiPropertyOptional({ description: 'Number of trips joined' })
   @IsOptional()
   @Type(() => Number)

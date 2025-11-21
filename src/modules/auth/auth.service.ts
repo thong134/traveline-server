@@ -19,7 +19,15 @@ import { PasswordReset } from './entities/password-reset.entity';
 import { PhoneOtp } from './entities/phone-otp.entity';
 import { SignupDto } from './dto/signup.dto';
 import { User } from '../user/entities/user.entity';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { CloudinaryService } from './services/cloudinary.service';
+import type { ProfileUpdateInput } from '../user/user.service';
+import { EateriesService } from '../eatery/eatery.service';
+import { CooperationsService } from '../cooperation/cooperation.service';
+import { WalletService } from '../wallet/wallet.service';
 import type { AuthTokens } from './dto/auth-tokens.dto';
+import type { UploadedAvatarFile } from './types/uploaded-file.type';
 
 type SafeUser = Pick<User, 'id' | 'username'>;
 
@@ -55,6 +63,10 @@ export class AuthService {
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
     private readonly configService: ConfigService,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly eateriesService: EateriesService,
+    private readonly cooperationsService: CooperationsService,
+    private readonly walletService: WalletService,
   ) {}
 
   private getNumberConfig(key: string, fallback: number): number {
@@ -106,6 +118,7 @@ export class AuthService {
       username: dto.username,
       password: hashed,
     });
+    await this.walletService.createWallet(user.id);
     return { id: user.id, username: user.username };
   }
 
@@ -378,5 +391,65 @@ export class AuthService {
   async logout(userId: number): Promise<{ message: string }> {
     await this.refreshTokenRepository.delete({ userId });
     return { message: 'Logged out' };
+  }
+
+  async changePassword(
+    userId: number,
+    dto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    const user = await this.usersService.findOne(userId);
+    const isMatch = await compare(dto.currentPassword, user.password);
+    if (!isMatch) {
+      throw new UnauthorizedException('Mật khẩu hiện tại không chính xác');
+    }
+
+    const hashed = await hash(dto.newPassword, 10);
+    await this.usersService.updatePassword(userId, hashed);
+    await this.refreshTokenRepository.delete({ userId });
+    return { message: 'Đổi mật khẩu thành công, vui lòng đăng nhập lại' };
+  }
+
+  async updateProfile(
+    userId: number,
+    dto: UpdateProfileDto,
+    avatar?: UploadedAvatarFile,
+  ): Promise<Omit<User, 'password'>> {
+    const payload: ProfileUpdateInput = {
+      fullName: dto.fullName,
+      dateOfBirth: dto.dateOfBirth,
+      gender: dto.gender,
+      address: dto.address,
+      nationality: dto.nationality,
+      citizenId: dto.citizenId,
+      idCardImageUrl: dto.idCardImageUrl,
+      bankName: dto.bankName,
+      bankAccountNumber: dto.bankAccountNumber,
+      bankAccountName: dto.bankAccountName,
+    };
+
+    if (avatar) {
+      const avatarUrl = await this.cloudinaryService.uploadAvatar(avatar);
+      payload.avatarUrl = avatarUrl;
+    }
+
+    const updated = await this.usersService.updateProfile(userId, payload);
+    const { password: _password, ...rest } = updated;
+    return rest;
+  }
+
+  favoriteEatery(userId: number, eateryId: number) {
+    return this.eateriesService.favorite(userId, eateryId);
+  }
+
+  unfavoriteEatery(userId: number, eateryId: number) {
+    return this.eateriesService.unfavorite(userId, eateryId);
+  }
+
+  favoriteCooperation(userId: number, cooperationId: number) {
+    return this.cooperationsService.favorite(userId, cooperationId);
+  }
+
+  unfavoriteCooperation(userId: number, cooperationId: number) {
+    return this.cooperationsService.unfavorite(userId, cooperationId);
   }
 }

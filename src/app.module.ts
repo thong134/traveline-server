@@ -24,6 +24,9 @@ import { FlightModule } from './modules/flight/flight.module';
 import { ChatModule } from './modules/chatbot/chatbot.module';
 import { BlockchainModule } from './modules/blockchain/blockchain.module';
 import { VnAdministrativeModule } from './modules/vn-administrative/vn-administrative.module';
+import { CategoriesModule } from './modules/category/category.module';
+import { EateriesModule } from './modules/eatery/eatery.module';
+import { WalletModule } from './modules/wallet/wallet.module';
 
 @Module({
   imports: [
@@ -66,6 +69,9 @@ import { VnAdministrativeModule } from './modules/vn-administrative/vn-administr
     ChatModule,
     BlockchainModule,
     VnAdministrativeModule,
+    CategoriesModule,
+    EateriesModule,
+    WalletModule,
   ],
 })
 export class AppModule {}

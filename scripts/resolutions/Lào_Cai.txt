@@ -1,0 +1,91 @@
+1. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Hồ Bốn và xã Khao Mang thành xã mới có tên gọi  Khao Mang.
+2. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Mù Cang Chải và các xã Kim Nọi, Mồ Dề, Chế Cu Nha thành xã mới có tên gọi  Mù Cang Chải.
+3. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Nậm Khắt, La Pán Tẩn, Dế Xu Phình và Púng Luông thành xã mới có tên gọi  Púng Luông.
+4. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Cao Phạ và xã Tú Lệ thành xã mới có tên gọi  Tú Lệ.
+5. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Pá Lau, Pá Hu, Túc Đán và Trạm Tấu thành xã mới có tên gọi  Trạm Tấu.
+6. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Trạm Tấu và các xã Bản Công, Hát Lừu, Xà Hồ thành xã mới có tên gọi  Hạnh Phúc.
+7. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Làng Nhì, Bản Mù và Phình Hồ thành xã mới có tên gọi  Phình Hồ.
+8. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Nông trường Liên Sơn, xã Sơn A và xã Nghĩa Phúc thành xã mới có tên gọi  Liên Sơn.
+9. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Nậm Búng, Nậm Lành và Gia Hội thành xã mới có tên gọi  Gia Hội.
+10. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Nậm Mười, Sùng Đô, Suối Quyền và Sơn Lương thành xã mới có tên gọi  Sơn Lương.
+11. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Sơn Thịnh và các xã Đồng Khê, Suối Bu, Suối Giàng thành xã mới có tên gọi  Văn Chấn.
+12. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Nông trường Trần Phú và xã Thượng Bằng La thành xã mới có tên gọi  Thượng Bằng La.
+13. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tân Thịnh (huyện Văn Chấn), Đại Lịch và Chấn Thịnh thành xã mới có tên gọi  Chấn Thịnh.
+14. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Bình Thuận, Minh An và Nghĩa Tâm thành xã mới có tên gọi  Nghĩa Tâm.
+15. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Xuân Tầm và xã Phong Dụ Hạ thành xã mới có tên gọi  Phong Dụ Hạ.
+16. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Châu Quế Thượng và xã Châu Quế Hạ thành xã mới có tên gọi  Châu Quế.
+17. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Lang Thíp và xã Lâm Giang thành xã mới có tên gọi  Lâm Giang.
+18. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Quang Minh, An Bình, Đông An và Đông Cuông thành xã mới có tên gọi  Đông Cuông.
+19. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Đại Sơn, Nà Hẩu và Tân Hợp thành xã mới có tên gọi  Tân Hợp.
+20. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Mậu A và các xã Yên Thái, An Thịnh, Mậu Đông, Ngòi A thành xã mới có tên gọi  Mậu A.
+21. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Đại Phác, Yên Phú, Yên Hợp, Viễn Sơn và Xuân Ái thành xã mới có tên gọi  Xuân Ái.
+22. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã An Lương và xã Mỏ Vàng thành xã mới có tên gọi  Mỏ Vàng.
+23. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Mai Sơn, Khánh Thiện, Tân Phượng và Lâm Thượng thành xã mới có tên gọi  Lâm Thượng.
+24. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Yên Thế và các xã Minh Xuân, Yên Thắng, Liễu Đô thành xã mới có tên gọi  Lục Yên.
+25. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Minh Chuẩn, Tân Lập, Phan Thanh, Khai Trung và Tân Lĩnh thành xã mới có tên gọi  Tân Lĩnh.
+26. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tô Mậu, An Lạc, Động Quan và Khánh Hòa thành xã mới có tên gọi  Khánh Hòa.
+27. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Trúc Lâu, Trung Tâm và Phúc Lợi thành xã mới có tên gọi  Phúc Lợi.
+28. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã An Phú, Vĩnh Lạc, Minh Tiến và Mường Lai thành xã mới có tên gọi  Mường Lai.
+29. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Xuân Long, Ngọc Chấn và Cảm Nhân thành xã mới có tên gọi  Cảm Nhân.
+30. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Phúc Ninh, Mỹ Gia, Xuân Lai, Phúc An và Yên Thành thành xã mới có tên gọi  Yên Thành.
+31. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Thác Bà và các xã Vũ Linh, Bạch Hà, Hán Đà, Vĩnh Kiên, Đại Minh thành xã mới có tên gọi  Thác Bà.
+32. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Yên Bình và các xã Tân Hương, Thịnh Hưng, Đại Đồng thành xã mới có tên gọi  Yên Bình.
+33. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Cảm Ân, Mông Sơn, Tân Nguyên và Bảo Ái thành xã mới có tên gọi  Bảo Ái.
+34. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Cổ Phúc và các xã Báo Đáp, Tân Đồng, Thành Thịnh, Hòa Cuông, Minh Quán thành xã mới có tên gọi  Trấn Yên.
+35. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Hồng Ca và xã Hưng Khánh thành xã mới có tên gọi  Hưng Khánh.
+36. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Hưng Thịnh và xã Lương Thịnh thành xã mới có tên gọi  Lương Thịnh.
+37. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Việt Cường, Vân Hội và Việt Hồng thành xã mới có tên gọi  Việt Hồng.
+38. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Kiên Thành, Y Can và Quy Mông thành xã mới có tên gọi  Quy Mông.
+39. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Đồng Tuyển, Tòng Sành và Cốc San thành xã mới có tên gọi  Cốc San.
+40. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Tả Phời và xã Hợp Thành thành xã mới có tên gọi  Hợp Thành.
+41. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Nông trường Phong Hải và xã Bản Cầm thành xã mới có tên gọi  Phong Hải.
+42. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Phong Niên, Trì Quang và Xuân Quang thành xã mới có tên gọi  Xuân Quang.
+43. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Phố Lu và các xã Sơn Hà, Sơn Hải, Thái Niên thành xã mới có tên gọi  Bảo Thắng.
+44. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Tằng Loỏng và xã Phú Nhuận thành xã mới có tên gọi  Tằng Loỏng.
+45. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Xuân Giao, Thống Nhất và Gia Phú thành xã mới có tên gọi  Gia Phú.
+46. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Nậm Pung, Trung Lèng Hồ và Mường Hum thành xã mới có tên gọi  Mường Hum.
+47. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Dền Thàng, Sàng Ma Sáo và Dền Sáng thành xã mới có tên gọi  Dền Sáng.
+48. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã A Lù và xã Y Tý thành xã mới có tên gọi  Y Tý.
+49. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Nậm Chạc và xã A Mú Sung thành xã mới có tên gọi  A Mú Sung.
+50. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Cốc Mỳ và xã Trịnh Tường thành xã mới có tên gọi  Trịnh Tường.
+51. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Pa Cheo, Mường Vi và Bản Xèo thành xã mới có tên gọi  Bản Xèo.
+52. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Bát Xát và các xã Bản Vược, Bản Qua, Phìn Ngan, Quang Kim thành xã mới có tên gọi  Bát Xát.
+53. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Nậm Mả, Nậm Dạng và Võ Lao thành xã mới có tên gọi  Võ Lao.
+54. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Khánh Yên Trung, Liêm Phú và Khánh Yên Hạ thành xã mới có tên gọi  Khánh Yên.
+55. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Khánh Yên và các xã Khánh Yên Thượng, Sơn Thuỷ, Làng Giàng, Hòa Mạc thành xã mới có tên gọi  Văn Bàn.
+56. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Thẳm Dương và xã Dương Quỳ thành xã mới có tên gọi  Dương Quỳ.
+57. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Nậm Tha và xã Chiềng Ken thành xã mới có tên gọi  Chiềng Ken.
+58. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Nậm Xây và xã Minh Lương thành xã mới có tên gọi  Minh Lương.
+59. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Dần Thàng và xã Nậm Chày thành xã mới có tên gọi  Nậm Chày.
+60. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Phố Ràng và các xã Yên Sơn, Lương Sơn, Xuân Thượng thành xã mới có tên gọi  Bảo Yên.
+61. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tân Tiến, Vĩnh Yên và Nghĩa Đô thành xã mới có tên gọi  Nghĩa Đô.
+62. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Điện Quan, Minh Tân và Thượng Hà thành xã mới có tên gọi  Thượng Hà.
+63. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Tân Dương và xã Xuân Hòa thành xã mới có tên gọi  Xuân Hòa.
+64. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Việt Tiến và xã Phúc Khánh thành xã mới có tên gọi  Phúc Khánh.
+65. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Kim Sơn, Cam Cọn, Tân An, Tân Thượng và Bảo Hà thành xã mới có tên gọi  Bảo Hà.
+66. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Liên Minh và xã Mường Bo thành xã mới có tên gọi  Mường Bo.
+67. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Thanh Bình (thị xã Sa Pa) và xã Bản Hồ thành xã mới có tên gọi  Bản Hồ.
+68. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Hoàng Liên, Mường Hoa và Tả Van thành xã mới có tên gọi  Tả Van.
+69. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Trung Chải và xã Tả Phìn thành xã mới có tên gọi  Tả Phìn.
+70. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Nậm Lúc, Bản Cái và Cốc Lầu thành xã mới có tên gọi  Cốc Lầu.
+71. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Nậm Đét, Cốc Ly và Bảo Nhai thành xã mới có tên gọi  Bảo Nhai.
+72. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Nậm Khánh và xã Bản Liền thành xã mới có tên gọi  Bản Liền.
+73. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Bắc Hà và các xã Na Hối, Thải Giàng Phố, Bản Phố, Hoàng Thu Phố, Nậm Mòn thành xã mới có tên gọi  Bắc Hà.
+74. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Lùng Cải và xã Tả Củ Tỷ thành xã mới có tên gọi  Tả Củ Tỷ.
+75. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tả Van Chư, Lùng Phình và Lùng Thẩn thành xã mới có tên gọi  Lùng Phình.
+76. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tả Ngài Chồ, Dìn Chin, Tả Gia Khâu và Pha Long thành xã mới có tên gọi  Pha Long.
+77. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Mường Khương và các xã Thanh Bình (huyện Mường Khương), Nậm Chảy, Tung Chung Phố, Nấm Lư thành xã mới có tên gọi  Mường Khương.
+78. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Bản Sen, Lùng Vai và Bản Lầu thành xã mới có tên gọi  Bản Lầu.
+79. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Lùng Khấu Nhin, Tả Thàng, La Pan Tẩn và Cao Sơn thành xã mới có tên gọi  Cao Sơn.
+80. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Si Ma Cai và các xã Sán Chải, Nàn Sán, Cán Cấu, Quan Hồ Thẩn thành xã mới có tên gọi  Si Ma Cai.
+81. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Bản Mế, Thào Chư Phìn, Nàn Sín và Sín Chéng thành xã mới có tên gọi  Sín Chéng.
+82. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Tân An, phường Pú Trạng, xã Nghĩa An và xã Nghĩa Sơn thành phường mới có tên gọi là phường Nghĩa Lộ.
+83. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Trung Tâm và các xã Phù Nham, Nghĩa Lợi, Nghĩa Lộ thành phường mới có tên gọi là phường Trung Tâm.
+84. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Cầu Thia và các xã Thanh Lương, Thạch Lương, Phúc Sơn, Hạnh Sơn thành phường mới có tên gọi là phường Cầu Thia.
+85. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Yên Thịnh và các xã Tân Thịnh (thành phố Yên Bái), Văn Phú, Phú Thịnh thành phường mới có tên gọi là phường Văn Phú.
+86. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Đồng Tâm, Yên Ninh, Minh Tân, Nguyễn Thái Học và Hồng Hà thành phường mới có tên gọi là phường Yên Bái.
+87. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Nam Cường (thành phố Yên Bái) và các xã Minh Bảo, Tuy Lộc, Cường Thịnh thành phường mới có tên gọi là phường Nam Cường.
+88. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Hợp Minh và các xã Giới Phiên, Minh Quân, Âu Lâu thành phường mới có tên gọi là phường Âu Lâu.
+89. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Nam Cường (thành phố Lào Cai), Xuân Tăng, Pom Hán, Bắc Cường, Bắc Lệnh, Bình Minh và xã Cam Đường thành phường mới có tên gọi là phường Cam Đường.
+90. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Duyên Hải, Cốc Lếu, Kim Tân, Lào Cai, xã Vạn Hòa và xã Bản Phiệt thành phường mới có tên gọi là phường Lào Cai.
+91. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Hàm Rồng, Ô Quý Hồ, Sa Pả, Cầu Mây, Phan Si Păng và Sa Pa thành phường mới có tên gọi là phường Sa Pa.

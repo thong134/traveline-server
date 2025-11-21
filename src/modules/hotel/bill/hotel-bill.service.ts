@@ -19,6 +19,7 @@ import { CooperationsService } from '../../cooperation/cooperation.service';
 import { VouchersService } from '../../voucher/voucher.service';
 import { HotelBillRoomDto } from './dto/hotel-bill-room.dto';
 import { assignDefined } from '../../../common/utils/object.util';
+import { UsersService } from '../../user/user.service';
 
 interface BillQueryParams {
   cooperationId?: number;
@@ -415,6 +416,8 @@ export class HotelBillsService {
       } else {
         const refundPoints = bill.travelPointsUsed - dto.travelPointsUsed;
         user.travelPoint += refundPoints;
+        user.travelExp += refundPoints;
+        user.userTier = UsersService.resolveTier(user.travelExp);
       }
       bill.travelPointsUsed = dto.travelPointsUsed;
       bill.travelPointsRefunded = false;

@@ -49,7 +49,7 @@ CREATE INDEX idx_provinces_unit ON province_after_communes(administrative_unit_i
 
 
 -- CREATE wards TABLE
-CREATE TABLE wards (
+CREATE TABLE wards_after_communes (
 	code varchar(20) NOT NULL,
 	"name" varchar(255) NOT NULL,
 	name_en varchar(255) NULL,

@@ -5,9 +5,10 @@ import { CooperationsService } from './cooperation.service';
 import { CooperationsController } from './cooperation.controller';
 import { PartnerCatalogService } from './partner-catalog.service';
 import { User } from '../user/entities/user.entity';
+import { UsersModule } from '../user/user.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Cooperation, User])],
+  imports: [TypeOrmModule.forFeature([Cooperation, User]), UsersModule],
   controllers: [CooperationsController],
   providers: [CooperationsService, PartnerCatalogService],
   exports: [CooperationsService, PartnerCatalogService],

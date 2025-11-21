@@ -9,10 +9,17 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { PasswordReset } from './entities/password-reset.entity';
 import { PhoneOtp } from './entities/phone-otp.entity';
+import { CloudinaryService } from './services/cloudinary.service';
+import { EateriesModule } from '../eatery/eatery.module';
+import { CooperationsModule } from '../cooperation/cooperation.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
   imports: [
     UsersModule,
+    EateriesModule,
+    CooperationsModule,
+    WalletModule,
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'uittraveline',
@@ -22,7 +29,7 @@ import { PhoneOtp } from './entities/phone-otp.entity';
     TypeOrmModule.forFeature([PasswordReset]),
     TypeOrmModule.forFeature([PhoneOtp]),
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, CloudinaryService],
   controllers: [AuthController],
   exports: [AuthService],
 })

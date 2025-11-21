@@ -1,0 +1,36 @@
+1. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tà Mung, Tà Hừa, Pha Mu và Mường Kim thành xã mới có tên gọi là xã Mường Kim.
+2. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Ta Gia và xã Khoen On thành xã mới có tên gọi là xã Khoen On.
+3. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số củathị trấn Than Uyên vàcácxã Mường Than, Hua Nà, Mường Cang thành xã mới có tên gọi là xã Than Uyên.
+4. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Phúc Than và xã Mường Mít thành xã mới có tên gọi là xã Mường Than.
+5. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Hố Mít và xã Pắc Ta thành xã mới có tên gọi là xã Pắc Ta.
+6. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Tà Mít và xã Nậm Sỏthành xã mới có tên gọi là xã Nậm Sỏ.
+7. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số củathị trấn Tân Uyênvàcácxã Trung Đồng, Thân Thuộc, Nậm Cần thành xã mới có tên gọi là xã Tân Uyên.
+8. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Phúc Khoa và xã Mường Khoa thành xã mới có tên gọi là xã Mường Khoa.
+9. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số củaxã Nà Tăm vàxã Bản Bothành xã mới có tên gọi là xã Bản Bo.
+10. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Tam Đường, xã Sơn Bình và xã Bình Lư thành xã mới có tên gọi là xã Bình Lư.
+11. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của cácxã Giang Ma,Hồ Thầu và Tả Lèngthành xã mới có tên gọi là xã Tả Lèng.
+12. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Bản Hon và xã Khun Há thành xã mới có tên gọi là xã Khun Há.
+13. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xãNậm Xe, Thèn Sin và Sin Suối Hồthành xã mới có tên gọi là xã Sin Suối Hồ.
+14. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số củathị trấn Phong Thổ vàcácxã Huổi Luông, Ma Li Pho, Mường So thành xã mới có tên gọi là xã Phong Thổ.
+15. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của cácxã Tung Qua Lìn,Mù Sang vàDào Santhành xã mới có tên gọi là xã Dào San.
+16. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Vàng Ma Chải,Mồ Sì San, Pa Vây Sử và Sì Lở Lầu thành xã mới có tên gọi là xã Sì Lở Lầu.
+17. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Hoang Thèn,Bản Lang vàKhổng Làothành xã mới có tên gọi là xã Khổng Lào.
+18. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Làng Mô, Tả Ngảo và Tủa Sín Chải thành xã mới có tên gọi là xã Tủa Sín Chải.
+19. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số củathị trấn Sìn Hồvà các xã Sà Dề Phìn, Phăng Sô Lin,Tả Phìn thành xã mới có tên gọi là xã Sìn Hồ.
+20. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của cácxãPhìn Hồ, Ma Quai vàHồng Thuthành xã mới có tên gọi là xã Hồng Thu.
+21. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xãLùng Thàng, Nậm Cha vàNậm Tăm thành xã mới có tên gọi là xã Nậm Tăm.
+22. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số củacác xã Pa Khóa, Noong Hẻo vàPu Sam Cáp thành xã mới có tên gọi là xã Pu Sam Cáp.
+23. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xãNậm Hăn và xã Nậm Cuổithành xã mới có tên gọi là xã Nậm Cuổi.
+24. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Căn Co và xã Nậm Mạ thành xã mới có tên gọi là xã Nậm Mạ.
+25. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của cácxã Nậm Pì, Pú Đao, Chăn Nưa và Lê Lợithành xã mới có tên gọi là xã Lê Lợi.
+26. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Nậm Nhùn, xãNậm Manh và xã Nậm Hàngthành xã mới có tên gọi là xã Nậm Hàng.
+27. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Nậm Chà và xã Mường Môthành xã mới có tên gọi là xã Mường Mô.
+28. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xãVàng Sanvàxã Hua Bumthành xã mới có tên gọi là xã Hua Bum.
+29. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Nậm Ban, Trung Chải vàPa Tầnthành xã mới có tên gọi là xã Pa Tần.
+30. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Pa Vệ Sủ và xã Bum Nưathành xã mới có tên gọi là xã Bum Nưa.
+31. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số củathị trấn Mường Tè, xã Can Hồ và xã Bum Tở thành xã mới có tên gọi là xã Bum Tở.
+32. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Nậm Khao và xã Mường Tèthành xã mới có tên gọi là xã Mường Tè.
+33. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Ka Lăng và xã Thu Lũmthành xã mới có tên gọi là xã Thu Lũm.
+34. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Tá Bạ và xã Pa Ủthành xã mới có tên gọi là xã Pa Ủ.
+35. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Tân Phong, phường Đông Phong và các xã San Thàng, Nùng Nàng,Bản Giang thành phường mới có tên gọi là phường Tân Phong.
+36. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Đoàn Kết,Quyết Tiến, Quyết Thắng, xã Lản Nhì Thàngvà xãSùng Phài thành phường mới có tên gọi là phường Đoàn Kết.

@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  OneToOne,
 } from 'typeorm';
 import { RefreshToken } from '../../auth/entities/refresh-token.entity';
 import { TravelRoute } from '../../travel-route/entities/travel-route.entity';
@@ -18,6 +19,7 @@ import { RestaurantBooking } from '../../restaurant/booking/entities/restaurant-
 import { BusBill } from '../../bus/bill/entities/bus-bill.entity';
 import { TrainBill } from '../../train/bill/entities/train-bill.entity';
 import { FlightBill } from '../../flight/bill/entities/flight-bill.entity';
+import { UserWallet } from '../../wallet/entities/user-wallet.entity';
 
 @Entity()
 export class User {
@@ -26,9 +28,6 @@ export class User {
 
   @Column({ unique: true })
   username: string;
-
-  @Column({ nullable: true, unique: true })
-  uid?: string;
 
   @Column({ nullable: true })
   name?: string;
@@ -90,6 +89,9 @@ export class User {
   @OneToMany(() => FlightBill, (bill: FlightBill) => bill.user)
   flightBills: FlightBill[];
 
+  @OneToOne(() => UserWallet, (wallet: UserWallet) => wallet.user)
+  wallet?: UserWallet;
+
   @Column({ type: 'date', nullable: true })
   dateOfBirth: Date | null;
 
@@ -127,16 +129,19 @@ export class User {
   favoriteDestinationIds: string[] = [];
 
   @Column('text', { array: true, default: '{}' })
-  favoriteHotelIds: string[] = [];
+  favoriteEateries: string[] = [];
 
   @Column('text', { array: true, default: '{}' })
-  favoriteRestaurantIds: string[] = [];
+  cooperationIds: string[] = [];
 
-  @Column({ nullable: true })
-  avatarUrl: string;
+  @Column({ type: 'text', nullable: true })
+  avatarUrl: string | null;
 
   @Column({ type: 'int', default: 0 })
   travelPoint: number;
+
+  @Column({ type: 'int', default: 0 })
+  travelExp: number;
 
   @Column({ type: 'int', default: 0 })
   travelTrip: number;
@@ -147,7 +152,7 @@ export class User {
   @Column({ type: 'int', default: 0 })
   dayParticipation: number;
 
-  @Column({ default: 'standard' })
+  @Column({ default: 'dong' })
   userTier: string;
 
   @CreateDateColumn()

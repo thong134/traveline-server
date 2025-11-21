@@ -4,13 +4,45 @@ import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { assignDefined } from '../../common/utils/object.util';
+
+export type ProfileUpdateInput = {
+  fullName?: string;
+  dateOfBirth?: string | Date | null;
+  gender?: string;
+  address?: string;
+  nationality?: string;
+  citizenId?: string;
+  idCardImageUrl?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountName?: string;
+  avatarUrl?: string | null;
+};
 
 @Injectable()
 export class UsersService {
+
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
   ) {}
+
+  private static tierThresholds: Array<{ min: number; tier: string }> = [
+    { min: 10000, tier: 'kim_cuong' },
+    { min: 5000, tier: 'vang' },
+    { min: 2000, tier: 'bac' },
+    { min: 0, tier: 'dong' },
+  ];
+
+  static resolveTier(exp: number): string {
+    for (const entry of UsersService.tierThresholds) {
+      if (exp >= entry.min) {
+        return entry.tier;
+      }
+    }
+    return 'dong';
+  }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     const payload = this.prepareUserPayload(createUserDto);
@@ -36,10 +68,6 @@ export class UsersService {
 
   async findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { email } });
-  }
-
-  async findByUid(uid: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { uid } });
   }
 
   async updatePassword(userId: number, hashedPassword: string): Promise<void> {
@@ -76,6 +104,96 @@ export class UsersService {
     return { id, message: 'User deleted' };
   }
 
+  async updateProfile(
+    userId: number,
+    data: ProfileUpdateInput,
+  ): Promise<User> {
+    const user = await this.findOne(userId);
+
+    if (data.dateOfBirth !== undefined) {
+      user.dateOfBirth = data.dateOfBirth
+        ? new Date(data.dateOfBirth)
+        : null;
+    }
+
+    assignDefined(user, {
+      fullName: data.fullName,
+      gender: data.gender,
+      address: data.address,
+      nationality: data.nationality,
+      citizenId: data.citizenId,
+      idCardImageUrl: data.idCardImageUrl,
+      bankName: data.bankName,
+      bankAccountNumber: data.bankAccountNumber,
+      bankAccountName: data.bankAccountName,
+    });
+
+    if (data.avatarUrl !== undefined) {
+      user.avatarUrl = data.avatarUrl ?? null;
+    }
+
+    return this.usersRepository.save(user);
+  }
+
+  async addFavoriteEatery(userId: number, eateryId: number): Promise<string[]> {
+    return this.updateFavoriteList(userId, 'favoriteEateries', eateryId, true);
+  }
+
+  async removeFavoriteEatery(
+    userId: number,
+    eateryId: number,
+  ): Promise<string[]> {
+    return this.updateFavoriteList(userId, 'favoriteEateries', eateryId, false);
+  }
+
+  async addFavoriteCooperation(
+    userId: number,
+    cooperationId: number,
+  ): Promise<string[]> {
+    return this.updateFavoriteList(userId, 'cooperationIds', cooperationId, true);
+  }
+
+  async removeFavoriteCooperation(
+    userId: number,
+    cooperationId: number,
+  ): Promise<string[]> {
+    return this.updateFavoriteList(
+      userId,
+      'cooperationIds',
+      cooperationId,
+      false,
+    );
+  }
+
+  private async updateFavoriteList(
+    userId: number,
+    field: 'favoriteEateries' | 'cooperationIds',
+    entityId: number,
+    add: boolean,
+  ): Promise<string[]> {
+    const user = await this.findOne(userId);
+    const current = Array.isArray(user[field]) ? [...user[field]] : [];
+    const candidate = String(entityId);
+
+    if (add) {
+      if (!current.includes(candidate)) {
+        current.push(candidate);
+      }
+    } else {
+      const idx = current.indexOf(candidate);
+      if (idx === -1) {
+        return current;
+      }
+      current.splice(idx, 1);
+    }
+
+    await this.usersRepository.update(userId, {
+      [field]: current,
+    } as Partial<User>);
+
+    return current;
+  }
+
   private prepareUserPayload(
     dto: CreateUserDto | UpdateUserDto,
   ): Partial<User> {
@@ -84,11 +202,12 @@ export class UsersService {
     const arrayFields = new Set([
       'hobbies',
       'favoriteDestinationIds',
-      'favoriteHotelIds',
-      'favoriteRestaurantIds',
+      'favoriteEateries',
+      'cooperationIds',
     ]);
     const numericFields = new Set([
       'travelPoint',
+      'travelExp',
       'travelTrip',
       'feedbackTimes',
       'dayParticipation',
@@ -117,6 +236,10 @@ export class UsersService {
 
     if (dateOfBirth !== undefined) {
       payload.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
+    }
+
+    if (payload.travelExp !== undefined) {
+      payload.userTier = UsersService.resolveTier(payload.travelExp);
     }
 
     return payload;

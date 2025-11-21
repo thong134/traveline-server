@@ -1,10 +1,8 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import {
-  AdministrativeMappingService,
-  AddressTranslation,
-} from './mapping.service';
+import { AdministrativeMappingService } from './mapping.service';
 import { TranslateAddressDto } from './dto/translate-address.dto';
+import { AdminUnitMapping } from './admin-reform-mapping.entity';
 
 @ApiTags('Vietnam Administrative (Mapping)')
 @Controller('vn-admin/mapping')
@@ -16,8 +14,8 @@ export class AdministrativeMappingController {
     summary:
       'Translate a legacy (before reform) address into the new administrative structure',
   })
-  @ApiOkResponse({ type: Object, isArray: true })
-  translate(@Body() dto: TranslateAddressDto): Promise<AddressTranslation[]> {
+  @ApiOkResponse({ type: AdminUnitMapping, isArray: true })
+  translate(@Body() dto: TranslateAddressDto): Promise<AdminUnitMapping[]> {
     return this.service.translate(dto);
   }
 
@@ -25,8 +23,10 @@ export class AdministrativeMappingController {
   @ApiOperation({
     summary: 'Look up how a specific legacy ward/commune was reorganised',
   })
-  @ApiOkResponse({ type: Object, isArray: true })
-  findByLegacyWard(@Param('code') code: string): Promise<AddressTranslation[]> {
+  @ApiOkResponse({ type: AdminUnitMapping, isArray: true })
+  findByLegacyWard(
+    @Param('code') code: string,
+  ): Promise<AdminUnitMapping[]> {
     return this.service.findByOldWard(code);
   }
 
@@ -34,10 +34,10 @@ export class AdministrativeMappingController {
   @ApiOperation({
     summary: 'Find all legacy units merged into a reform commune',
   })
-  @ApiOkResponse({ type: Object, isArray: true })
+  @ApiOkResponse({ type: AdminUnitMapping, isArray: true })
   findByReformCommune(
     @Param('code') code: string,
-  ): Promise<AddressTranslation[]> {
+  ): Promise<AdminUnitMapping[]> {
     return this.service.findByNewCommune(code);
   }
 }
