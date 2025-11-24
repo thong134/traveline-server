@@ -6,6 +6,7 @@ import { RentalVehicle } from './entities/rental-vehicle.entity';
 import { RentalContract } from '../rental-contract/entities/rental-contract.entity';
 import { VehicleCatalog } from '../vehicle-catalog/entities/vehicle-catalog.entity';
 import { User } from '../user/entities/user.entity';
+import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { User } from '../user/entities/user.entity';
       VehicleCatalog,
       User,
     ]),
+    CloudinaryModule,
   ],
   providers: [RentalVehiclesService],
   controllers: [RentalVehiclesController],

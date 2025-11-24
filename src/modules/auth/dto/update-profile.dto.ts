@@ -38,6 +38,22 @@ export class UpdateProfileDto {
   @IsString()
   idCardImageUrl?: string;
 
+  @ApiPropertyOptional({
+    description: 'Tải lên ảnh đại diện mới',
+    type: 'string',
+    format: 'binary',
+  })
+  @IsOptional()
+  avatar?: unknown;
+
+  @ApiPropertyOptional({
+    description: 'Tải lên ảnh CCCD',
+    type: 'string',
+    format: 'binary',
+  })
+  @IsOptional()
+  idCardImage?: unknown;
+
   @ApiPropertyOptional({ description: 'Tên ngân hàng' })
   @IsOptional()
   @IsString()

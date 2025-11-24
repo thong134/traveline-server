@@ -8,12 +8,16 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
+import type { Express } from 'express';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
+  ApiConsumes,
   ApiTags,
 } from '@nestjs/swagger';
 import { RentalContractsService } from './rental-contract.service';
@@ -28,6 +32,8 @@ import {
   RejectRentalContractDto,
   UpdateRentalContractStatusDto,
 } from './dto/manage-rental-contract.dto';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { imageMulterOptions } from '../../common/upload/image-upload.config';
 
 @ApiTags('rental-contracts')
 @RequireAuth()
@@ -36,13 +42,34 @@ export class RentalContractsController {
   constructor(private readonly service: RentalContractsService) {}
 
   @Post()
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'businessRegisterPhoto', maxCount: 1 },
+        { name: 'citizenFrontPhoto', maxCount: 1 },
+        { name: 'citizenBackPhoto', maxCount: 1 },
+      ],
+      imageMulterOptions,
+    ),
+  )
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Đăng ký hợp đồng cho thuê xe' })
   @ApiCreatedResponse({ description: 'Tạo hợp đồng thành công' })
   create(
     @Body() dto: CreateRentalContractDto,
     @CurrentUser() user: RequestUser,
+    @UploadedFiles()
+    files?: {
+      businessRegisterPhoto?: Express.Multer.File[];
+      citizenFrontPhoto?: Express.Multer.File[];
+      citizenBackPhoto?: Express.Multer.File[];
+    },
   ) {
-    return this.service.create(user.userId, dto);
+    return this.service.create(user.userId, dto, {
+      businessRegisterPhoto: files?.businessRegisterPhoto?.[0],
+      citizenFrontPhoto: files?.citizenFrontPhoto?.[0],
+      citizenBackPhoto: files?.citizenBackPhoto?.[0],
+    });
   }
 
   @Get()
@@ -69,14 +96,35 @@ export class RentalContractsController {
   }
 
   @Patch(':id')
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'businessRegisterPhoto', maxCount: 1 },
+        { name: 'citizenFrontPhoto', maxCount: 1 },
+        { name: 'citizenBackPhoto', maxCount: 1 },
+      ],
+      imageMulterOptions,
+    ),
+  )
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Cập nhật hợp đồng (chủ xe hoặc quản trị viên)' })
   @ApiOkResponse({ description: 'Cập nhật hợp đồng thành công' })
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRentalContractDto,
     @CurrentUser() user: RequestUser,
+    @UploadedFiles()
+    files?: {
+      businessRegisterPhoto?: Express.Multer.File[];
+      citizenFrontPhoto?: Express.Multer.File[];
+      citizenBackPhoto?: Express.Multer.File[];
+    },
   ) {
-    return this.service.update(id, user.userId, dto);
+    return this.service.update(id, user.userId, dto, {
+      businessRegisterPhoto: files?.businessRegisterPhoto?.[0],
+      citizenFrontPhoto: files?.citizenFrontPhoto?.[0],
+      citizenBackPhoto: files?.citizenBackPhoto?.[0],
+    });
   }
 
   @Patch(':id/status')

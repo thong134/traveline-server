@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { TravelRoute } from './entities/travel-route.entity';
@@ -8,6 +8,10 @@ import { UpdateTravelRouteDto } from './dto/update-travel-route.dto';
 import { RouteStopDto } from './dto/route-stop.dto';
 import { Destination } from '../destination/entities/destinations.entity';
 import { User } from '../user/entities/user.entity';
+import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
+import { assertImageFile, assertVideoFile } from '../../common/upload/image-upload.utils';
+import { randomUUID } from 'crypto';
+import type { Express } from 'express';
 
 interface TravelRouteQueryOptions {
   q?: string;
@@ -26,6 +30,7 @@ export class TravelRoutesService {
     private readonly destinationRepo: Repository<Destination>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly cloudinaryService: CloudinaryService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -130,6 +135,276 @@ export class TravelRoutesService {
     return { id, message: 'Travel route deleted' };
   }
 
+  async updateStopTime(
+    routeId: number,
+    stopId: number,
+    payload: { startTime?: string; endTime?: string },
+  ): Promise<RouteStop> {
+    await this.dataSource.transaction(async (manager) => {
+      const stop = await this.getStopOrFail(routeId, stopId, manager);
+
+      if (payload.startTime !== undefined) {
+        stop.startTime = payload.startTime;
+      }
+
+      if (payload.endTime !== undefined) {
+        stop.endTime = payload.endTime;
+      }
+
+      await manager.getRepository(RouteStop).save(stop);
+    });
+
+    return this.getStopOrFail(routeId, stopId, undefined, {
+      withDestination: true,
+    });
+  }
+
+  async updateStopDetails(
+    routeId: number,
+    stopId: number,
+    payload: {
+      notes?: string;
+      travelPoints?: number;
+      uniqueKey?: string;
+      destinationId?: number;
+    },
+  ): Promise<RouteStop> {
+    await this.dataSource.transaction(async (manager) => {
+      const stopRepo = manager.getRepository(RouteStop);
+      const stop = await this.getStopOrFail(routeId, stopId, manager);
+
+      if (payload.destinationId !== undefined) {
+        const destination = await manager
+          .getRepository(Destination)
+          .findOne({ where: { id: payload.destinationId } });
+        if (!destination) {
+          throw new NotFoundException(
+            `Destination ${payload.destinationId} not found`,
+          );
+        }
+        stop.destination = destination;
+        stop.destinationId = destination.id;
+      }
+
+      if (payload.notes !== undefined) {
+        stop.notes = payload.notes;
+      }
+
+      if (payload.travelPoints !== undefined) {
+        stop.travelPoints = Math.max(0, payload.travelPoints);
+      }
+
+      if (payload.uniqueKey !== undefined) {
+        stop.uniqueKey = payload.uniqueKey;
+      }
+
+      await stopRepo.save(stop);
+
+      if (payload.travelPoints !== undefined) {
+        await this.updateRouteAggregates(routeId, manager);
+      }
+    });
+
+    return this.getStopOrFail(routeId, stopId, undefined, {
+      withDestination: true,
+    });
+  }
+
+  async reorderStop(
+    routeId: number,
+    stopId: number,
+    payload: { dayOrder?: number; sequence: number },
+  ): Promise<RouteStop> {
+    await this.dataSource.transaction(async (manager) => {
+      const stopRepo = manager.getRepository(RouteStop);
+      const routeRepo = manager.getRepository(TravelRoute);
+      const stops = await stopRepo.find({
+        where: { routeId },
+        order: { dayOrder: 'ASC', sequence: 'ASC' },
+      });
+
+      const currentIndex = stops.findIndex((stop) => stop.id === stopId);
+      if (currentIndex === -1) {
+        throw new NotFoundException(
+          `Route stop ${stopId} not found in route ${routeId}`,
+        );
+      }
+
+      const target = stops[currentIndex];
+      const oldDay = target.dayOrder;
+      const newDay = payload.dayOrder ?? target.dayOrder;
+      const newSequence = Math.max(1, payload.sequence);
+
+      const remaining = stops.filter((stop) => stop.id !== stopId);
+      const grouped = new Map<number, RouteStop[]>();
+      for (const stop of remaining) {
+        const entries = grouped.get(stop.dayOrder) ?? [];
+        entries.push(stop);
+        grouped.set(stop.dayOrder, entries);
+      }
+
+      const dayStops = grouped.get(newDay) ?? [];
+      target.dayOrder = newDay;
+      const insertIndex = Math.min(newSequence - 1, dayStops.length);
+      dayStops.splice(insertIndex, 0, target);
+      grouped.set(newDay, dayStops);
+
+      if (oldDay !== newDay) {
+        const oldDayStops = grouped.get(oldDay);
+        if (oldDayStops) {
+          grouped.set(oldDay, oldDayStops);
+        }
+      }
+
+      const updated: RouteStop[] = [];
+      const sortedDays = Array.from(grouped.keys()).sort((a, b) => a - b);
+      for (const day of sortedDays) {
+        const stopsInDay = grouped.get(day) ?? [];
+        stopsInDay.forEach((stop, index) => {
+          stop.dayOrder = day;
+          stop.sequence = index + 1;
+          updated.push(stop);
+        });
+      }
+
+      await stopRepo.save(updated);
+
+      const maxDay = updated.length
+        ? Math.max(...updated.map((stop) => stop.dayOrder))
+        : newDay;
+      await routeRepo.update(routeId, {
+        numberOfDays: Math.max(1, maxDay),
+      });
+    });
+
+    return this.getStopOrFail(routeId, stopId, undefined, {
+      withDestination: true,
+    });
+  }
+
+  async updateStopStatus(
+    routeId: number,
+    stopId: number,
+    status: RouteStopStatus,
+  ): Promise<RouteStop> {
+    await this.dataSource.transaction(async (manager) => {
+      const stopRepo = manager.getRepository(RouteStop);
+      const stop = await this.getStopOrFail(routeId, stopId, manager);
+      stop.status = status;
+      stop.travelPoints = this.resolveTravelPoints(status, stop.travelPoints);
+      await stopRepo.save(stop);
+      await this.updateRouteAggregates(routeId, manager);
+    });
+
+    return this.getStopOrFail(routeId, stopId, undefined, {
+      withDestination: true,
+    });
+  }
+
+  async uploadStopMedia(
+    routeId: number,
+    stopId: number,
+    files: { images?: Express.Multer.File[]; videos?: Express.Multer.File[] },
+  ): Promise<RouteStop> {
+    await this.dataSource.transaction(async (manager) => {
+      const stopRepo = manager.getRepository(RouteStop);
+      const stop = await this.getStopOrFail(routeId, stopId, manager);
+
+      const images = files.images ?? [];
+      const videos = files.videos ?? [];
+
+      if (!images.length && !videos.length) {
+        return;
+      }
+
+      const folder = `traveline/travel-routes/${routeId}/stops/${stopId}`;
+
+      for (const file of images) {
+        assertImageFile(file, { fieldName: 'images' });
+        const upload = await this.cloudinaryService.uploadImage(file, {
+          folder,
+          publicId: `${Date.now()}_${randomUUID()}`,
+        });
+        stop.images = [...(stop.images ?? []), upload.url];
+      }
+
+      for (const file of videos) {
+        assertVideoFile(file, { fieldName: 'videos' });
+        const upload = await this.cloudinaryService.uploadVideo(file, {
+          folder,
+          publicId: `${Date.now()}_${randomUUID()}`,
+        });
+        stop.videos = [...(stop.videos ?? []), upload.url];
+      }
+
+      await stopRepo.save(stop);
+    });
+
+    return this.getStopOrFail(routeId, stopId, undefined, {
+      withDestination: true,
+    });
+  }
+
+  async checkInStop(
+    routeId: number,
+    stopId: number,
+    latitude: number,
+    longitude: number,
+    toleranceMeters = 100,
+  ): Promise<{ matched: boolean; distanceMeters: number; stop: RouteStop }> {
+    const result = await this.dataSource.transaction(
+      async (manager): Promise<{
+        matched: boolean;
+        distanceMeters: number;
+        stop: RouteStop;
+      }> => {
+        const stopRepo = manager.getRepository(RouteStop);
+        const stop = await this.getStopOrFail(routeId, stopId, manager, {
+          withDestination: true,
+        });
+
+        if (!stop.destination || stop.destination.latitude == null) {
+          throw new BadRequestException('Điểm dừng chưa liên kết địa điểm');
+        }
+
+        if (stop.destination.longitude == null) {
+          throw new BadRequestException('Địa điểm thiếu thông tin kinh độ');
+        }
+
+        const distance = this.calculateDistanceMeters(
+          latitude,
+          longitude,
+          stop.destination.latitude,
+          stop.destination.longitude,
+        );
+
+        const matched = distance <= toleranceMeters;
+
+        if (matched) {
+          stop.status = RouteStopStatus.COMPLETED;
+          stop.travelPoints = this.resolveTravelPoints(
+            RouteStopStatus.COMPLETED,
+            stop.travelPoints,
+          );
+          await stopRepo.save(stop);
+          await this.updateRouteAggregates(routeId, manager);
+        }
+
+        return { matched, distanceMeters: distance, stop };
+      },
+    );
+
+    const refreshed = await this.getStopOrFail(routeId, stopId, undefined, {
+      withDestination: true,
+    });
+
+    return {
+      matched: result.matched,
+      distanceMeters: result.distanceMeters,
+      stop: refreshed,
+    };
+  }
+
   private async prepareRouteEntity(
     dto: CreateTravelRouteDto,
     userRepository: Repository<User>,
@@ -139,20 +414,53 @@ export class TravelRoutesService {
     return route;
   }
 
+  private async getStopOrFail(
+    routeId: number,
+    stopId: number,
+    manager?: EntityManager,
+    options: { withDestination?: boolean } = {},
+  ): Promise<RouteStop> {
+    const repo = manager?.getRepository(RouteStop) ?? this.stopRepo;
+    const stop = await repo.findOne({
+      where: { id: stopId, routeId },
+      relations: options.withDestination ? { destination: true } : undefined,
+    });
+
+    if (!stop) {
+      throw new NotFoundException(
+        `Route stop ${stopId} not found in route ${routeId}`,
+      );
+    }
+
+    return stop;
+  }
+
+  private calculateDistanceMeters(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
+    const toRad = (value: number) => (value * Math.PI) / 180;
+    const R = 6371000; // Earth radius in meters
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c);
+  }
+
   private async assignRouteFields(
     route: TravelRoute,
     dto: Partial<CreateTravelRouteDto>,
     userRepository: Repository<User>,
   ): Promise<void> {
-    const {
-      userId,
-      ownerUid,
-      name,
-      province,
-      numberOfDays,
-      startDate,
-      endDate,
-    } = dto;
+    const { userId, name, province, numberOfDays, startDate, endDate } = dto;
 
     if (userId) {
       const user = await userRepository.findOne({ where: { id: userId } });
@@ -164,10 +472,6 @@ export class TravelRoutesService {
     } else if (dto.userId === null) {
       route.user = undefined;
       route.userId = undefined;
-    }
-
-    if (ownerUid !== undefined) {
-      route.ownerUid = ownerUid;
     }
 
     if (name !== undefined) {
@@ -221,8 +525,8 @@ export class TravelRoutesService {
       stop.startTime = dto.startTime;
       stop.endTime = dto.endTime;
       stop.notes = dto.notes;
-      stop.images = dto.images ?? [];
-      stop.videos = dto.videos ?? [];
+      stop.images = [];
+      stop.videos = [];
       const status = this.determineStopStatus(
         routeStartDate,
         dto.dayOrder,
@@ -283,7 +587,7 @@ export class TravelRoutesService {
     requestedPoints?: number,
   ): number {
     if (status === RouteStopStatus.COMPLETED) {
-      if (requestedPoints !== undefined) {
+      if (requestedPoints !== undefined && requestedPoints > 0) {
         return Math.max(0, requestedPoints);
       }
       return 50;

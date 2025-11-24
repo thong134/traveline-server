@@ -3,6 +3,7 @@ import { AdministrativeUnitKind, ResolutionClause, ResolutionSource, ResolutionT
 
 const CLAUSE_SPLIT_REGEX = /(?<=[.;])\s+|\n+/;
 const UNIT_PATTERN = /(thị trấn|thị xã|xã|phường|thành phố|quận|huyện)/i;
+const BASIC_UNIT_TOKENS = /(thị\s*trấn|thị\s*xã|xã|phường|thành\s*phố|quận|huyện)/giu;
 
 export function parseResolutionText(rawText: string, resolutionRef: string): ResolutionClause[] {
   const normalized = rawText.normalize('NFC').replace(/\r\n?/g, '\n');
@@ -52,30 +53,159 @@ function parseClause(fragment: string, resolutionRef: string): ResolutionClause 
 
 function sanitizeSourceSegment(segment: string): string {
   let result = segment.trim();
+  result = ensureUnitSpacing(result);
   result = result.replace(/^(sáp nhập|hợp nhất|nhập|điều chỉnh|tách|chuyển)/i, '');
   result = result.replace(/các\s*(thị trấn|thị xã|xã|phường)/gi, '$1');
   result = result.replace(/,\s*/g, ', ');
+  result = result.replace(/\)\s*(?=(?:và|&))/gi, ') ');
   result = result.replace(/([^\s,])(?=(thị trấn|thị xã|xã|phường))/gi, '$1 ');
-  result = result.replace(/\s*(?:và|&)+\s*/gi, ', ');
+  result = result.replace(/\s+(?:và|&)+\s+/gi, ', ');
+  result = result.replace(/(thị trấn|thị xã|xã|phường)([^,;]*?)\s+(?=(thị trấn|thị xã|xã|phường))/gi, (_, type, namePortion) => `${type}${namePortion}, `);
+  result = ensureUnitSpacing(result);
   result = result.replace(/\s+,/g, ',');
   result = normalizeWhitespace(result);
   return result;
 }
 
 function extractSources(segment: string): ResolutionSource[] {
-  const matches = [...segment.matchAll(/(thị trấn|thị xã|xã|phường)\s+([^,;]+)/gi)];
-  const sources = matches
-    .map((match) => buildSource(match[2], match[1]))
-    .filter((source): source is ResolutionSource => Boolean(source));
+  const tokens = mergeParentheticalTokens(
+    segment
+    .split(/[;,]/)
+    .map((token) => normalizeWhitespace(token))
+    .filter((token) => token.length > 0),
+  );
+
+  const sources: ResolutionSource[] = [];
+  let currentType: string | undefined;
+
+  tokens.forEach((token) => {
+    const strippedToken = stripLeadingContext(token);
+    if (!strippedToken) {
+      return;
+    }
+
+    const match = strippedToken.match(/(thị trấn|thị xã|xã|phường)\s+(.+)/i);
+
+    if (match) {
+      currentType = match[1];
+      const source = buildSource(match[2], match[1]);
+      if (source) {
+        sources.push(source);
+      }
+      return;
+    }
+
+    if (!currentType) {
+      return;
+    }
+
+    const implicitName = stripLeadingContext(token);
+    if (!implicitName) {
+      return;
+    }
+
+    const implicitSource = buildSource(implicitName, currentType);
+    if (implicitSource) {
+      sources.push(implicitSource);
+    }
+  });
 
   propagateParentContext(sources);
 
   return sources;
 }
 
+function mergeParentheticalTokens(initialTokens: string[]): string[] {
+  if (initialTokens.length === 0) {
+    return initialTokens;
+  }
+
+  const merged: string[] = [];
+  let buffer = '';
+  let balance = 0;
+
+  initialTokens.forEach((token) => {
+    const openCount = (token.match(/\(/g) ?? []).length;
+    const closeCount = (token.match(/\)/g) ?? []).length;
+
+    if (buffer) {
+      buffer = `${buffer}, ${token}`;
+    } else {
+      buffer = token;
+    }
+
+    balance += openCount - closeCount;
+
+    if (balance <= 0) {
+      merged.push(normalizeWhitespace(buffer));
+      buffer = '';
+      balance = 0;
+    }
+  });
+
+  if (buffer) {
+    merged.push(normalizeWhitespace(buffer));
+  }
+
+  return merged;
+}
+
+function stripLeadingContext(value: string): string {
+  let result = normalizeWhitespace(value);
+
+  if (!result) {
+    return result;
+  }
+
+  const simplifiedToken = normalizeWhitespace(stripAccents(result)).toLowerCase();
+  if (simplifiedToken === 'm' || simplifiedToken === 'm.' || simplifiedToken === 'm..') {
+    return '';
+  }
+
+    if (/^\d+$/.test(simplifiedToken.replace(/\u0000/g, ''))) {
+    return '';
+  }
+
+  const patterns: RegExp[] = [
+    /^(và|cùng|với)\s+/i,
+    /^(toàn bộ|một phần|phần còn lại)\s+diện tích\s+tự nhiên,\s*quy\s+mô\s+dân\s+số\s+của\s+/i,
+    /^(toàn bộ|một phần|phần còn lại)\s+diện tích\s+tự nhiên\s+của\s+/i,
+    /^(toàn bộ|một phần|phần còn lại)\s+quy\s+mô\s+dân\s+số\s+của\s+/i,
+    /^(toàn bộ|một phần|phần còn lại)\s+diện\s+tích,\s*quy\s+mô\s+dân\s+số\s+của\s+/i,
+    /^diện\s+tích,\s*quy\s+mô\s+dân\s+số\s+của\s+/i,
+    /^diện\s+tích\s+tự nhiên,\s*quy\s+mô\s+dân\s+số\s+của\s+/i,
+    /^quy\s+mô\s+dân\s+số\s+của\s+/i,
+    /^(một phần|phần còn lại)\s+/i,
+    /^(của|thuộc)\s+/i,
+    /^diện\s+tích(?:\s+tự\s+nhiên)?(?:,\s*quy\s+mô\s+dân\s+số)?\s*/i,
+    /^quy\s+mô\s+dân\s+số\s*/i,
+  ];
+
+  let previous: string;
+  do {
+    previous = result;
+    patterns.forEach((pattern) => {
+      result = result.replace(pattern, '');
+    });
+    result = result.trim();
+  } while (result && result !== previous);
+
+  if (!result) {
+    return result;
+  }
+
+  const simplified = normalizeWhitespace(stripAccents(result)).toLowerCase();
+  const contextReferencePattern = /^(khoan|diem)\s+\d+(?:\s*,\s*(khoan|diem)\s+\d+)*(?:\s+[đd]ieu\s*nay)?$/;
+  if (contextReferencePattern.test(simplified)) {
+    return '';
+  }
+
+  return result;
+}
+
 function buildSource(namePortion: string, typePortion: string): ResolutionSource | null {
-  const { name, parentName, parentType } = splitParent(namePortion);
-  const cleanedName = cleanupName(name);
+  const { name, parentName, parentType, lockParentContext } = splitParent(namePortion);
+  const cleanedName = cleanupName(name, typePortion);
   if (!cleanedName) {
     return null;
   }
@@ -88,12 +218,13 @@ function buildSource(namePortion: string, typePortion: string): ResolutionSource
     parentName,
     normalizedParentName: parentName ? normalizeName(parentName) : undefined,
     parentType,
+    parentContextLocked: lockParentContext,
   };
 }
 
 function buildTarget(namePortion: string, typePortion: string, rawClause: string): ResolutionTarget {
   const { name, parentName, parentType } = splitParent(namePortion);
-  const cleanedName = cleanupName(name);
+  const cleanedName = cleanupName(name, typePortion);
 
   return {
     raw: buildRawLabel(typePortion, cleanedName) ?? rawClause,
@@ -114,10 +245,21 @@ function buildRawLabel(typePortion: string | undefined, name: string): string | 
   return components.join(' ');
 }
 
-function splitParent(raw: string): { name: string; parentName?: string; parentType?: ResolutionSource['parentType'] } {
-  let working = raw.trim();
+function splitParent(raw: string): {
+  name: string;
+  parentName?: string;
+  parentType?: ResolutionSource['parentType'];
+  lockParentContext?: boolean;
+} {
+  let working = ensureUnitSpacing(raw).trim();
+  const trailingContextPattern = /\s+(?:sau\s+khi|theo\s+quy\s+định|theo\s+quy\s+dinh)\b.*$/i;
+  const trimmedForParent = working.replace(trailingContextPattern, '').trim();
+  if (trimmedForParent) {
+    working = trimmedForParent;
+  }
   let parentName: string | undefined;
   let parentType: ResolutionSource['parentType'] | undefined;
+  let lockParentContext = false;
 
   const parenMatch = working.match(/\(([^()]+)\)\s*$/);
   if (parenMatch && parenMatch.index !== undefined) {
@@ -126,6 +268,7 @@ function splitParent(raw: string): { name: string; parentName?: string; parentTy
       parentName = extracted.parentName;
       parentType = extracted.parentType;
       working = working.slice(0, parenMatch.index).trim();
+      lockParentContext = true;
     }
   }
 
@@ -136,14 +279,16 @@ function splitParent(raw: string): { name: string; parentName?: string; parentTy
     if (extracted.parentName) {
       parentName = extracted.parentName;
       parentType = extracted.parentType ?? parentType;
+      lockParentContext = false;
     }
   }
 
-  return { name, parentName, parentType };
+  return { name, parentName, parentType, lockParentContext };
 }
 
-function cleanupName(raw: string): string {
-  const withoutParens = raw.replace(/\([^)]*\)/g, '');
+function cleanupName(raw: string, typeHint?: string): string {
+  const normalizedRaw = ensureUnitSpacing(raw);
+  const withoutParens = normalizedRaw.replace(/\([^)]*\)/g, '');
   const withoutQuotes = withoutParens.replace(/["“”]/g, '');
   const removedLeadAlias = withoutQuotes
     .replace(/^(mới\s+có\s+tên\s+gọi\s+là)\s+/i, '')
@@ -151,13 +296,71 @@ function cleanupName(raw: string): string {
     .replace(/^(tên\s+gọi\s+là)\s+/i, '')
     .replace(/^(mới\s+đổi\s+tên\s+thành)\s+/i, '')
     .replace(/^(đổi\s+tên\s+thành)\s+/i, '');
-  const removedLeadingType = removedLeadAlias.replace(/^(thị trấn|thị xã|xã|phường|thành phố|quận|huyện|thi tran|thi xa|phuong|thanh pho|quan|huyen)\s+/i, '');
+  const removedLeadingType = removeLeadingType(removedLeadAlias, typeHint);
   const strippedConditions = removedLeadingType
-    .replace(/\s+sau\s+khi\s+.+$/i, '')
-    .replace(/\s+theo\s+quy\s+định.+$/i, '')
-    .replace(/\s+theo\s+quy\s+dinh.+$/i, '');
+    .replace(/(?:^|\s+)sau\s+khi\s+.+$/i, '')
+    .replace(/(?:^|\s+)theo\s+quy\s+định.+$/i, '')
+    .replace(/(?:^|\s+)theo\s+quy\s+dinh.+$/i, '');
   const removedTrailing = strippedConditions.replace(/\s+(cũ|hiện nay)$/i, '');
+  const simplified = normalizeWhitespace(stripAccents(removedTrailing)).toLowerCase();
+  const genericTypeTokens = new Set(['thi tran', 'thi xa', 'xa', 'phuong', 'thanh pho', 'quan', 'huyen', 'dac khu']);
+  if (genericTypeTokens.has(simplified)) {
+    return '';
+  }
+  const contextReferencePattern = /^(khoan|diem)\s+\d+(?:\s*,\s*(khoan|diem)\s+\d+)*(?:\s+[đd]ieu\s*nay)?$/;
+  if (contextReferencePattern.test(simplified)) {
+    return '';
+  }
+  const numericClauseReferencePattern = /^\d+\s+[đd]ieu\s*nay$/;
+  if (numericClauseReferencePattern.test(simplified)) {
+    return '';
+  }
+  const simplifiedWithoutType = simplified.replace(
+    /^(thi tran|thi xa|xa|phuong|thanh pho|quan|huyen)\s+/,
+    '',
+  );
+  if (contextReferencePattern.test(simplifiedWithoutType)) {
+    return '';
+  }
+  if (numericClauseReferencePattern.test(simplifiedWithoutType)) {
+    return '';
+  }
   return normalizeWhitespace(removedTrailing);
+}
+
+function ensureUnitSpacing(value: string): string {
+  if (!value) {
+    return value;
+  }
+
+  let result = value.replace(BASIC_UNIT_TOKENS, (match) => normalizeWhitespace(match));
+  result = result.replace(/(thị trấn|thị xã|xã|phường|thành phố|quận|huyện)(?=\p{Lu})/giu, '$1 ');
+  result = result.replace(/\b(thị trấn|thị xã|xã|phường|thành phố|quận|huyện)\s+(thị trấn|thị xã|xã|phường|thành phố|quận|huyện)\b/gi, '$2');
+  return result;
+}
+
+function removeLeadingType(value: string, typeHint?: string): string {
+  const base = normalizeWhitespace(value);
+  if (!base) {
+    return base;
+  }
+
+  if (typeHint) {
+    const trimmedType = normalizeWhitespace(typeHint);
+    if (trimmedType) {
+      const typeWords = trimmedType.split(/\s+/);
+      const candidateWords = base.split(/\s+/);
+
+      if (candidateWords.length > typeWords.length) {
+        const leadingLiteral = candidateWords.slice(0, typeWords.length).join(' ');
+        if (leadingLiteral.toLowerCase() === trimmedType.toLowerCase()) {
+          return candidateWords.slice(typeWords.length).join(' ');
+        }
+      }
+    }
+  }
+
+  return base.replace(/^(thị trấn|thị xã|xã|phường|thành phố|quận|huyện|đặc khu)\s+/i, '');
 }
 
 interface ParentContext {

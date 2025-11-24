@@ -165,15 +165,17 @@ export function buildLegacyLookup(dataset: LegacyDataset): LegacyLookup {
 }
 
 export function buildReformLookup(dataset: ReformDataset): ReformLookup {
+  const byExactName = new Map<string, WardRecord[]>();
   const byName = new Map<string, WardRecord[]>();
   const byFullName = new Map<string, WardRecord[]>();
 
   dataset.wards.forEach((ward) => {
+    addToIndex(byExactName, normalizeWhitespace(ward.name).toLowerCase(), ward);
     addToIndex(byName, ward.normalizedName, ward);
     addToIndex(byFullName, ward.normalizedFullName, ward);
   });
 
-  return { byName, byFullName };
+  return { byExactName, byName, byFullName };
 }
 
 function buildUnitTypeMap(sql: string, primaryTable: string, fallbackTable?: string): Map<string, AdministrativeUnitDefinition> {

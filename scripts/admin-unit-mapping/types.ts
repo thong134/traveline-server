@@ -63,6 +63,7 @@ export interface LegacyLookup {
 }
 
 export interface ReformLookup {
+  byExactName: Map<string, WardRecord[]>;
   byName: Map<string, WardRecord[]>;
   byFullName: Map<string, WardRecord[]>;
 }
@@ -75,6 +76,7 @@ export interface ResolutionSource {
   parentName?: string;
   normalizedParentName?: string;
   parentType?: 'huyen' | 'thi_xa' | 'thanh_pho' | 'quan' | 'tinh';
+  parentContextLocked?: boolean;
 }
 
 export interface ResolutionTarget {

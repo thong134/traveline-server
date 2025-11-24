@@ -15,10 +15,10 @@
 15. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Xuân Đồng và xã Diên Lâm thành xã mới có tên gọi là xã Diên Lâm.
 16. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Diên Tân, Diên Phước và Diên Thọ thành xã mới có tên gọi là xã Diên Thọ.
 17. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Suối Tiên, Bình Lộc và Suối Hiệp thành xã mới có tên gọi là xã Suối Hiệp.
-18. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Cam Đức, các xã Cam Hải Đông, Cam Hải Tây, Cam Thành Bắc và một phần diện tích, quy mô dân số của các xã Cam Hiệp Bắc, Cam Hiệp Nam, Cam Hòa, Cam Tân, Cam An Bắc, Cam An Nam, Suối Tân thành xã mới có tên gọi là xã Cam Lâm.
+18. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Cam Đức, các xã Cam Hải Đông, Cam Hải Tây, Cam Thành Bắc và xã Cam Hiệp Bắc, Cam Hiệp Nam, Cam Hòa, Cam Tân, Cam An Bắc, Cam An Nam, Suối Tân thành xã mới có tên gọi là xã Cam Lâm.
 19. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Suối Cát và một phần diện tích tự nhiên, quy mô dân số của các xã Cam Hòa, Cam Tân, Suối Tân thành xã mới có tên gọi là xã Suối Dầu.
 20. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Sơn Tân, phần còn lại của xã Cam Hiệp Bắc và xã Cam Hiệp Nam sau khi sắp xếp theo quy định tại khoản 18 Điều này và phần còn lại của các xã Cam Hòa, Cam Tân, Suối Tân sau khi sắp xếp theo quy định tại khoản 18,khoản 19 Điều này thành xã mới có tên gọi là xã Cam Hiệp.
-21. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Cam Phước Tây vàphần còn lại của xãCam An Bắc, xã Cam An Nam sau khi thực hiện sắp xếp theo quy định tại khoản 18 Điều này thành xã mới có tên gọi là xã Cam An.
+21. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Cam Phước Tây và phần còn lại của xã Cam An Bắc, xã Cam An Nam sau khi thực hiện sắp xếp theo quy định tại khoản 18 Điều này thành xã mới có tên gọi là xã Cam An.
 22. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Khánh Bình và xã Khánh Đông thành xã mới có tên gọi là xã Bắc Khánh Vĩnh.
 23. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Khánh Trung và xã Khánh Hiệp thành xã mới có tên gọi là xã Trung Khánh Vĩnh.
 24. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Giang Ly, Khánh Thượng và Khánh Nam thành xã mới có tên gọi là xã Tây Khánh Vĩnh.
@@ -52,7 +52,7 @@
 52. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Phước Hải, Phước Long, Vĩnh Trường, xã Vĩnh Thái và xã Phước Đồng thành phường mới có tên gọi là phường Nam Nha Trang.
 53. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Cam Nghĩa, phườngCam Phúc Bắc và xã Cam Thành Nam thành phường mới có tên gọi là phường Bắc Cam Ranh.
 54. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Cam Phú, Cam Lộc và Cam Phúc Nam thành phường mới có tên gọi là phường Cam Ranh.
-55. Sắp xếp bộ diện tích tự nhiên, quy mô dân số của các phường Cam Thuận, Cam Lợi và Cam Linh thành phường mới có tên gọi là phường Cam Linh.
+55. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Cam Thuận, Cam Lợi và Cam Linh thành phường mới có tên gọi là phường Cam Linh.
 56. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Ba Ngòi và xã Cam Phước Đông thành phường mới có tên gọi là phường Ba Ngòi.
 57. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Ninh Hiệp, phườngNinh Đa, xã Ninh Đông và xã Ninh Phụng thành phường mới có tên gọi là phường Ninh Hòa.
 58. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Ninh Diêm, Ninh Hải, Ninh Thủy và xã Ninh Phước thành phường mới có tên gọi là phường Đông Ninh Hòa.
@@ -62,4 +62,4 @@
 62. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Văn Hải và thị trấn Khánh Hải thành phường mới có tên gọi là phường Ninh Chử.
 63. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Phước Mỹ, phườngBảo An và xã Thành Hải thành phường mới có tên gọi là phường Bảo An.
 64. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Đô Vinh và xã Nhơn Sơn thành phường mới có tên gọi là phường Đô Vinh.
-65. Sắp xếptoàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Trường Sa, xã Song Tử Tây và xã Sinh Tồn thành đặc khu có tên gọi là đặc khu Trường Sa.
+65. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Trường Sa, xã Song Tử Tây và xã Sinh Tồn thành đặc khu có tên gọi là đặc khu Trường Sa.

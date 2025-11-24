@@ -19,19 +19,19 @@
 19. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Tĩnh Túc, xã Triệu Nguyên và xã Vũ Nông thành xã mới có tên gọi là xã Tĩnh Túc.
 20. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Trương Lương và xã Minh Tâm thành xã mới có tên gọi là xã Minh Tâm.
 21. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Ngọc Động (huyện Hà Quảng), Yên Sơn và Thanh Longthành xã mới có tên gọi là xã Thanh Long.
-22. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của cácxã Cần Nông, Lương Thông và Cần Yên thành xã mới có tên gọi là xã Cần Yên.
+22. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Cần Nông, Lương Thông và Cần Yên thành xã mới có tên gọi là xã Cần Yên.
 23. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Thông Nông, xã Đa Thông và xã Lương Can thành xã mới có tên gọi là xã Thông Nông.
-24. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Xuân Hòa và các xãQuý Quân, Sóc Hà,Trường Hàthành xã mới có tên gọi là xã Trường Hà.
+24. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Xuân Hòa và các xã Quý Quân, Sóc Hà, Trường Hà thành xã mới có tên gọi là xã Trường Hà.
 25. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Hồng Sỹ, Ngọc Đào và Mã Ba thành xã mới có tên gọi là xã Hà Quảng.
 26. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Thượng Thôn và xã Lũng Nặm thành xã mới có tên gọi là xã Lũng Nặm.
 27. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Nội Thôn, Cải Viên và Tổng Cọt thành xã mới có tên gọi là xã Tổng Cọt.
-28. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Đức Long (huyện Hòa An), Dân Chủ vàNam Tuấn thành xã mới có tên gọi là xã Nam Tuấn.
+28. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Đức Long (huyện Hòa An), Dân Chủ và Nam Tuấn thành xã mới có tên gọi là xã Nam Tuấn.
 29. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Nước Hai, xã Đại Tiến và xã Hồng Việt thành xã mới có tên gọi là xã Hòa An.
-30. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Thịnh Vượng,Bình Dương vàBạch Đằng thành xã mới có tên gọi là xã Bạch Đằng.
-31. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Quang Trung (huyện Hòa An), Ngũ Lão vàNguyễn Huệ thành xã mới có tên gọi là xã Nguyễn Huệ.
+30. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Thịnh Vượng,Bình Dương và Bạch Đằng thành xã mới có tên gọi là xã Bạch Đằng.
+31. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Quang Trung (huyện Hòa An), Ngũ Lão và Nguyễn Huệ thành xã mới có tên gọi là xã Nguyễn Huệ.
 32. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Quang Trọng và xã Minh Khai thành xã mới có tên gọi là xã Minh Khai.
 33. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Đức Thông và xã Canh Tân thành xã mới có tên gọi là xã Canh Tân.
-34. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của cácxã Hồng Nam, Thái Cường và Kim Đồngthành xã mới có tên gọi là xã Kim Đồng.
+34. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của cácxã Hồng Nam, Thái Cường và Kim Đồng thành xã mới có tên gọi là xã Kim Đồng.
 35. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tiên Thành, Vân Trình và Lê Lai thành xã mới có tên gọi là xã Thạch An.
 36. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Đông Khê, xã Đức Xuân và xã Trọng Con thành xã mới có tên gọi là xã Đông Khê.
 37. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Đức Long (huyện Thạch An), Thụy Hùng và Lê Lợi thành xã mới có tên gọi là xã Đức Long.
@@ -39,13 +39,13 @@
 39. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Hồng Quang, Cách Linh và Bế Văn Đàn thành xã mới có tên gọi là xã Bế Văn Đàn.
 40. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Quảng Hưng, Cai Bộ và Độc Lập thành xã mới có tên gọi là xã Độc Lập.
 41. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Quảng Uyên và các xã Phi Hải, Phúc Sen, Chí Thảo thành xã mới có tên gọi là xã Quảng Uyên.
-42. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Ngọc Động (huyện Quảng Hòa), Tự Do và Hạnh Phúcthành xã mới có tên gọi là xã Hạnh Phúc.
+42. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Ngọc Động (huyện Quảng Hòa), Tự Do và Hạnh Phúc thành xã mới có tên gọi là xã Hạnh Phúc.
 43. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Quang Vinh và xã Quang Hán thành xã mới có tên gọi là xã Quang Hán.
 44. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Trà Lĩnh, xã Cao Chương và xã Quốc Toản thành xã mới có tên gọi là xã Trà Lĩnh.
-45. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Quang Trung(huyện Trùng Khánh), Tri Phương và Xuân Nộithành xã mới có tên gọi là xã Quang Trung.
+45. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Quang Trung(huyện Trùng Khánh), Tri Phương và Xuân Nội thành xã mới có tên gọi là xã Quang Trung.
 46. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Trung Phúc, Cao Thăng và Đoài Dương thành xã mới có tên gọi là xã Đoài Dương.
 47. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Trùng Khánh và các xã Đức Hồng, Lăng Hiếu, Khâm Thành thành xã mới có tên gọi là xã Trùng Khánh.
-48. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Chí Viễn, Phong Châu và Đàm Thủythành xã mới có tên gọi là xã Đàm Thủy.
+48. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Chí Viễn, Phong Châu và Đàm Thủy thành xã mới có tên gọi là xã Đàm Thủy.
 49. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Ngọc Côn, Ngọc Khê, Phong Nặm và Đình Phong thành xã mới có tên gọi là xã Đình Phong.
 50. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Thanh Nhật, xã Thống Nhất và xã Thị Hoa thành xã mới có tên gọi là xã Hạ Lang.
 51. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Minh Long, Đồng Loan và Lý Quốc thành xã mới có tên gọi là xã Lý Quốc.

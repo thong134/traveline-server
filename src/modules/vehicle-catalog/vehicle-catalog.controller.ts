@@ -28,14 +28,14 @@ export class VehicleCatalogController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Create vehicle catalog entry' })
+  @ApiOperation({ summary: 'Tạo mục danh mục phương tiện' })
   @ApiCreatedResponse({ description: 'Vehicle catalog entry created' })
   create(@Body() dto: CreateVehicleCatalogDto) {
     return this.vehicleCatalogService.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List vehicle catalog entries' })
+  @ApiOperation({ summary: 'Danh sách mục danh mục phương tiện' })
   @ApiQuery({ name: 'type', required: false })
   @ApiQuery({ name: 'brand', required: false })
   @ApiQuery({ name: 'model', required: false })
@@ -49,7 +49,7 @@ export class VehicleCatalogController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get vehicle catalog detail' })
+  @ApiOperation({ summary: 'Chi tiết mục danh mục phương tiện' })
   @ApiOkResponse({ description: 'Vehicle catalog detail' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.vehicleCatalogService.findOne(id);
@@ -57,7 +57,7 @@ export class VehicleCatalogController {
 
   @Patch(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Update vehicle catalog entry' })
+  @ApiOperation({ summary: 'Cập nhật mục danh mục phương tiện' })
   @ApiOkResponse({ description: 'Vehicle catalog entry updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -68,7 +68,7 @@ export class VehicleCatalogController {
 
   @Delete(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Delete vehicle catalog entry' })
+  @ApiOperation({ summary: 'Xóa mục danh mục phương tiện' })
   @ApiOkResponse({ description: 'Vehicle catalog entry removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.vehicleCatalogService.remove(id);

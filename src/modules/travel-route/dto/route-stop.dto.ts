@@ -1,12 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsArray,
   IsEnum,
   IsInt,
   IsOptional,
   IsString,
-  IsUrl,
   Matches,
   Min,
 } from 'class-validator';
@@ -66,16 +64,4 @@ export class RouteStopDto {
   @IsOptional()
   @IsString()
   notes?: string;
-
-  @ApiPropertyOptional({ description: 'Photo URLs', type: [String] })
-  @IsOptional()
-  @IsArray()
-  @IsUrl(undefined, { each: true })
-  images?: string[];
-
-  @ApiPropertyOptional({ description: 'Video URLs', type: [String] })
-  @IsOptional()
-  @IsArray()
-  @IsUrl(undefined, { each: true })
-  videos?: string[];
 }

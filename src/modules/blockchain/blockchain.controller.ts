@@ -63,7 +63,7 @@ export class BlockchainController {
   constructor(private readonly blockchainService: BlockchainService) {}
 
   @Post('deploy')
-  @ApiOperation({ summary: 'Deploy the RentalEscrow smart contract' })
+  @ApiOperation({ summary: 'Triển khai smart contract RentalEscrow' })
   @ApiOkResponse({
     description: 'Deployment transaction hash and contract address',
   })
@@ -72,7 +72,7 @@ export class BlockchainController {
   }
 
   @Post('rentals/:rentalId/deposit')
-  @ApiOperation({ summary: 'Deposit rental funds into escrow' })
+  @ApiOperation({ summary: 'Nạp tiền thuê vào tài khoản ký quỹ' })
   @ApiBody({ type: DepositRequestDto })
   @ApiOkResponse({ description: 'Transaction hash for the deposit' })
   deposit(
@@ -88,7 +88,7 @@ export class BlockchainController {
   }
 
   @Post('rentals/:rentalId/release')
-  @ApiOperation({ summary: 'Release escrowed funds to the owner' })
+  @ApiOperation({ summary: 'Giải phóng tiền ký quỹ cho chủ xe' })
   @ApiBody({ type: AdminActionRequestDto })
   @ApiOkResponse({ description: 'Transaction hash for the release' })
   releaseFunds(
@@ -99,7 +99,7 @@ export class BlockchainController {
   }
 
   @Post('rentals/:rentalId/refund')
-  @ApiOperation({ summary: 'Refund escrowed funds back to the renter' })
+  @ApiOperation({ summary: 'Hoàn tiền ký quỹ cho người thuê' })
   @ApiBody({ type: AdminActionRequestDto })
   @ApiOkResponse({ description: 'Transaction hash for the refund' })
   refund(
@@ -110,7 +110,7 @@ export class BlockchainController {
   }
 
   @Get('rentals/:rentalId')
-  @ApiOperation({ summary: 'Retrieve escrow information for a rental' })
+  @ApiOperation({ summary: 'Xem thông tin ký quỹ của hợp đồng thuê' })
   @ApiOkResponse({ description: 'Escrow details for the rental' })
   getRentalInfo(@Param('rentalId', ParseIntPipe) rentalId: number) {
     return this.blockchainService.getRentalInfo(rentalId);

@@ -31,7 +31,7 @@
 31. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Tân Lập và xã Đèo Gia thành xã mới có tên gọi là xã Đèo Gia.
 32. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Hộ Đáp và xã Sơn Hải thành xã mới có tên gọi là xã Sơn Hải.
 33. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Cấm Sơn và xã Tân Sơn thành xã mới có tên gọi là xã Tân Sơn.
-34. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Phong Vân, xã Biên Sơn và toàn bộ diện tích tự nhiên của Trường bắn TB1 thành xã mới có tên gọi là xã Biên Sơn.
+34. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Phong Vân và xã Biên Sơn thành xã mới có tên gọi là xã Biên Sơn.
 35. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Phong Minh và xã Sa Lý thành xã mới có tên gọi là xã Sa Lý.
 36. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Tân Mộc và xã Nam Dương thành xã mới có tên gọi là xã Nam Dương.
 37. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Kiên Thành và xã Kiên Lao thành xã mới có tên gọi là xã Kiên Lao.

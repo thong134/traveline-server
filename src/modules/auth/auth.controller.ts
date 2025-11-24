@@ -9,9 +9,10 @@ import {
   Post,
   Request,
   UnauthorizedException,
+  UploadedFile,
   UseGuards,
   UseInterceptors,
-  UploadedFile,
+  UploadedFiles,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -32,13 +33,13 @@ import { RequestResetDto } from './dto/request-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import type { AuthTokens } from './dto/auth-tokens.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { RequireAuth } from './decorators/require-auth.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { RequestUser } from './decorators/current-user.decorator';
-import type { UploadedAvatarFile } from './types/uploaded-file.type';
+import { imageMulterOptions } from '../../common/upload/image-upload.config';
 
 interface AuthenticatedRequest extends ExpressRequest {
   user: {
@@ -53,14 +54,14 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('signup')
-  @ApiOperation({ summary: 'Register a new account' })
+  @ApiOperation({ summary: 'Đăng ký tài khoản mới' })
   @ApiCreatedResponse({ description: 'Signup successful' })
   async signup(@Body() dto: SignupDto) {
     return this.authService.signup(dto);
   }
 
   @Post('login')
-  @ApiOperation({ summary: 'Authenticate user and issue tokens' })
+  @ApiOperation({ summary: 'Đăng nhập và cấp token' })
   @ApiOkResponse({ description: 'Login successful' })
   async login(@Body() dto: LoginDto): Promise<AuthTokens> {
     const user = await this.authService.validateUser(
@@ -72,14 +73,14 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @ApiOperation({ summary: 'Refresh access token' })
+  @ApiOperation({ summary: 'Làm mới access token' })
   @ApiOkResponse({ description: 'New access token issued' })
   async refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refresh(dto.refreshToken);
   }
 
   @Post('request-reset')
-  @ApiOperation({ summary: 'Request a password reset email' })
+  @ApiOperation({ summary: 'Yêu cầu email đặt lại mật khẩu' })
   @ApiOkResponse({ description: 'Reset email sent when account exists' })
   async requestReset(@Body() dto: RequestResetDto) {
     await this.authService.requestPasswordReset(dto.email);
@@ -87,14 +88,14 @@ export class AuthController {
   }
 
   @Post('reset-password')
-  @ApiOperation({ summary: 'Reset password using emailed token' })
+  @ApiOperation({ summary: 'Đặt lại mật khẩu bằng mã trong email' })
   @ApiOkResponse({ description: 'Password reset success' })
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 
   @Post('phone/start')
-  @ApiOperation({ summary: 'Start phone verification' })
+  @ApiOperation({ summary: 'Bắt đầu xác thực số điện thoại' })
   @ApiOkResponse({ description: 'OTP sent or logged for development' })
   async phoneStart(@Body() dto: PhoneStartDto) {
     return this.authService.startPhoneVerification(
@@ -104,7 +105,7 @@ export class AuthController {
   }
 
   @Post('phone/verify')
-  @ApiOperation({ summary: 'Verify phone with OTP' })
+  @ApiOperation({ summary: 'Xác thực số điện thoại bằng OTP' })
   @ApiOkResponse({ description: 'Phone verified' })
   async phoneVerify(@Body() dto: PhoneVerifyDto) {
     return this.authService.verifyPhoneCode(
@@ -117,7 +118,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiOperation({ summary: 'Lấy thông tin người dùng hiện tại' })
   @ApiOkResponse({ description: 'Authenticated user payload' })
   profile(@Request() req: AuthenticatedRequest) {
     return req.user; // từ JwtStrategy.validate()
@@ -126,7 +127,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Revoke refresh tokens for current user' })
+  @ApiOperation({ summary: 'Thu hồi refresh token của người dùng hiện tại' })
   @ApiOkResponse({ description: 'Logout confirmation' })
   async logout(@Request() req: AuthenticatedRequest) {
     return this.authService.logout(req.user.userId);
@@ -145,16 +146,34 @@ export class AuthController {
 
   @Patch('profile')
   @RequireAuth()
-  @UseInterceptors(FileInterceptor('avatar'))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'avatar', maxCount: 1 },
+        { name: 'idCardImage', maxCount: 1 },
+      ],
+      imageMulterOptions,
+    ),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Cập nhật thông tin người dùng' })
   @ApiOkResponse({ description: 'Thông tin người dùng đã được cập nhật' })
   updateProfile(
     @CurrentUser() user: RequestUser,
     @Body() dto: UpdateProfileDto,
-    @UploadedFile() avatar?: UploadedAvatarFile,
+    @UploadedFiles()
+    files?: {
+      avatar?: Express.Multer.File[];
+      idCardImage?: Express.Multer.File[];
+    },
   ) {
-    return this.authService.updateProfile(user.userId, dto, avatar);
+    const avatar = files?.avatar?.[0];
+    const idCardImage = files?.idCardImage?.[0];
+
+    return this.authService.updateProfile(user.userId, dto, {
+      avatar,
+      idCardImage,
+    });
   }
 
 //   @Post('favorites/eateries/:eateryId')

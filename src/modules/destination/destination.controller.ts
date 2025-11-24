@@ -34,14 +34,14 @@ export class DestinationsController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Create a destination' })
+  @ApiOperation({ summary: 'Tạo địa điểm du lịch' })
   @ApiCreatedResponse({ description: 'Destination created' })
   create(@Body() dto: CreateDestinationDto) {
     return this.destinationsService.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Search destinations' })
+  @ApiOperation({ summary: 'Tìm kiếm địa điểm du lịch' })
   @ApiQuery({
     name: 'q',
     required: false,
@@ -92,7 +92,7 @@ export class DestinationsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a destination by id' })
+  @ApiOperation({ summary: 'Chi tiết địa điểm theo ID' })
   @ApiOkResponse({ description: 'Destination detail' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.destinationsService.findOne(id);
@@ -134,7 +134,7 @@ export class DestinationsController {
 
   @Patch(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Update destination' })
+  @ApiOperation({ summary: 'Cập nhật địa điểm du lịch' })
   @ApiOkResponse({ description: 'Destination updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -145,7 +145,7 @@ export class DestinationsController {
 
   @Delete(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Delete destination' })
+  @ApiOperation({ summary: 'Xóa địa điểm du lịch' })
   @ApiOkResponse({ description: 'Destination deleted' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.destinationsService.remove(id);

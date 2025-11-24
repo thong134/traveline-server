@@ -34,14 +34,14 @@ export class HotelBillsController {
   constructor(private readonly hotelBillsService: HotelBillsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create hotel booking bill' })
+  @ApiOperation({ summary: 'Tạo hóa đơn đặt phòng khách sạn' })
   @ApiCreatedResponse({ description: 'Hotel bill created' })
   create(@Body() dto: CreateHotelBillDto, @CurrentUser() user: RequestUser) {
     return this.hotelBillsService.create(user.userId, dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List hotel bills' })
+  @ApiOperation({ summary: 'Danh sách hóa đơn khách sạn' })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false, enum: HotelBillStatus })
   @ApiQuery({ name: 'voucherId', required: false, type: Number })
@@ -66,7 +66,7 @@ export class HotelBillsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get hotel bill detail' })
+  @ApiOperation({ summary: 'Chi tiết hóa đơn khách sạn' })
   @ApiOkResponse({ description: 'Hotel bill detail' })
   findOne(
     @Param('id', ParseIntPipe) id: number,
@@ -76,7 +76,7 @@ export class HotelBillsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update hotel bill' })
+  @ApiOperation({ summary: 'Cập nhật hóa đơn khách sạn' })
   @ApiOkResponse({ description: 'Hotel bill updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -87,7 +87,7 @@ export class HotelBillsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete hotel bill' })
+  @ApiOperation({ summary: 'Xóa hóa đơn khách sạn' })
   @ApiOkResponse({ description: 'Hotel bill removed' })
   remove(
     @Param('id', ParseIntPipe) id: number,

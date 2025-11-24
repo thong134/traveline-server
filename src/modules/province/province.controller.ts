@@ -29,14 +29,14 @@ export class ProvincesController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Create a province' })
+  @ApiOperation({ summary: 'Tạo tỉnh/thành' })
   @ApiCreatedResponse({ description: 'Province created' })
   create(@Body() dto: CreateProvinceDto) {
     return this.provincesService.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List provinces' })
+  @ApiOperation({ summary: 'Danh sách tỉnh/thành' })
   @ApiQuery({
     name: 'q',
     required: false,
@@ -63,7 +63,7 @@ export class ProvincesController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get province detail' })
+  @ApiOperation({ summary: 'Chi tiết tỉnh/thành' })
   @ApiOkResponse({ description: 'Province detail' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.provincesService.findOne(id);
@@ -71,7 +71,7 @@ export class ProvincesController {
 
   @Patch(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Update province' })
+  @ApiOperation({ summary: 'Cập nhật tỉnh/thành' })
   @ApiOkResponse({ description: 'Province updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -82,7 +82,7 @@ export class ProvincesController {
 
   @Delete(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Remove province' })
+  @ApiOperation({ summary: 'Xóa tỉnh/thành' })
   @ApiOkResponse({ description: 'Province removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.provincesService.remove(id);

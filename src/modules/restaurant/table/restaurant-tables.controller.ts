@@ -28,14 +28,14 @@ export class RestaurantTablesController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Create restaurant table' })
+  @ApiOperation({ summary: 'Tạo bàn nhà hàng' })
   @ApiCreatedResponse({ description: 'Restaurant table created' })
   create(@Body() dto: CreateRestaurantTableDto) {
     return this.service.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List restaurant tables' })
+  @ApiOperation({ summary: 'Danh sách bàn nhà hàng' })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
   @ApiQuery({ name: 'active', required: false, type: Boolean })
   @ApiOkResponse({ description: 'Restaurant table list' })
@@ -50,7 +50,7 @@ export class RestaurantTablesController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get restaurant table detail' })
+  @ApiOperation({ summary: 'Chi tiết bàn nhà hàng' })
   @ApiOkResponse({ description: 'Restaurant table detail' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.service.findOne(id);
@@ -58,7 +58,7 @@ export class RestaurantTablesController {
 
   @Patch(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Update restaurant table' })
+  @ApiOperation({ summary: 'Cập nhật bàn nhà hàng' })
   @ApiOkResponse({ description: 'Restaurant table updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -69,7 +69,7 @@ export class RestaurantTablesController {
 
   @Delete(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Remove restaurant table' })
+  @ApiOperation({ summary: 'Xóa bàn nhà hàng' })
   @ApiOkResponse({ description: 'Restaurant table removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);

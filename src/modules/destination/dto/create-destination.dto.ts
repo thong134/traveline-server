@@ -38,6 +38,16 @@ export class CreateDestinationDto {
   @IsString()
   province?: string;
 
+  @ApiPropertyOptional({ description: 'Legacy district name' })
+  @IsOptional()
+  @IsString()
+  district?: string;
+
+  @ApiPropertyOptional({ description: 'Legacy district code' })
+  @IsOptional()
+  @IsString()
+  districtCode?: string;
+
   @ApiPropertyOptional({ description: 'Specific street address' })
   @IsOptional()
   @IsString()

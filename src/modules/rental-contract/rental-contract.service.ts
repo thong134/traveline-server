@@ -19,6 +19,15 @@ import {
 } from './dto/manage-rental-contract.dto';
 import { User } from '../user/entities/user.entity';
 import { assignDefined } from '../../common/utils/object.util';
+import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
+import type { Express } from 'express';
+import { assertImageFile } from '../../common/upload/image-upload.utils';
+
+type ContractImageFiles = {
+  businessRegisterPhoto?: Express.Multer.File;
+  citizenFrontPhoto?: Express.Multer.File;
+  citizenBackPhoto?: Express.Multer.File;
+};
 
 @Injectable()
 export class RentalContractsService {
@@ -27,6 +36,7 @@ export class RentalContractsService {
     private readonly repo: Repository<RentalContract>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   private async getContractOrFail(id: number): Promise<RentalContract> {
@@ -43,6 +53,7 @@ export class RentalContractsService {
   async create(
     userId: number,
     dto: CreateRentalContractDto,
+    files: ContractImageFiles = {},
   ): Promise<RentalContract> {
     if (!dto.termsAccepted) {
       throw new BadRequestException(
@@ -67,7 +78,14 @@ export class RentalContractsService {
       averageRating: '0.00',
     });
 
-    return this.repo.save(contract);
+    const saved = await this.repo.save(contract);
+
+    const updated = await this.applyContractImages(saved, files);
+    if (updated) {
+      return this.repo.save(saved);
+    }
+
+    return saved;
   }
 
   async findAll(
@@ -106,6 +124,7 @@ export class RentalContractsService {
     id: number,
     userId: number,
     dto: UpdateRentalContractDto,
+    files: ContractImageFiles = {},
   ): Promise<RentalContract> {
     const contract = await this.findOne(id, userId);
 
@@ -134,6 +153,8 @@ export class RentalContractsService {
     } else if (dto.rejectedReason !== undefined) {
       contract.rejectedReason = dto.rejectedReason;
     }
+
+    const updated = await this.applyContractImages(contract, files);
 
     return this.repo.save(contract);
   }
@@ -245,5 +266,52 @@ export class RentalContractsService {
     } else if (options.rejectedReason !== undefined) {
       contract.rejectedReason = options.rejectedReason;
     }
+  }
+
+  private async applyContractImages(
+    contract: RentalContract,
+    files: ContractImageFiles,
+  ): Promise<boolean> {
+    let hasChanges = false;
+
+    const mappings: Array<{
+      key: keyof ContractImageFiles & keyof RentalContract;
+      file?: Express.Multer.File;
+      label: string;
+    }> = [
+      {
+        key: 'businessRegisterPhoto',
+        file: files.businessRegisterPhoto,
+        label: 'business-register',
+      },
+      {
+        key: 'citizenFrontPhoto',
+        file: files.citizenFrontPhoto,
+        label: 'citizen-front',
+      },
+      {
+        key: 'citizenBackPhoto',
+        file: files.citizenBackPhoto,
+        label: 'citizen-back',
+      },
+    ];
+
+    for (const mapping of mappings) {
+      if (!mapping.file) {
+        continue;
+      }
+
+      assertImageFile(mapping.file, { fieldName: mapping.key });
+      const upload = await this.cloudinaryService.uploadImage(mapping.file, {
+        folder: `traveline/rental-contracts/${contract.userId}`,
+        publicId: contract.id
+          ? `${contract.id}_${mapping.label}`
+          : undefined,
+      });
+      (contract as unknown as Record<string, unknown>)[mapping.key] = upload.url;
+      hasChanges = true;
+    }
+
+    return hasChanges;
   }
 }

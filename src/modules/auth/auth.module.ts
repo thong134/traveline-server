@@ -9,7 +9,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { PasswordReset } from './entities/password-reset.entity';
 import { PhoneOtp } from './entities/phone-otp.entity';
-import { CloudinaryService } from './services/cloudinary.service';
+import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 import { EateriesModule } from '../eatery/eatery.module';
 import { CooperationsModule } from '../cooperation/cooperation.module';
 import { WalletModule } from '../wallet/wallet.module';
@@ -28,8 +28,9 @@ import { WalletModule } from '../wallet/wallet.module';
     TypeOrmModule.forFeature([RefreshToken]),
     TypeOrmModule.forFeature([PasswordReset]),
     TypeOrmModule.forFeature([PhoneOtp]),
+    CloudinaryModule,
   ],
-  providers: [AuthService, JwtStrategy, CloudinaryService],
+  providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
   exports: [AuthService],
 })

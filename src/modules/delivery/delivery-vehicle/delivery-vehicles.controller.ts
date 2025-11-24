@@ -28,14 +28,14 @@ export class DeliveryVehiclesController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Create delivery vehicle type' })
+  @ApiOperation({ summary: 'Tạo phương tiện giao hàng' })
   @ApiCreatedResponse({ description: 'Delivery vehicle created' })
   create(@Body() dto: CreateDeliveryVehicleDto) {
     return this.service.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List delivery vehicles' })
+  @ApiOperation({ summary: 'Danh sách phương tiện giao hàng' })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
   @ApiOkResponse({ description: 'Delivery vehicle list' })
   findAll(@Query('cooperationId') cooperationId?: string) {
@@ -45,7 +45,7 @@ export class DeliveryVehiclesController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get delivery vehicle detail' })
+  @ApiOperation({ summary: 'Chi tiết phương tiện giao hàng' })
   @ApiOkResponse({ description: 'Delivery vehicle detail' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.service.findOne(id);
@@ -53,7 +53,7 @@ export class DeliveryVehiclesController {
 
   @Patch(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Update delivery vehicle' })
+  @ApiOperation({ summary: 'Cập nhật phương tiện giao hàng' })
   @ApiOkResponse({ description: 'Delivery vehicle updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -64,7 +64,7 @@ export class DeliveryVehiclesController {
 
   @Delete(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Remove delivery vehicle' })
+  @ApiOperation({ summary: 'Xóa phương tiện giao hàng' })
   @ApiOkResponse({ description: 'Delivery vehicle removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);

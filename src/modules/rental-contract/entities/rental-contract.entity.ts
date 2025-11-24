@@ -6,6 +6,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  RelationId,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
@@ -30,7 +31,7 @@ export class RentalContract {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column()
+  @RelationId((contract: RentalContract) => contract.user)
   userId: number;
 
   @Column({ nullable: true })
@@ -74,6 +75,15 @@ export class RentalContract {
 
   @Column({ nullable: true })
   bankAccountName?: string;
+
+  @Column({ nullable: true })
+  fullName?: string;
+
+  @Column({ nullable: true })
+  email?: string;
+
+  @Column({ nullable: true })
+  phoneNumber?: string;
 
   @Column({ default: false })
   termsAccepted: boolean;

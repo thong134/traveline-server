@@ -21,13 +21,14 @@ import { SignupDto } from './dto/signup.dto';
 import { User } from '../user/entities/user.entity';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { CloudinaryService } from './services/cloudinary.service';
+import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import type { ProfileUpdateInput } from '../user/user.service';
 import { EateriesService } from '../eatery/eatery.service';
 import { CooperationsService } from '../cooperation/cooperation.service';
 import { WalletService } from '../wallet/wallet.service';
 import type { AuthTokens } from './dto/auth-tokens.dto';
-import type { UploadedAvatarFile } from './types/uploaded-file.type';
+import type { Express } from 'express';
+import { assertImageFile } from '../../common/upload/image-upload.utils';
 
 type SafeUser = Pick<User, 'id' | 'username'>;
 
@@ -412,7 +413,10 @@ export class AuthService {
   async updateProfile(
     userId: number,
     dto: UpdateProfileDto,
-    avatar?: UploadedAvatarFile,
+    files: {
+      avatar?: Express.Multer.File;
+      idCardImage?: Express.Multer.File;
+    } = {},
   ): Promise<Omit<User, 'password'>> {
     const payload: ProfileUpdateInput = {
       fullName: dto.fullName,
@@ -427,9 +431,25 @@ export class AuthService {
       bankAccountName: dto.bankAccountName,
     };
 
-    if (avatar) {
-      const avatarUrl = await this.cloudinaryService.uploadAvatar(avatar);
-      payload.avatarUrl = avatarUrl;
+    if (files.avatar) {
+      assertImageFile(files.avatar, { fieldName: 'avatar' });
+      const upload = await this.cloudinaryService.uploadImage(files.avatar, {
+        folder: `traveline/users/${userId}`,
+        publicId: 'avatar',
+      });
+      payload.avatarUrl = upload.url;
+    }
+
+    if (files.idCardImage) {
+      assertImageFile(files.idCardImage, { fieldName: 'idCardImage' });
+      const upload = await this.cloudinaryService.uploadImage(
+        files.idCardImage,
+        {
+          folder: `traveline/users/${userId}`,
+          publicId: 'id-card',
+        },
+      );
+      payload.idCardImageUrl = upload.url;
     }
 
     const updated = await this.usersService.updateProfile(userId, payload);

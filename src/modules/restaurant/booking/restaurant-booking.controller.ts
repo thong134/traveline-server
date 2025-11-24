@@ -34,7 +34,7 @@ export class RestaurantBookingsController {
   constructor(private readonly service: RestaurantBookingsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create restaurant booking' })
+  @ApiOperation({ summary: 'Tạo đặt bàn nhà hàng' })
   @ApiCreatedResponse({ description: 'Restaurant booking created' })
   create(
     @Body() dto: CreateRestaurantBookingDto,
@@ -44,7 +44,7 @@ export class RestaurantBookingsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List restaurant bookings' })
+  @ApiOperation({ summary: 'Danh sách đặt bàn nhà hàng' })
   @ApiQuery({ name: 'tableId', required: false, type: Number })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false, enum: RestaurantBookingStatus })
@@ -63,7 +63,7 @@ export class RestaurantBookingsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get restaurant booking detail' })
+  @ApiOperation({ summary: 'Chi tiết đặt bàn nhà hàng' })
   @ApiOkResponse({ description: 'Restaurant booking detail' })
   findOne(
     @Param('id', ParseIntPipe) id: number,
@@ -73,7 +73,7 @@ export class RestaurantBookingsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update restaurant booking' })
+  @ApiOperation({ summary: 'Cập nhật đặt bàn nhà hàng' })
   @ApiOkResponse({ description: 'Restaurant booking updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -84,7 +84,7 @@ export class RestaurantBookingsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Remove restaurant booking' })
+  @ApiOperation({ summary: 'Xóa đặt bàn nhà hàng' })
   @ApiOkResponse({ description: 'Restaurant booking removed' })
   remove(
     @Param('id', ParseIntPipe) id: number,

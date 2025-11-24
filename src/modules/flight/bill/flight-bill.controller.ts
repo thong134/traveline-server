@@ -34,14 +34,14 @@ export class FlightBillsController {
   constructor(private readonly service: FlightBillsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create flight bill' })
+  @ApiOperation({ summary: 'Tạo hóa đơn chuyến bay' })
   @ApiCreatedResponse({ description: 'Flight bill created' })
   create(@Body() dto: CreateFlightBillDto, @CurrentUser() user: RequestUser) {
     return this.service.create(user.userId, dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List flight bills' })
+  @ApiOperation({ summary: 'Danh sách hóa đơn chuyến bay' })
   @ApiQuery({ name: 'flightId', required: false, type: Number })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false, enum: FlightBillStatus })
@@ -60,7 +60,7 @@ export class FlightBillsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get flight bill detail' })
+  @ApiOperation({ summary: 'Chi tiết hóa đơn chuyến bay' })
   @ApiOkResponse({ description: 'Flight bill detail' })
   findOne(
     @Param('id', ParseIntPipe) id: number,
@@ -70,7 +70,7 @@ export class FlightBillsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update flight bill' })
+  @ApiOperation({ summary: 'Cập nhật hóa đơn chuyến bay' })
   @ApiOkResponse({ description: 'Flight bill updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -81,7 +81,7 @@ export class FlightBillsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Remove flight bill' })
+  @ApiOperation({ summary: 'Xóa hóa đơn chuyến bay' })
   @ApiOkResponse({ description: 'Flight bill removed' })
   remove(
     @Param('id', ParseIntPipe) id: number,

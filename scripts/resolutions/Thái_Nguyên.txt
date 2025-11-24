@@ -1,7 +1,7 @@
 1. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Thịnh Đức, Bình Sơn và Tân Cương thành xã mới có tên gọi là xã Tân Cương.
 2. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Hùng Sơn và các xã Phúc Xuân, Phúc Trìu, Tân Thái, Phúc Tân thành xã mới có tên gọi là xã Đại Phúc.
 3. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Vạn Phái và xã Thành Công thành xã mới có tên gọi là xã Thành Công.
-4. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Chợ Chuvà các xã Phúc Chu, Bảo Linh, Đồng Thịnh thành xã mới có tên gọi là xã Định Hóa.
+4. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Chợ Chu và các xã Phúc Chu, Bảo Linh, Đồng Thịnh thành xã mới có tên gọi là xã Định Hóa.
 5. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Trung Lương, Định Biên, Thanh Định và Bình Yên thành xã mới có tên gọi là xã Bình Yên.
 6. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Phú Tiến, Bộc Nhiêu và Trung Hội thành xã mới có tên gọi là xã Trung Hội.
 7. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tân Dương, Tân Thịnh và Phượng Tiến thành xã mới có tên gọi là xã Phượng Tiến.
@@ -71,20 +71,20 @@
 71. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tân Sơn, Cao Kỳ và Hòa Mục thành xã mới có tên gọi là xã Tân Kỳ.
 72. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Thanh Vận, Mai Lạp và Thanh Mai thành xã mới có tên gọi là xã Thanh Mai.
 73. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Nông Hạ và xã Thanh Thịnh thành xã mới có tên gọi là xã Thanh Thịnh.
-74. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số củathị trấn Đồng Tâm, xãQuảng Chu và xãNhư Cố thành xã mới có tên gọi là xã Chợ Mới.
+74. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số củathị trấn Đồng Tâm, xãQuảng Chu và xã Như Cố thành xã mới có tên gọi là xã Chợ Mới.
 75. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Yên Cư, Bình Văn và Yên Hân thành xã mới có tên gọi là xã Yên Bình.
 76. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Trưng Vương, Túc Duyên, Đồng Quang, Quang Trung, Hoàng Văn Thụ, Tân Thịnh,Phan Đình Phùng và một phần diện tích tự nhiên, quy mô dân số của phường Gia Sàngthành phường mới có tên gọi là phường Phan Đình Phùng.
 77. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Chùa Hang, phường Đồng Bẩm và các xã Cao Ngạn, Huống Thượng,Linh Sơnthành phường mới có tên gọi là phường Linh Sơn.
-78. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Trung Thành (thành phố Thái Nguyên), Phú Xá,Tân Thành, Tân Lập, Tích Lương vàmột phần diện tích tự nhiên, quy mô dân số phường Cam Giá thành phường mới có tên gọi là phường Tích Lương.
+78. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Trung Thành (thành phố Thái Nguyên), Phú Xá,Tân Thành, Tân Lập, Tích Lương và một phần diện tích tự nhiên, quy mô dân số phường Cam Giá thành phường mới có tên gọi là phường Tích Lương.
 79. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Hương Sơn, xã Đồng Liên,phần còn lại của phường Gia Sàngsau khi sắp xếp theo quy định tại khoản 76 Điều này và phần còn lại củaphường Cam Giásau khi sắp xếp theo quy định tại khoản78 Điều nàythành phường mới có tên gọi là phường Gia Sàng.
 80. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Thịnh Đán, xã Phúc Hà và xã Quyết Thắng thành phường mới có tên gọi là phường Quyết Thắng.
 81. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Tân Long, Quang Vinh,Quan Triều và xã Sơn Cẩm thành phường mới có tên gọi là phường Quan Triều.
 82. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Thắng Lợi, Phố Cò và Cải Đan thành phường mới có tên gọi là phường Sông Công.
 83. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Mỏ Chè, phường Châu Sơn vàxã Bá Xuyênthành phường mới có tên gọi là phường Bá Xuyên.
-84. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Lương Sơn,phườngBách Quang và xã Tân Quangthành phường mới có tên gọi là phường Bách Quang.
+84. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Lương Sơn,phường Bách Quang và xã Tân Quang thành phường mới có tên gọi là phường Bách Quang.
 85. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Ba Hàng, Hồng Tiến, Bãi Bông và Đắc Sơn thành phường mới có tên gọi là phường Phổ Yên.
 86. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Nam Tiến, Đồng Tiến, Tân Hương và Tiên Phong thành phường mới có tên gọi là phường Vạn Xuân.
-87. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Trung Thành (thành phố Phổ Yên), Đông Cao,Tân Phú và Thuận Thànhthành phường mới có tên gọi là phường Trung Thành.
+87. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Trung Thành (thành phố Phổ Yên), Đông Cao,Tân Phú và Thuận Thành thành phường mới có tên gọi là phường Trung Thành.
 88. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Bắc Sơn, xã Minh Đức và xã Phúc Thuận thành phường mới có tên gọi là phường Phúc Thuận.
 89. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Nguyễn Thị Minh Khai, Huyền Tụng và Đức Xuân thành phường mới có tên gọi là phường Đức Xuân.
 90. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Sông Cầu, Phùng Chí Kiên, Xuất Hóa và xã Nông Thượng thành phường mới có tên gọi là phường Bắc Kạn.

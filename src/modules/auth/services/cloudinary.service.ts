@@ -1,7 +1,16 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { v2 as cloudinary, UploadApiErrorResponse, UploadApiResponse } from 'cloudinary';
+import {
+  v2 as cloudinary,
+  UploadApiErrorResponse,
+  UploadApiResponse,
+} from 'cloudinary';
 import type { UploadedAvatarFile } from '../types/uploaded-file.type';
+
+export type UploadAvatarResult = {
+  publicId: string;
+  url: string;
+};
 
 @Injectable()
 export class CloudinaryService {
@@ -27,30 +36,101 @@ export class CloudinaryService {
     return Boolean(this.cloudName && this.apiKey && this.apiSecret);
   }
 
-  async uploadAvatar(file: UploadedAvatarFile): Promise<string> {
-    if (!this.isConfigured()) {
-      throw new InternalServerErrorException(
+  private ensureConfigured(): void {
+    if (this.isConfigured()) return;
+    throw new InternalServerErrorException({
+      code: 'CLOUDINARY_NOT_CONFIGURED',
+      message:
         'Cloudinary chưa được cấu hình. Vui lòng thiết lập biến môi trường CLOUDINARY_*',
-      );
-    }
+    });
+  }
 
-    const resource = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+  private createCloudinaryException(
+    code: string,
+    error: unknown,
+    fallbackMessage: string,
+  ): InternalServerErrorException {
+    const message =
+      (error && typeof error === 'object' && 'message' in error
+        ? String((error as { message?: unknown }).message)
+        : undefined) || fallbackMessage;
+
+    const meta =
+      error && typeof error === 'object'
+        ? Object.fromEntries(
+            Object.entries(error as Record<string, unknown>).filter(
+              ([, value]) =>
+                typeof value === 'string' ||
+                typeof value === 'number' ||
+                typeof value === 'boolean',
+            ),
+          )
+        : undefined;
+
+    return new InternalServerErrorException({ code, message, ...(meta ? { meta } : {}) });
+  }
+
+  private uploadFromBuffer(file: UploadedAvatarFile): Promise<UploadApiResponse> {
+    return new Promise((resolve, reject) => {
+      const upload = cloudinary.uploader.upload_stream(
+        {
+          folder: 'traveline/avatars',
+          resource_type: 'image',
+          overwrite: true,
+        },
+        (error?: UploadApiErrorResponse, result?: UploadApiResponse) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          if (!result) {
+            reject(new Error('Cloudinary trả về kết quả rỗng'));
+            return;
+          }
+
+          resolve(result);
+        },
+      );
+
+      upload.end(file.buffer);
+    });
+  }
+
+  async uploadAvatar(file: UploadedAvatarFile): Promise<UploadAvatarResult> {
+    this.ensureConfigured();
 
     try {
-      const result: UploadApiResponse | UploadApiErrorResponse =
-        await cloudinary.uploader.upload(resource, {
-          folder: 'traveline/avatars',
-          overwrite: true,
-        });
+      const result = await this.uploadFromBuffer(file);
 
-      if ('secure_url' in result && result.secure_url) {
-        return result.secure_url;
+      if (!result.secure_url || !result.public_id) {
+        throw new Error('Cloudinary response missing secure_url or public_id');
       }
 
-      throw new InternalServerErrorException('Không thể tải ảnh lên Cloudinary');
+      return {
+        publicId: result.public_id,
+        url: result.secure_url,
+      };
     } catch (error) {
-      throw new InternalServerErrorException(
-        error instanceof Error ? error.message : 'Upload ảnh thất bại',
+      throw this.createCloudinaryException(
+        'CLOUDINARY_UPLOAD_FAILED',
+        error,
+        'Upload ảnh thất bại',
+      );
+    }
+  }
+
+  async deleteImage(publicId: string | null | undefined): Promise<void> {
+    if (!publicId) return;
+    this.ensureConfigured();
+
+    try {
+      await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+    } catch (error) {
+      throw this.createCloudinaryException(
+        'CLOUDINARY_DELETE_FAILED',
+        error,
+        'Xoá ảnh trên Cloudinary thất bại',
       );
     }
   }

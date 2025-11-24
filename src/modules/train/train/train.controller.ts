@@ -28,14 +28,14 @@ export class TrainRoutesController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Create train route' })
+  @ApiOperation({ summary: 'Tạo tuyến tàu' })
   @ApiCreatedResponse({ description: 'Train route created' })
   create(@Body() dto: CreateTrainRouteDto) {
     return this.service.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List train routes' })
+  @ApiOperation({ summary: 'Danh sách tuyến tàu' })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
   @ApiQuery({ name: 'departureStation', required: false, type: String })
   @ApiQuery({ name: 'arrivalStation', required: false, type: String })
@@ -53,7 +53,7 @@ export class TrainRoutesController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get train route detail' })
+  @ApiOperation({ summary: 'Chi tiết tuyến tàu' })
   @ApiOkResponse({ description: 'Train route detail' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.service.findOne(id);
@@ -61,7 +61,7 @@ export class TrainRoutesController {
 
   @Patch(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Update train route' })
+  @ApiOperation({ summary: 'Cập nhật tuyến tàu' })
   @ApiOkResponse({ description: 'Train route updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -72,7 +72,7 @@ export class TrainRoutesController {
 
   @Delete(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Remove train route' })
+  @ApiOperation({ summary: 'Xóa tuyến tàu' })
   @ApiOkResponse({ description: 'Train route removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);

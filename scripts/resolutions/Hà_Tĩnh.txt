@@ -10,7 +10,7 @@
 10. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Lâm Hợp và xã Kỳ Lạc thành xã mới có tên gọi là xã Kỳ Lạc.
 11. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Kỳ Sơn và xã Kỳ Thượng thành xã mới có tên gọi là xã Kỳ Thượng.
 12. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Cẩm Xuyên, xã Cẩm Quang và xã Cẩm Quan thành xã mới có tên gọi là xã Cẩm Xuyên.
-13. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Thiên Cầm xã Nam Phúc Thăng và xã Cẩm Nhượng thành xã mới có tên gọi là xã Thiên Cầm.
+13. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Thiên Cầm, xã Nam Phúc Thăng và xã Cẩm Nhượng thành xã mới có tên gọi là xã Thiên Cầm.
 14. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Cẩm Mỹ, Cẩm Thạch và Cẩm Duệ thành xã mới có tên gọi là xã Cẩm Duệ.
 15. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Cẩm Thịnh, Cẩm Hà và Cẩm Hưng thành xã mới có tên gọi là xã Cẩm Hưng.
 16. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Cẩm Minh, Cẩm Sơn và Cẩm Lạc thành xã mới có tên gọi là xã Cẩm Lạc.
@@ -24,7 +24,7 @@
 24. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Lộc Hà và các xã Bình An, Thịnh Lộc, Thạch Kim thành xã mới có tên gọi là xã Lộc Hà.
 25. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Tân Lộc và xã Hồng Lộc thành xã mới có tên gọi là xã Hồng Lộc.
 26. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Thạch Mỹ, Thạch Châu, Phù Lưu và Mai Phụthành xã mới có tên gọi là xã Mai Phụ.
-27. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Nghènxã Thiên Lộc và xã Vượng Lộc thành xã mới có tên gọi là xã Can Lộc.
+27. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Nghèn, xã Thiên Lộc và xã Vượng Lộc thành xã mới có tên gọi là xã Can Lộc.
 28. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Thuần Thiện và xã Tùng Lộc thành xã mới có tên gọi là xã Tùng Lộc.
 29. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Khánh Vĩnh Yên, Thanh Lộc và Gia Hanh thành xã mới có tên gọi là xã Gia Hanh.
 30. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Kim Song Trường, Thường Nga và Phú Lộc thành xã mới có tên gọi là xã Trường Lưu.
@@ -49,7 +49,7 @@
 49. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Vũ Quang và các xã Hương Minh, Quang Thọ, Thọ Điền thành xã mới có tên gọi là xã Vũ Quang.
 50. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Ân Phú, Đức Giang và Đức Lĩnh thành xã mới có tên gọi là xã Mai Hoa.
 51. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Đức Bồng, Đức Hương và Đức Liên thành xã mới có tên gọi là xã Thượng Đức.
-52. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Hương Khê, xã Hương Long vàxã Phú Gia thành xã mới có tên gọi là xã Hương Khê.
+52. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Hương Khê, xã Hương Long và xã Phú Gia thành xã mới có tên gọi là xã Hương Khê.
 53. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Hương Giang, Hương Thủy và Gia Phố thành xã mới có tên gọi là xã Hương Phố.
 54. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Lộc Yên, Hương Trà và Hương Đô thành xã mới có tên gọi là xã Hương Đô.
 55. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Điền Mỹ và xã Hà Linh thành xã mới có tên gọi là xã Hà Linh.
@@ -58,10 +58,10 @@
 58. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Hương Lâm, Hương Vĩnh và Hương Xuân thành xã mới có tên gọi là xã Hương Xuân.
 59. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Bắc Hà, Thạch Quý, Tân Giang, Thạch Hưng, Nam Hà, Trần Phú, Hà Huy Tập, Văn Yên và một phần diện tích tự nhiên, quy mô dân số của phường Đại Nài thành phường mới có tên gọi là phường Thành Sen.
 60. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Thạch Trung, Đồng Môn, Thạch Hạ và xã Hộ Độ thành phường mới có tên gọi là phường Trần Phú.
-61. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tân Lâm Hương, xãThạch Đài và phần còn lại của phường Đại Nài sau khi sắp xếp theo quy định tại khoản 59 Điều này thành phường mới có tên gọi là phường Hà Huy Tập.
+61. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tân Lâm Hương, xã Thạch Đài và phần còn lại của phường Đại Nài sau khi sắp xếp theo quy định tại khoản 59 Điều này thành phường mới có tên gọi là phường Hà Huy Tập.
 62. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Kỳ Long, phường Kỳ Thịnh và toàn bộ diện tích tự nhiên của xã Kỳ Lợi thành phường mới có tên gọi là phường Vũng Áng.
-63. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Hưng Trí, phườngKỳ Trinh, xã Kỳ Châu và một phần quy mô dân số của xã Kỳ Lợi thành phường mới có tên gọi là phường Sông Trí.
+63. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Hưng Trí, phường Kỳ Trinh, xã Kỳ Châu và một phần quy mô dân số của xã Kỳ Lợi thành phường mới có tên gọi là phường Sông Trí.
 64. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Kỳ Nam, Kỳ Phương, Kỳ Liên và phần quy mô dân số còn lại của xã Kỳ Lợi sau khi sắp xếp theo quy định tại khoản 63 Điều này thành phường mới có tên gọi là phường Hoành Sơn.
-65. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Kỳ Ninh, xã Kỳ Hà vàxã Kỳ Hải thành phường mới có tên gọi là phường Hải Ninh.
-66. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Bắc Hồng, Đức Thuận, Trung Lương và xã Xuân Lam thành phường mới có tên gọi là phườngBắc Hồng Lĩnh.
+65. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Kỳ Ninh, xã Kỳ Hà và xã Kỳ Hải thành phường mới có tên gọi là phường Hải Ninh.
+66. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Bắc Hồng, Đức Thuận, Trung Lương và xã Xuân Lam thành phường mới có tên gọi là phường Bắc Hồng Lĩnh.
 67. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Nam Hồng, phườngĐậu Liêu và xã Thuận Lộc thành phường mới có tên gọi là phường Nam Hồng Lĩnh.

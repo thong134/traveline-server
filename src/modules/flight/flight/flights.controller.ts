@@ -28,14 +28,14 @@ export class FlightsController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Create flight' })
+  @ApiOperation({ summary: 'Tạo chuyến bay' })
   @ApiCreatedResponse({ description: 'Flight created' })
   create(@Body() dto: CreateFlightDto) {
     return this.service.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List flights' })
+  @ApiOperation({ summary: 'Danh sách chuyến bay' })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
   @ApiQuery({ name: 'airline', required: false, type: String })
   @ApiQuery({ name: 'departureAirport', required: false, type: String })
@@ -56,7 +56,7 @@ export class FlightsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get flight detail' })
+  @ApiOperation({ summary: 'Chi tiết chuyến bay' })
   @ApiOkResponse({ description: 'Flight detail' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.service.findOne(id);
@@ -64,7 +64,7 @@ export class FlightsController {
 
   @Patch(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Update flight' })
+  @ApiOperation({ summary: 'Cập nhật chuyến bay' })
   @ApiOkResponse({ description: 'Flight updated' })
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateFlightDto) {
     return this.service.update(id, dto);
@@ -72,7 +72,7 @@ export class FlightsController {
 
   @Delete(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Remove flight' })
+  @ApiOperation({ summary: 'Xóa chuyến bay' })
   @ApiOkResponse({ description: 'Flight removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);

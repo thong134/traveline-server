@@ -3,8 +3,8 @@
 3. Sắp xếpmột phần diện tích tự nhiên, quy mô dân số của xã Hải Lạng và một phần diện tích tự nhiên của xã Hải Hòa thành xã mới có tên gọi là xã Hải Hòa.
 4. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Tiên Yên, xã Phong Dụ, xã Tiên Lãng và một phần diện tích tự nhiên, quy mô dân số của các xã Yên Than, Đại Dực, Đông Ngũ,Vô Ngại thành xã mới có tên gọi là xã Tiên Yên.
 5. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Hà Lâu, xã Điền Xá và phần còn lại của xã Yên Thansau khi sắp xếp theo quy định tại khoản 4 Điều nàythành xã mới có tên gọi là xã Điền Xá.
-6. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Đông Hải vàphần còn lại của xã Đại Dực,xã Đông Ngũ sau khi sắp xếp theo quy định tại khoản 4 Điều này thành xã mới có tên gọi là xã Đông Ngũ.
-7. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Đồng Rui, một phần diện tích tự nhiên, quy mô dân số của xã Hải Lạng và phần còn lại của xã Hải Hòasau khi sắp xếp theo quy định tại khoản 3 Điều này thành xã mới có tên gọi là xã Hải Lạng.
+6. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Đông Hải và phần còn lại của xã Đại Dực,xã Đông Ngũ sau khi sắp xếp theo quy định tại khoản 4 Điều này thành xã mới có tên gọi là xã Đông Ngũ.
+7. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Đồng Rui, một phần diện tích tự nhiên, quy mô dân số của xã Hải Lạng và phần còn lại của xã Hải Hòa sau khi sắp xếp theo quy định tại khoản 3 Điều này thành xã mới có tên gọi là xã Hải Lạng.
 8. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số củaxã Đồng Sơn và xã Lương Minh thành xã mới có tên gọi là xã Lương Minh.
 9.Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Thanh Lâm, Đạp Thanh và Kỳ Thượng thành xã mới có tên gọi là xã Kỳ Thượng.
 10. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Ba Chẽ, các xã Thanh Sơn, Nam Sơn, Đồn Đạc và phần còn lạicủa xã Hải Lạngsau khi sắp xếp theo quy định tại khoản 3 và khoản 7 Điều nàythành xã mới có tên gọi là xã Ba Chẽ.
@@ -15,7 +15,7 @@
 15. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Quảng Thành, Quảng Thịnh và Quảng Đức thành xã mới có tên gọi là xã Quảng Đức.
 16. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Đồng Văn và xã Hoành Mô thành xã mới có tên gọi là xã Hoành Mô.
 17. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Đồng Tâm và xã Lục Hồn thành xã mới có tên gọi là xã Lục Hồn.
-18. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Bình Liêu, xã Húc Động và phần còn lại của xã Vô Ngạisau khi sắp xếp theo quy định tại khoản 4 Điều nàythành xã mới có tên gọi là xã Bình Liêu.
+18. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Bình Liêu, xã Húc Động và phần còn lại của xã Vô Ngại sau khi sắp xếp theo quy định tại khoản 4 Điều nàythành xã mới có tên gọi là xã Bình Liêu.
 19. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Bắc Sơn và xã Hải Sơn thành xã mới có tên gọi là xã Hải Sơn.
 20. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Quảng Nghĩa và xã Hải Tiến thành xã mới có tên gọi là xã Hải Ninh.
 21. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Vĩnh Trung và xã Vĩnh Thực thành xã mới có tên gọi là xã Vĩnh Thực.
@@ -23,7 +23,7 @@
 23. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Thủy An, Hưng Đạo, Hồng Phong, xã Nguyễn Huệ và phần còn lại của phường Đức Chínhsau khi sắp xếp theo quy định tại khoản 22 Điều nàythành phường mới có tên gọi là phường Đông Triều.
 24. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Tràng An, phường Bình Khê và xã Tràng Lương thành phường mới có tên gọi là phường Bình Khê.
 25. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Xuân Sơn, Kim Sơn, Yên Thọ và Mạo Khê thành phường mới có tên gọi là phường Mạo Khê.
-26. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Yên Đức, phường Hoàng Quế, xã Hồng Thái Tâyvà xã Hồng Thái Đông thành phường mới có tên gọi là phường Hoàng Quế.
+26. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Yên Đức, phường Hoàng Quế, xã Hồng Thái Tây và xã Hồng Thái Đông thành phường mới có tên gọi là phường Hoàng Quế.
 27. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Phương Đông, phường Phương Nam và xã Thượng Yên Công thành phường mới có tên gọi là phường Yên Tử.
 28. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Bắc Sơn, Nam Khê, Vàng Danh và một phần diện tích tự nhiên, quy mô dân số của phường Trưng Vương thành phường mới có tên gọi là phường Vàng Danh.
 29. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Quang Trung, Thanh Sơn, Yên Thanh và phần còn lại của phường Trưng Vươngsau khi sắp xếp theo quy định tại khoản 28 Điều nàythành phường mới có tên gọi là phường Uông Bí.

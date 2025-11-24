@@ -1,5 +1,3 @@
-export interface UploadedAvatarFile {
-  buffer: Buffer;
-  mimetype: string;
-  originalname?: string;
-}
+import type { Express } from 'express';
+
+export type UploadedAvatarFile = Express.Multer.File;

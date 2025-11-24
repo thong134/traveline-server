@@ -19,6 +19,14 @@ import {
 import { VehicleCatalog } from '../vehicle-catalog/entities/vehicle-catalog.entity';
 import { User } from '../user/entities/user.entity';
 import { assignDefined } from '../../common/utils/object.util';
+import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
+import type { Express } from 'express';
+import { assertImageFile } from '../../common/upload/image-upload.utils';
+
+type VehicleImageFiles = {
+  vehicleRegistrationFront?: Express.Multer.File;
+  vehicleRegistrationBack?: Express.Multer.File;
+};
 
 @Injectable()
 export class RentalVehiclesService {
@@ -31,6 +39,7 @@ export class RentalVehiclesService {
     private readonly vehicleCatalogRepo: Repository<VehicleCatalog>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   private ensurePrice(value?: number | string): string {
@@ -46,7 +55,10 @@ export class RentalVehiclesService {
     return price.toFixed(2);
   }
 
-  async create(dto: CreateRentalVehicleDto): Promise<RentalVehicle> {
+  async create(
+    dto: CreateRentalVehicleDto,
+    files: VehicleImageFiles = {},
+  ): Promise<RentalVehicle> {
     const contract = await this.contractRepo.findOne({
       where: { id: dto.contractId },
     });
@@ -81,6 +93,22 @@ export class RentalVehiclesService {
       }
     }
 
+    const ownerId = owner.id;
+
+    const registrationFrontUrl = await this.uploadVehicleImage(
+      dto.licensePlate,
+      ownerId,
+      files.vehicleRegistrationFront,
+      'registration-front',
+    );
+
+    const registrationBackUrl = await this.uploadVehicleImage(
+      dto.licensePlate,
+      ownerId,
+      files.vehicleRegistrationBack,
+      'registration-back',
+    );
+
     const entity = this.repo.create({
       licensePlate: dto.licensePlate.trim(),
       contractId: dto.contractId,
@@ -96,6 +124,8 @@ export class RentalVehiclesService {
       rejectedReason: undefined,
       totalRentals: 0,
       averageRating: '0.00',
+      vehicleRegistrationFront: registrationFrontUrl ?? undefined,
+      vehicleRegistrationBack: registrationBackUrl ?? undefined,
     });
 
     const saved = await this.repo.save(entity);
@@ -150,6 +180,7 @@ export class RentalVehiclesService {
   async update(
     licensePlate: string,
     dto: UpdateRentalVehicleDto,
+    files: VehicleImageFiles = {},
   ): Promise<RentalVehicle> {
     const vehicle = await this.findOne(licensePlate);
 
@@ -192,6 +223,41 @@ export class RentalVehiclesService {
       requirements: dto.requirements,
       description: dto.description,
     });
+
+    let ownerId: number | undefined = vehicle.contract?.userId;
+    if (ownerId === undefined) {
+      const contract = await this.contractRepo.findOne({
+        where: { id: vehicle.contractId },
+        select: ['id', 'userId'],
+      });
+      ownerId = contract?.userId;
+    }
+
+    if (ownerId === undefined) {
+      throw new NotFoundException(
+        `Contract owner not found for vehicle ${vehicle.licensePlate}`,
+      );
+    }
+
+    const frontUrl = await this.uploadVehicleImage(
+      vehicle.licensePlate,
+      ownerId,
+      files.vehicleRegistrationFront,
+      'registration-front',
+    );
+    if (frontUrl) {
+      vehicle.vehicleRegistrationFront = frontUrl;
+    }
+
+    const backUrl = await this.uploadVehicleImage(
+      vehicle.licensePlate,
+      ownerId,
+      files.vehicleRegistrationBack,
+      'registration-back',
+    );
+    if (backUrl) {
+      vehicle.vehicleRegistrationBack = backUrl;
+    }
 
     return this.repo.save(vehicle);
   }
@@ -267,5 +333,23 @@ export class RentalVehiclesService {
       status: RentalVehicleApprovalStatus.INACTIVE,
       availability: RentalVehicleAvailabilityStatus.MAINTENANCE,
     });
+  }
+
+  private async uploadVehicleImage(
+    licensePlate: string,
+    ownerId: number,
+    file: Express.Multer.File | undefined,
+    label: string,
+  ): Promise<string | undefined> {
+    if (!file) {
+      return undefined;
+    }
+
+    assertImageFile(file, { fieldName: label });
+    const upload = await this.cloudinaryService.uploadImage(file, {
+      folder: `traveline/rental-vehicles/${ownerId}`,
+      publicId: `${licensePlate}_${label}`,
+    });
+    return upload.url;
   }
 }

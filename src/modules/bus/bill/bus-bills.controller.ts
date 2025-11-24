@@ -34,14 +34,14 @@ export class BusBillsController {
   constructor(private readonly service: BusBillsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create bus bill' })
+  @ApiOperation({ summary: 'Tạo hóa đơn xe buýt' })
   @ApiCreatedResponse({ description: 'Bus bill created' })
   create(@Body() dto: CreateBusBillDto, @CurrentUser() user: RequestUser) {
     return this.service.create(user.userId, dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List bus bills' })
+  @ApiOperation({ summary: 'Danh sách hóa đơn xe buýt' })
   @ApiQuery({ name: 'busTypeId', required: false, type: Number })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false, enum: BusBillStatus })
@@ -60,7 +60,7 @@ export class BusBillsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get bus bill detail' })
+  @ApiOperation({ summary: 'Chi tiết hóa đơn xe buýt' })
   @ApiOkResponse({ description: 'Bus bill detail' })
   findOne(
     @Param('id', ParseIntPipe) id: number,
@@ -70,7 +70,7 @@ export class BusBillsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update bus bill' })
+  @ApiOperation({ summary: 'Cập nhật hóa đơn xe buýt' })
   @ApiOkResponse({ description: 'Bus bill updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -81,7 +81,7 @@ export class BusBillsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Remove bus bill' })
+  @ApiOperation({ summary: 'Xóa hóa đơn xe buýt' })
   @ApiOkResponse({ description: 'Bus bill removed' })
   remove(
     @Param('id', ParseIntPipe) id: number,

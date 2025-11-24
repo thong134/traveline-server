@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export enum BusinessType {
@@ -44,18 +45,28 @@ export class CreateRentalContractDto {
   taxCode?: string;
 
   @ApiPropertyOptional({
-    description: 'Business registration certificate photo url',
+    description: 'Business registration certificate image',
+    type: 'string',
+    format: 'binary',
   })
   @IsOptional()
   @IsString()
   businessRegisterPhoto?: string;
 
-  @ApiPropertyOptional({ description: 'Citizen ID front photo url' })
+  @ApiPropertyOptional({
+    description: 'Citizen ID front photo',
+    type: 'string',
+    format: 'binary',
+  })
   @IsOptional()
   @IsString()
   citizenFrontPhoto?: string;
 
-  @ApiPropertyOptional({ description: 'Citizen ID back photo url' })
+  @ApiPropertyOptional({
+    description: 'Citizen ID back photo',
+    type: 'string',
+    format: 'binary',
+  })
   @IsOptional()
   @IsString()
   citizenBackPhoto?: string;
@@ -88,6 +99,9 @@ export class CreateRentalContractDto {
   bankAccountName?: string;
 
   @ApiProperty({ description: 'Owner agrees to Traveline rental terms' })
+  @Transform(({ value }) =>
+    value === true || value === 'true' || value === 1 || value === '1',
+  )
   @IsBoolean()
   termsAccepted: boolean;
 }

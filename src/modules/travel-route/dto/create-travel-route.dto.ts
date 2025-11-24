@@ -25,11 +25,6 @@ export class CreateTravelRouteDto {
   @Min(1)
   userId?: number;
 
-  @ApiPropertyOptional({ description: 'Owner Firebase UID' })
-  @IsOptional()
-  @IsString()
-  ownerUid?: string;
-
   @ApiPropertyOptional({ description: 'Province name' })
   @IsOptional()
   @IsString()

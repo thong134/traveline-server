@@ -133,7 +133,7 @@
 133. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Tào Xuyên, Long Anh, Hoằng Quang và Hoằng Đại thành phường mới có tên gọi là phường Nguyệt Viên.
 134. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Bắc Sơn (thành phố Sầm Sơn), Quảng Tiến, Quảng Cư, Trung Sơn, Trường Sơn, Quảng Châu và Quảng Thọ thành phường mới có tên gọi là phường Sầm Sơn.
 135. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Quảng Vinh và các xã Quảng Minh, Đại Hùng, Quảng Giao thành phường mới có tên gọi là phường Nam Sầm Sơn.
-136. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Đông Sơn, Lam Sơn và Ba Đình (thị xã Bỉm Sơn), xã Hà Vinh thành phường mới có tên gọi là phường Bỉm Sơn.
+136. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Đông Sơn, Lam Sơn và Ba Đình, xã Hà Vinh thành phường mới có tên gọi là phường Bỉm Sơn.
 137. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Bắc Sơn, Ngọc Trạo, Phú Sơn và xã Quang Trung (thị xã Bỉm Sơn) thành phường mới có tên gọi là phường Quang Trung.
 138. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Thanh Sơn (thị xã Nghi Sơn), xã Thanh Thủy, phường Hải Châu và phường Hải Ninh thành phường mới có tên gọi là phường Ngọc Sơn.
 139. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Hải An, phường Tân Dân và xã Ngọc Lĩnh thành phường mới có tên gọi là phường Tân Dân.

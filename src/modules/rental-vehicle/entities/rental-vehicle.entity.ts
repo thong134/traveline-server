@@ -64,6 +64,12 @@ export class RentalVehicle {
   @Column({ nullable: true })
   description?: string;
 
+  @Column({ nullable: true })
+  vehicleRegistrationFront?: string;
+
+  @Column({ nullable: true })
+  vehicleRegistrationBack?: string;
+
   @Column({
     type: 'enum',
     enum: RentalVehicleApprovalStatus,

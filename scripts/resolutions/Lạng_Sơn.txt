@@ -16,17 +16,17 @@
 16. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Bắc Sơn, xã Long Đống và xã Bắc Quỳnh thành xã mới có tên gọi là xã Bắc Sơn.
 17. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Trấn Yên và xã Hưng Vũ thành xã mới có tên gọi là xã Hưng Vũ.
 18. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tân Lập, Tân Hương, Chiêu Vũ và Vũ Lăng thành xã mới có tên gọi là xã Vũ Lăng.
-19. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tân Thành (huyện Bắc Sơn), Nhất Tiếnvà Nhất Hòa thành xã mới có tên gọi là xã Nhất Hòa.
+19. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tân Thành (huyện Bắc Sơn), Nhất Tiến và Nhất Hòa thành xã mới có tên gọi là xã Nhất Hòa.
 20. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Chiến Thắng (huyện Bắc Sơn), Vũ Sơn và Vũ Lễ thành xã mới có tên gọi là xã Vũ Lễ.
 21. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Đồng Ý, Vạn Thủy và Tân Tri thành xã mới có tên gọi là xã Tân Tri.
-22. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Hòa Bình (huyện Văn Quan), xã Tú Xuyên và thị trấnVăn Quanthành xã mới có tên gọi là xã Văn Quan.
+22. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Hòa Bình (huyện Văn Quan), xã Tú Xuyên và thị trấn Văn Quan thành xã mới có tên gọi là xã Văn Quan.
 23. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Trấn Ninh, Liên Hội và Điềm He thành xã mới có tên gọi là xã Điềm He.
 24. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã An Sơn, Bình Phúc và Yên Phúc thành xã mới có tên gọi là xã Yên Phúc.
 25. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Lương Năng, Hữu Lễ và Tri Lễ thành xã mới có tên gọi là xã Tri Lễ.
 26. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Tân Thành (huyện Cao Lộc), Tràng Phái và Tân Đoàn thành xã mới có tên gọi là xã Tân Đoàn.
 27. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Xuân Long, Bình Trung và Khánh Khê thành xã mới có tên gọi là xã Khánh Khê.
 28. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Na Sầm, xã Hoàng Việt và xã Bắc Hùng thành xã mới có tên gọi là xã Na Sầm.
-29. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Hồng Tháivà xã Hoàng Văn Thụ (huyện Văn Lãng), cácxã Tân Mỹ, Nhạc Kỳ, Tân Thanhthành xã mới có tên gọi là xã Hoàng Văn Thụ.
+29. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Hồng Thái và xã Hoàng Văn Thụ (huyện Văn Lãng), các xã Tân Mỹ, Nhạc Kỳ, Tân Thanh thành xã mới có tên gọi là xã Hoàng Văn Thụ.
 30. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Thụy Hùng (huyện Văn Lãng),Thanh Long và Trùng Khánh thành xã mới có tên gọi là xã Thụy Hùng.
 31. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Bắc Việt, Bắc La, Tân Tác và Thành Hòa thành xã mới có tên gọi là xã Văn Lãng.
 32. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Gia Miễn và xã Hội Hoan thành xã mới có tên gọi là xã Hội Hoan.
@@ -39,7 +39,7 @@
 39. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Tam Gia và xã Khuất Xá thành xã mới có tên gọi là xã Khuất Xá.
 40. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Đình Lập, xã Đình Lập và một phần diện tích tự nhiên, quy mô dân số củaxã Bính Xá thành xã mới có tên gọi là xã Đình Lập.
 41. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Nông Trường Thái Bình, xã Lâm Ca và xã Thái Bình thành xã mới có tên gọi là xã Thái Bình.
-42. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Bắc Lãng, Đồng Thắng, Cường Lợi, Châu Sơn vàmột phần diện tích tự nhiên, quy mô dân số của xãKiên Mộc thành xã mới có tên gọi là xã Châu Sơn.
+42. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Bắc Lãng, Đồng Thắng, Cường Lợi, Châu Sơn, xã Kiên Mộc thành xã mới có tên gọi là xã Châu Sơn.
 43. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Bắc Xa,phần còn lại của xã Bính Xá sau khi sắp xếp theo quy định tại khoản 40 Điều này và phần còn lại của xã Kiên Mộc sau khi sắp xếp theo quy định tại khoản42 Điều này thành xã mới có tên gọi là xã Kiên Mộc.
 44. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của thị trấn Hữu Lũng, xã Đồng Tân và xã Hồ Sơn thành xã mới có tên gọi là xã Hữu Lũng.
 45. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Minh Sơn, Minh Hòa và Hòa Thắng thành xã mới có tên gọi là xã Tuấn Sơn.
@@ -49,7 +49,7 @@
 49. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Hòa Bình (huyện Hữu Lũng), Quyết Thắng và Yên Bình thành xã mới có tên gọi là xã Yên Bình.
 50. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Yên Thịnh và xã Hữu Liên thành xã mới có tên gọi là xã Hữu Liên.
 51. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Yên Vượng, Yên Sơn và Cai Kinh thành xã mới có tên gọi là xã Cai Kinh.
-52. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Chi Lăng (huyện Chi Lăng), thị trấn Chi Lăng vàthị trấn Đồng Mỏthành xã mới có tên gọi là xã Chi Lăng.
+52. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Chi Lăng (huyện Chi Lăng), thị trấn Chi Lăng vàthị trấn Đồng Mỏ thành xã mới có tên gọi là xã Chi Lăng.
 53. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của xã Hữu Kiên và xã Quan Sơn thành xã mới có tên gọi là xã Quan Sơn.
 54. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Chiến Thắng (huyện Chi Lăng), Vân An, Liên Sơn và Vân Thủythành xã mới có tên gọi là xã Chiến Thắng.
 55. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Mai Sao, Bắc Thủy, Lâm Sơn và Nhân Lý thành xã mới có tên gọi là xã Nhân Lý.
@@ -61,5 +61,5 @@
 61. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Mẫu Sơn (huyện Cao Lộc), Cao Lâu và Xuất Lễ thành xã mới có tên gọi là xã Ba Sơn.
 62. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Tam Thanh và xã Hoàng Đồng thành phường mới có tên gọi là phường Tam Thanh.
 63. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Chi Lăng và xã Quảng Lạc thành phường mới có tên gọi là phường Lương Văn Tri.
-64. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Hoàng Văn Thụ, thị trấn Cao Lộc và các xã Hợp Thành, Tân Liên, Gia Cát thành phường mới có tên gọi làphường Kỳ Lừa.
+64. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Hoàng Văn Thụ, thị trấn Cao Lộc và các xã Hợp Thành, Tân Liên, Gia Cát thành phường mới có tên gọi là phường Kỳ Lừa.
 65. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Vĩnh Trại, phường Đông Kinh, xã Yên Trạch và xã Mai Pha thành phường mới có tên gọi là phường Đông Kinh.

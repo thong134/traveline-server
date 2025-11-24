@@ -61,6 +61,22 @@ export class CreateRentalVehicleDto {
   description?: string;
 
   @ApiPropertyOptional({
+    description: 'Vehicle registration front photo',
+    type: 'string',
+    format: 'binary',
+  })
+  @IsOptional()
+  vehicleRegistrationFront?: string;
+
+  @ApiPropertyOptional({
+    description: 'Vehicle registration back photo',
+    type: 'string',
+    format: 'binary',
+  })
+  @IsOptional()
+  vehicleRegistrationBack?: string;
+
+  @ApiPropertyOptional({
     enum: RentalVehicleApprovalStatus,
     description: 'Optional manual status override',
   })

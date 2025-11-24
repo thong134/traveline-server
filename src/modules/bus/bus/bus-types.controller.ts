@@ -28,14 +28,14 @@ export class BusTypesController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Create bus type' })
+  @ApiOperation({ summary: 'Tạo loại xe buýt' })
   @ApiCreatedResponse({ description: 'Bus type created' })
   create(@Body() dto: CreateBusTypeDto) {
     return this.service.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List bus types' })
+  @ApiOperation({ summary: 'Danh sách loại xe buýt' })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
   @ApiOkResponse({ description: 'Bus type list' })
   findAll(@Query('cooperationId') cooperationId?: string) {
@@ -45,7 +45,7 @@ export class BusTypesController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get bus type detail' })
+  @ApiOperation({ summary: 'Chi tiết loại xe buýt' })
   @ApiOkResponse({ description: 'Bus type detail' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.service.findOne(id);
@@ -53,7 +53,7 @@ export class BusTypesController {
 
   @Patch(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Update bus type' })
+  @ApiOperation({ summary: 'Cập nhật loại xe buýt' })
   @ApiOkResponse({ description: 'Bus type updated' })
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateBusTypeDto) {
     return this.service.update(id, dto);
@@ -61,7 +61,7 @@ export class BusTypesController {
 
   @Delete(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Remove bus type' })
+  @ApiOperation({ summary: 'Xóa loại xe buýt' })
   @ApiOkResponse({ description: 'Bus type removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);

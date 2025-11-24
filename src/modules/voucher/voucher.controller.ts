@@ -29,14 +29,14 @@ export class VouchersController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Create voucher' })
+  @ApiOperation({ summary: 'Tạo voucher mới' })
   @ApiCreatedResponse({ description: 'Voucher created' })
   create(@Body() dto: CreateVoucherDto) {
     return this.vouchersService.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List vouchers' })
+  @ApiOperation({ summary: 'Danh sách voucher' })
   @ApiQuery({ name: 'active', required: false, type: Boolean })
   @ApiQuery({ name: 'code', required: false })
   @ApiOkResponse({ description: 'Voucher list' })
@@ -48,7 +48,7 @@ export class VouchersController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get voucher detail' })
+  @ApiOperation({ summary: 'Chi tiết voucher' })
   @ApiOkResponse({ description: 'Voucher detail' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.vouchersService.findOne(id);
@@ -56,7 +56,7 @@ export class VouchersController {
 
   @Patch(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Update voucher' })
+  @ApiOperation({ summary: 'Cập nhật voucher' })
   @ApiOkResponse({ description: 'Voucher updated' })
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateVoucherDto) {
     return this.vouchersService.update(id, dto);
@@ -64,7 +64,7 @@ export class VouchersController {
 
   @Delete(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Delete voucher' })
+  @ApiOperation({ summary: 'Xóa voucher' })
   @ApiOkResponse({ description: 'Voucher removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.vouchersService.remove(id);

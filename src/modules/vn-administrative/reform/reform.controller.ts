@@ -11,7 +11,7 @@ export class ReformAdministrativeController {
 
   @Get('provinces')
   @ApiOperation({
-    summary: 'List reformed provinces (34 provinces after merge)',
+    summary: 'Danh sách tỉnh sau sáp nhập (34 tỉnh)',
   })
   @ApiOkResponse({ type: ReformProvince, isArray: true })
   listProvinces(@Query('search') search?: string): Promise<ReformProvince[]> {
@@ -20,7 +20,7 @@ export class ReformAdministrativeController {
 
   @Get('provinces/:code')
   @ApiOperation({
-    summary: 'Get a reformed province with optional commune list',
+    summary: 'Chi tiết tỉnh sau sáp nhập (có thể kèm xã/phường)',
   })
   @ApiOkResponse({ type: ReformProvince })
   async getProvince(
@@ -39,14 +39,14 @@ export class ReformAdministrativeController {
   }
 
   @Get('provinces/:code/communes')
-  @ApiOperation({ summary: 'List communes/wards of a reformed province' })
+  @ApiOperation({ summary: 'Danh sách xã/phường thuộc tỉnh sau sáp nhập' })
   @ApiOkResponse({ type: ReformCommune, isArray: true })
   listCommunes(@Param('code') code: string): Promise<ReformCommune[]> {
     return this.service.findCommunesByProvince(code);
   }
 
   @Get('communes/:code')
-  @ApiOperation({ summary: 'Get a reformed commune/ward' })
+  @ApiOperation({ summary: 'Chi tiết xã/phường sau sáp nhập' })
   @ApiOkResponse({ type: ReformCommune })
   getCommune(@Param('code') code: string): Promise<ReformCommune> {
     return this.service.findCommuneByCode(code);

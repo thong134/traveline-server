@@ -12,7 +12,7 @@ export class LegacyAdministrativeController {
 
   @Get('provinces')
   @ApiOperation({
-    summary: 'List legacy provinces (63 provinces before reform)',
+    summary: 'Danh sách tỉnh trước sáp nhập (63 tỉnh)',
   })
   @ApiOkResponse({ type: LegacyProvince, isArray: true })
   listProvinces(@Query('search') search?: string): Promise<LegacyProvince[]> {
@@ -21,7 +21,7 @@ export class LegacyAdministrativeController {
 
   @Get('provinces/:code')
   @ApiOperation({
-    summary: 'Get a legacy province with optional district/ward tree',
+    summary: 'Chi tiết tỉnh trước sáp nhập (có thể kèm huyện/xã)',
   })
   @ApiOkResponse({ type: LegacyProvince })
   getProvince(
@@ -38,7 +38,7 @@ export class LegacyAdministrativeController {
   }
 
   @Get('districts/:code')
-  @ApiOperation({ summary: 'Get a legacy district with optional wards' })
+  @ApiOperation({ summary: 'Chi tiết huyện trước sáp nhập (có thể kèm xã/phường)' })
   @ApiOkResponse({ type: LegacyDistrict })
   getDistrict(
     @Param('code') code: string,
@@ -48,14 +48,14 @@ export class LegacyAdministrativeController {
   }
 
   @Get('districts/:code/wards')
-  @ApiOperation({ summary: 'List wards of a legacy district' })
+  @ApiOperation({ summary: 'Danh sách xã/phường của huyện trước sáp nhập' })
   @ApiOkResponse({ type: LegacyWard, isArray: true })
   listWardsOfDistrict(@Param('code') code: string): Promise<LegacyWard[]> {
     return this.service.findWardsByDistrict(code);
   }
 
   @Get('wards/:code')
-  @ApiOperation({ summary: 'Get a legacy ward/commune' })
+  @ApiOperation({ summary: 'Chi tiết xã/phường trước sáp nhập' })
   @ApiOkResponse({ type: LegacyWard })
   getWard(@Param('code') code: string): Promise<LegacyWard> {
     return this.service.findWardByCode(code);

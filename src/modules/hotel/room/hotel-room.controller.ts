@@ -28,14 +28,14 @@ export class HotelRoomsController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Create hotel room' })
+  @ApiOperation({ summary: 'Tạo phòng khách sạn' })
   @ApiCreatedResponse({ description: 'Hotel room created' })
   create(@Body() dto: CreateHotelRoomDto) {
     return this.hotelRoomsService.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Search hotel rooms' })
+  @ApiOperation({ summary: 'Tìm kiếm phòng khách sạn' })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
   @ApiQuery({ name: 'city', required: false })
   @ApiQuery({ name: 'province', required: false })
@@ -82,7 +82,7 @@ export class HotelRoomsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get hotel room detail' })
+  @ApiOperation({ summary: 'Chi tiết phòng khách sạn' })
   @ApiOkResponse({ description: 'Hotel room detail' })
   findOne(
     @Param('id', ParseIntPipe) id: number,
@@ -94,7 +94,7 @@ export class HotelRoomsController {
 
   @Patch(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Update hotel room information' })
+  @ApiOperation({ summary: 'Cập nhật thông tin phòng khách sạn' })
   @ApiOkResponse({ description: 'Hotel room updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -105,7 +105,7 @@ export class HotelRoomsController {
 
   @Delete(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Delete hotel room' })
+  @ApiOperation({ summary: 'Xóa phòng khách sạn' })
   @ApiOkResponse({ description: 'Hotel room removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.hotelRoomsService.remove(id);

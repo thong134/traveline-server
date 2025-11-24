@@ -30,6 +30,12 @@ export class Destination {
   province?: string;
 
   @Column({ nullable: true })
+  district?: string;
+
+  @Column({ nullable: true })
+  districtCode?: string;
+
+  @Column({ nullable: true })
   specificAddress?: string;
 
   @Column({ type: 'double precision' })

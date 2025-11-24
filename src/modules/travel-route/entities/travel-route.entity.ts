@@ -17,9 +17,6 @@ export class TravelRoute {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: true })
-  ownerUid?: string;
-
   @ManyToOne(() => User, (user: User) => user.travelRoutes, {
     nullable: true,
     onDelete: 'SET NULL',

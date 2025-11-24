@@ -7,12 +7,16 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
+  ApiConsumes,
   ApiTags,
 } from '@nestjs/swagger';
 import { RentalVehiclesService } from './rental-vehicle.service';
@@ -27,6 +31,22 @@ import {
   RejectRentalVehicleDto,
   UpdateRentalVehicleStatusDto,
 } from './dto/manage-rental-vehicle.dto';
+import type { Express } from 'express';
+import { imageMulterOptions } from '../../common/upload/image-upload.config';
+
+type RentalVehicleUploadFiles = {
+  vehicleRegistrationFront?: Express.Multer.File;
+  vehicleRegistrationBack?: Express.Multer.File;
+};
+
+function mapVehicleRegistrationFiles(
+  files?: Record<string, Express.Multer.File[]>,
+): RentalVehicleUploadFiles {
+  return {
+    vehicleRegistrationFront: files?.vehicleRegistrationFront?.[0],
+    vehicleRegistrationBack: files?.vehicleRegistrationBack?.[0],
+  };
+}
 
 @ApiTags('rental-vehicles')
 @Controller('rental-vehicles')
@@ -37,8 +57,21 @@ export class RentalVehiclesController {
   @RequireAuth()
   @ApiOperation({ summary: 'Đăng ký xe cho thuê' })
   @ApiCreatedResponse({ description: 'Đăng ký xe thành công' })
-  create(@Body() dto: CreateRentalVehicleDto) {
-    return this.service.create(dto);
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'vehicleRegistrationFront', maxCount: 1 },
+        { name: 'vehicleRegistrationBack', maxCount: 1 },
+      ],
+      imageMulterOptions,
+    ),
+  )
+  create(
+    @UploadedFiles() files: Record<string, Express.Multer.File[]> = {},
+    @Body() dto: CreateRentalVehicleDto,
+  ) {
+    return this.service.create(dto, mapVehicleRegistrationFiles(files));
   }
 
   @Get()
@@ -78,11 +111,26 @@ export class RentalVehiclesController {
   @RequireAuth()
   @ApiOperation({ summary: 'Cập nhật thông tin xe cho thuê' })
   @ApiOkResponse({ description: 'Cập nhật xe thành công' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'vehicleRegistrationFront', maxCount: 1 },
+        { name: 'vehicleRegistrationBack', maxCount: 1 },
+      ],
+      imageMulterOptions,
+    ),
+  )
   update(
     @Param('licensePlate') licensePlate: string,
+    @UploadedFiles() files: Record<string, Express.Multer.File[]> = {},
     @Body() dto: UpdateRentalVehicleDto,
   ) {
-    return this.service.update(licensePlate, dto);
+    return this.service.update(
+      licensePlate,
+      dto,
+      mapVehicleRegistrationFiles(files),
+    );
   }
 
   @Patch(':licensePlate/status')

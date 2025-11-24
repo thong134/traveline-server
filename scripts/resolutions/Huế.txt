@@ -13,14 +13,14 @@
 13. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Phú Thượng, xã Phú An và xã Phú Mỹ thành phường mới có tên gọi là phường Mỹ Thượng.
 14. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Thủy Vân, Xuân Phú và Vỹ Dạ thành phường mới có tên gọi là phường Vỹ Dạ.
 15. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Phú Hội, Phú Nhuận, Phường Đúc, Vĩnh Ninh, Phước Vĩnh và Trường An thành phường mới có tên gọi là phường Thuận Hóa.
-16. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường An Đông, An TâyvàAn Cựu thành phường mới có tên gọi là phường An Cựu.
+16. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường An Đông, An Tây và An Cựu thành phường mới có tên gọi là phường An Cựu.
 17. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các phường Thủy Biều, Thủy Bằng và Thủy Xuân thành phường mới có tên gọi là phường Thủy Xuân.
 18. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Thủy Dương, phườngThủy Phương và xã Thủy Thanh thành phường mới có tên gọi là phường Thanh Thủy.
 19. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Thủy Lương, phườngThủy Châu và xã Thủy Tân thành phường mới có tên gọi là phường Hương Thủy.
 20. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của phường Phú Bài và các xã Thủy Phù, Phú Sơn, Dương Hòa thành phường mới có tên gọi là phường Phú Bài.
 21. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Quảng Thái, Quảng Lợi, Quảng Vinh và Quảng Phú thành xã mới có tên gọi là xã Đan Điền.
 22. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số củathị trấn Sịa và các xã Quảng Phước, Quảng An, Quảng Thọ thành xã mới có tên gọi là xã Quảng Điền.
-23. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Hương Bình, Bình Thành và Bình Tiếnthành xã mới có tên gọi là xã Bình Điền.
+23. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Hương Bình, Bình Thành và Bình Tiến thành xã mới có tên gọi là xã Bình Điền.
 24. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Phú Diên, Vinh Xuân, Vinh An và Vinh Thanh thành xã mới có tên gọi là xã Phú Vinh.
 25. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số của các xã Phú Xuân, Phú Lương và Phú Hồ thành xã mới có tên gọi là xã Phú Hồ.
 26. Sắp xếp toàn bộ diện tích tự nhiên, quy mô dân số củathị trấn Phú Đa, xã Phú Gia và xã Vinh Hà thành xã mới có tên gọi là xã Phú Vang.

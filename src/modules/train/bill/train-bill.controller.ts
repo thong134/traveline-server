@@ -34,14 +34,14 @@ export class TrainBillsController {
   constructor(private readonly service: TrainBillsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create train bill' })
+  @ApiOperation({ summary: 'Tạo hóa đơn tàu' })
   @ApiCreatedResponse({ description: 'Train bill created' })
   create(@Body() dto: CreateTrainBillDto, @CurrentUser() user: RequestUser) {
     return this.service.create(user.userId, dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List train bills' })
+  @ApiOperation({ summary: 'Danh sách hóa đơn tàu' })
   @ApiQuery({ name: 'routeId', required: false, type: Number })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false, enum: TrainBillStatus })
@@ -60,7 +60,7 @@ export class TrainBillsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get train bill detail' })
+  @ApiOperation({ summary: 'Chi tiết hóa đơn tàu' })
   @ApiOkResponse({ description: 'Train bill detail' })
   findOne(
     @Param('id', ParseIntPipe) id: number,
@@ -70,7 +70,7 @@ export class TrainBillsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update train bill' })
+  @ApiOperation({ summary: 'Cập nhật hóa đơn tàu' })
   @ApiOkResponse({ description: 'Train bill updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -81,7 +81,7 @@ export class TrainBillsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Remove train bill' })
+  @ApiOperation({ summary: 'Xóa hóa đơn tàu' })
   @ApiOkResponse({ description: 'Train bill removed' })
   remove(
     @Param('id', ParseIntPipe) id: number,

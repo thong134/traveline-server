@@ -34,14 +34,14 @@ export class RentalBillsController {
   constructor(private readonly service: RentalBillsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create rental bill for customer booking' })
+  @ApiOperation({ summary: 'Tạo hóa đơn thuê xe cho khách đặt' })
   @ApiCreatedResponse({ description: 'Rental bill created' })
   create(@Body() dto: CreateRentalBillDto, @CurrentUser() user: RequestUser) {
     return this.service.create(user.userId, dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List rental bills' })
+  @ApiOperation({ summary: 'Danh sách hóa đơn thuê xe' })
   @ApiQuery({ name: 'status', required: false, enum: RentalBillStatus })
   @ApiOkResponse({ description: 'Rental bill list' })
   findAll(
@@ -54,7 +54,7 @@ export class RentalBillsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get rental bill detail' })
+  @ApiOperation({ summary: 'Chi tiết hóa đơn thuê xe' })
   @ApiOkResponse({ description: 'Rental bill detail' })
   findOne(
     @Param('id', ParseIntPipe) id: number,
@@ -64,7 +64,7 @@ export class RentalBillsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update rental bill (status or information)' })
+  @ApiOperation({ summary: 'Cập nhật hóa đơn thuê xe (trạng thái hoặc thông tin)' })
   @ApiOkResponse({ description: 'Rental bill updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -75,7 +75,7 @@ export class RentalBillsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete rental bill' })
+  @ApiOperation({ summary: 'Xóa hóa đơn thuê xe' })
   @ApiOkResponse({ description: 'Rental bill removed' })
   remove(
     @Param('id', ParseIntPipe) id: number,

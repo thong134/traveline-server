@@ -11,7 +11,7 @@ export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Send a message to the travel chatbot' })
+  @ApiOperation({ summary: 'Gửi tin nhắn tới chatbot du lịch' })
   @Throttle({ default: { limit: 1, ttl: 3 } })
   async handleChat(@Body() dto: ChatRequestDto) {
     return this.chatService.handleChat(dto.message, dto.lang, {

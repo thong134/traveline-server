@@ -39,14 +39,14 @@ export class CooperationsController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Create a new cooperation partner' })
+  @ApiOperation({ summary: 'Tạo đối tác hợp tác mới' })
   @ApiCreatedResponse({ description: 'Cooperation created' })
   create(@Body() dto: CreateCooperationDto) {
     return this.cooperationsService.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List cooperation partners' })
+  @ApiOperation({ summary: 'Danh sách đối tác hợp tác' })
   @ApiQuery({ name: 'type', required: false })
   @ApiQuery({ name: 'city', required: false })
   @ApiQuery({ name: 'province', required: false })
@@ -62,7 +62,7 @@ export class CooperationsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get cooperation detail' })
+  @ApiOperation({ summary: 'Chi tiết đối tác hợp tác' })
   @ApiOkResponse({ description: 'Cooperation detail' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.cooperationsService.findOne(id);
@@ -70,7 +70,7 @@ export class CooperationsController {
 
   @Patch(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Update cooperation information' })
+  @ApiOperation({ summary: 'Cập nhật thông tin đối tác' })
   @ApiOkResponse({ description: 'Cooperation updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -81,7 +81,7 @@ export class CooperationsController {
 
   @Delete(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Delete cooperation' })
+  @ApiOperation({ summary: 'Xóa đối tác hợp tác' })
   @ApiOkResponse({ description: 'Cooperation removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.cooperationsService.remove(id);
@@ -111,8 +111,7 @@ export class CooperationsController {
 
   @Get(':id/hotel-availability')
   @ApiOperation({
-    summary:
-      'Demo: pull hotel inventory directly from partner API via cooperation',
+    summary: 'Demo: lấy dữ liệu phòng khách sạn từ API đối tác thông qua hợp tác',
     description:
       'Giả lập gọi sang hệ thống đối tác để lấy thông tin phòng trống dựa trên cooperation đã ký kết.',
   })

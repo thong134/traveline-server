@@ -28,14 +28,14 @@ export class FeedbackController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Submit feedback' })
+  @ApiOperation({ summary: 'Gửi phản hồi' })
   @ApiCreatedResponse({ description: 'Feedback created' })
   create(@Body() dto: CreateFeedbackDto) {
     return this.feedbackService.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List feedback' })
+  @ApiOperation({ summary: 'Danh sách phản hồi' })
   @ApiQuery({
     name: 'userId',
     required: false,
@@ -91,7 +91,7 @@ export class FeedbackController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get feedback detail' })
+  @ApiOperation({ summary: 'Chi tiết phản hồi' })
   @ApiOkResponse({ description: 'Feedback detail' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.feedbackService.findOne(id);
@@ -99,7 +99,7 @@ export class FeedbackController {
 
   @Patch(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Update feedback' })
+  @ApiOperation({ summary: 'Cập nhật phản hồi' })
   @ApiOkResponse({ description: 'Feedback updated' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -110,7 +110,7 @@ export class FeedbackController {
 
   @Delete(':id')
   @RequireAuth()
-  @ApiOperation({ summary: 'Delete feedback' })
+  @ApiOperation({ summary: 'Xóa phản hồi' })
   @ApiOkResponse({ description: 'Feedback removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.feedbackService.remove(id);
