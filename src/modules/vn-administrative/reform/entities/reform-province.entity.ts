@@ -1,7 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
 import { ReformAdministrativeUnit } from './reform-administrative-unit.entity';
 
-@Entity({ schema: 'vn_reform', name: 'province_after_communes' })
+@Entity('province_after_communes')
 export class ReformProvince {
   @PrimaryColumn({ length: 20 })
   code: string;

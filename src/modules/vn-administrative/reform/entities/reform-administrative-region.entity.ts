@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-@Entity({ schema: 'vn_reform', name: 'administrative_regions' })
+@Entity('administrative_regions')
 export class ReformAdministrativeRegion {
   @PrimaryColumn({ type: 'int' })
   id: number;

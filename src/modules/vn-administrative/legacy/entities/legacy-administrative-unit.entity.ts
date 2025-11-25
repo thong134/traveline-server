@@ -3,7 +3,7 @@ import { LegacyProvince } from './legacy-province.entity';
 import { LegacyDistrict } from './legacy-district.entity';
 import { LegacyWard } from './legacy-ward.entity';
 
-@Entity({ schema: 'vn_legacy', name: 'administrative_units_old' })
+@Entity('administrative_units_old')
 export class LegacyAdministrativeUnit {
   @PrimaryColumn({ type: 'int' })
   id: number;

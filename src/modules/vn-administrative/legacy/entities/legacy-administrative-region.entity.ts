@@ -1,7 +1,7 @@
 import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
 import { LegacyProvince } from './legacy-province.entity';
 
-@Entity({ schema: 'vn_legacy', name: 'administrative_regions' })
+@Entity('administrative_regions')
 export class LegacyAdministrativeRegion {
   @PrimaryColumn({ type: 'int' })
   id: number;

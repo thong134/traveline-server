@@ -17,26 +17,6 @@ import { EnrichDestinationsDto } from './dto/enrich-destinations.dto';
 export class AdministrativeMappingController {
   constructor(private readonly service: AdministrativeMappingService) {}
 
-  @Post('translate')
-  @ApiOperation({
-    summary:
-      'Chuyển đổi địa chỉ cũ sang hệ thống hành chính mới',
-  })
-  @ApiOkResponse({
-    schema: {
-      type: 'object',
-      properties: {
-        oldAddress: { type: 'string' },
-        newAddress: { type: 'string' },
-      },
-    },
-  })
-  translate(
-    @Body() dto: TranslateAddressTextDto,
-  ): Promise<{ oldAddress: string; newAddress: string }> {
-    return this.service.translate(dto);
-  }
-
   @Post('translate-address-text')
   @ApiOperation({
     summary:

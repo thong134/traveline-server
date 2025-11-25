@@ -2,7 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
 import { ReformProvince } from './reform-province.entity';
 import { ReformAdministrativeUnit } from './reform-administrative-unit.entity';
 
-@Entity({ schema: 'vn_reform', name: 'wards' })
+@Entity('ward_after_communes')
 export class ReformCommune {
   @PrimaryColumn({ length: 20 })
   code: string;

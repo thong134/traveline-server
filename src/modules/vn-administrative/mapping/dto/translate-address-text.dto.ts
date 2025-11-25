@@ -4,7 +4,7 @@ import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 export class TranslateAddressTextDto {
   @ApiProperty({
     description: 'Original specific address details (house number, street, hamlet, etc.)',
-    example: '150 Nguyễn Hữu Thọ, Hòa Thuận Nam',
+    example: '150 Nguyễn Hữu Thọ, Hòa Thuận Tây',
   })
   @IsString()
   @IsNotEmpty()
@@ -22,7 +22,7 @@ export class TranslateAddressTextDto {
 
   @ApiProperty({
     description: 'Legacy ward/commune name before the 2025 resolution',
-    example: 'Hòa Thuận Nam',
+    example: 'Hòa Thuận Tây',
   })
   @IsString()
   @IsNotEmpty()
