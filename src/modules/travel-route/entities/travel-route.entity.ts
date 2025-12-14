@@ -12,6 +12,14 @@ import { User } from '../../user/entities/user.entity';
 import { RouteStop } from './route-stop.entity';
 import { Feedback } from '../../feedback/entities/feedback.entity';
 
+export enum TravelRouteStatus {
+  DRAFT = 'draft',
+  UPCOMING = 'upcoming',
+  IN_PROGRESS = 'in_progress',
+  COMPLETED = 'completed',
+  MISSED = 'missed',
+}
+
 @Entity('travel_routes')
 export class TravelRoute {
   @PrimaryGeneratedColumn()
@@ -23,9 +31,6 @@ export class TravelRoute {
   })
   @JoinColumn({ name: 'user_id' })
   user?: User;
-
-  @Column({ name: 'user_id', nullable: true })
-  userId?: number;
 
   @Column()
   name: string;
@@ -55,6 +60,16 @@ export class TravelRoute {
 
   @Column({ type: 'double precision', default: 0 })
   averageRating: number;
+
+  @Column({ type: 'boolean', default: false })
+  shared: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: TravelRouteStatus,
+    default: TravelRouteStatus.DRAFT,
+  })
+  status: TravelRouteStatus;
 
   @CreateDateColumn()
   createdAt: Date;

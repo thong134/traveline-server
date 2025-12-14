@@ -15,11 +15,6 @@ export class UpdateRouteStopDetailsDto {
   @Min(0)
   travelPoints?: number;
 
-  @ApiPropertyOptional({ description: 'Định danh tuỳ chọn từ client' })
-  @IsOptional()
-  @IsString()
-  uniqueKey?: string;
-
   @ApiPropertyOptional({ description: 'Cập nhật địa điểm đã chọn', minimum: 1 })
   @IsOptional()
   @Type(() => Number)

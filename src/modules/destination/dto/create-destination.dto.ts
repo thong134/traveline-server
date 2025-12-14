@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   Min,
   MinLength,
 } from 'class-validator';
@@ -111,6 +112,22 @@ export class CreateDestinationDto {
   @IsOptional()
   @IsString()
   googlePlaceId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Giờ mở cửa (HH:mm, theo giờ địa phương)',
+    example: '08:00',
+  })
+  @IsOptional()
+  @Matches(/^\d{2}:\d{2}$/)
+  openTime?: string;
+
+  @ApiPropertyOptional({
+    description: 'Giờ đóng cửa (HH:mm, theo giờ địa phương)',
+    example: '21:30',
+  })
+  @IsOptional()
+  @Matches(/^\d{2}:\d{2}$/)
+  closeTime?: string;
 
   @ApiPropertyOptional({
     description: 'Whether destination is available for booking',

@@ -13,6 +13,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { UserRole, USER_ROLE_VALUES } from '../entities/user-role.enum';
 
 export const GENDER_VALUES = ['male', 'female', 'other'] as const;
 export type Gender = (typeof GENDER_VALUES)[number];
@@ -164,4 +165,9 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   userTier?: string;
+
+  @ApiPropertyOptional({ enum: USER_ROLE_VALUES })
+  @IsOptional()
+  @IsIn(USER_ROLE_VALUES as unknown as string[])
+  role?: UserRole;
 }

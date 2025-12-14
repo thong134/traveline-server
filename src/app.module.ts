@@ -27,6 +27,7 @@ import { VnAdministrativeModule } from './modules/vn-administrative/vn-administr
 import { CategoriesModule } from './modules/category/category.module';
 import { EateriesModule } from './modules/eatery/eatery.module';
 import { WalletModule } from './modules/wallet/wallet.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { WalletModule } from './modules/wallet/wallet.module';
     CategoriesModule,
     EateriesModule,
     WalletModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

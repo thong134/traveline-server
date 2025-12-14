@@ -20,6 +20,7 @@ import { BusBill } from '../../bus/bill/entities/bus-bill.entity';
 import { TrainBill } from '../../train/bill/entities/train-bill.entity';
 import { FlightBill } from '../../flight/bill/entities/flight-bill.entity';
 import { UserWallet } from '../../wallet/entities/user-wallet.entity';
+import { UserRole } from './user-role.enum';
 
 @Entity()
 export class User {
@@ -154,6 +155,14 @@ export class User {
 
   @Column({ default: 'dong' })
   userTier: string;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    enumName: 'user_role',
+    default: UserRole.User,
+  })
+  role: UserRole;
 
   @CreateDateColumn()
   createdAt: Date;

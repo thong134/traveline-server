@@ -1,7 +1,9 @@
-import {
+﻿import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
+  OnModuleInit,
   UnauthorizedException,
 } from '@nestjs/common';
 import axios from 'axios';
@@ -12,7 +14,7 @@ import { compare, hash } from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { addDays, addMinutes } from 'date-fns';
 import { Repository } from 'typeorm';
-import { sendResetEmail } from './utils/mail.util';
+import { sendEmailVerificationEmail, sendResetEmail } from './utils/mail.util';
 import { UsersService } from '../user/user.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { PasswordReset } from './entities/password-reset.entity';
@@ -29,12 +31,15 @@ import { WalletService } from '../wallet/wallet.service';
 import type { AuthTokens } from './dto/auth-tokens.dto';
 import type { Express } from 'express';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
+import { UserRole } from '../user/entities/user-role.enum';
+import { EmailVerifyDto } from './dto/email-verify.dto';
 
-type SafeUser = Pick<User, 'id' | 'username'>;
+type SafeUser = Pick<User, 'id' | 'username' | 'role'>;
 
 interface JwtPayload {
   sub: number;
   username: string;
+  role: UserRole;
 }
 
 interface FirebaseSendVerificationResponse {
@@ -53,7 +58,9 @@ interface FirebaseErrorResponse {
 }
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     @InjectRepository(PasswordReset)
@@ -69,6 +76,10 @@ export class AuthService {
     private readonly cooperationsService: CooperationsService,
     private readonly walletService: WalletService,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.ensureDefaultAdminAccount();
+  }
 
   private getNumberConfig(key: string, fallback: number): number {
     const value = this.configService.get<string | number | undefined>(key);
@@ -110,7 +121,18 @@ export class AuthService {
     return this.getNumberConfig('REFRESH_TOKEN_STORE_DAYS', 30);
   }
 
-  async signup(dto: SignupDto): Promise<{ id: number; username: string }> {
+  private getEmailVerifySecret(): string {
+    return (
+      this.configService.get<string>('EMAIL_VERIFY_SECRET')?.trim() ||
+      this.getAccessTokenSecret()
+    );
+  }
+
+  private getEmailVerifyExpiresMinutes(): number {
+    return this.getNumberConfig('EMAIL_VERIFY_EXPIRES_MIN', 10);
+  }
+
+  async signup(dto: SignupDto): Promise<{ id: number; username: string; role: UserRole }> {
     const existing = await this.usersService.findByUsername(dto.username);
     if (existing) throw new ConflictException('Username already exists');
 
@@ -118,9 +140,10 @@ export class AuthService {
     const user = await this.usersService.create({
       username: dto.username,
       password: hashed,
+      role: UserRole.User,
     });
     await this.walletService.createWallet(user.id);
-    return { id: user.id, username: user.username };
+    return { id: user.id, username: user.username, role: user.role };
   }
 
   async validateUser(username: string, pass: string): Promise<SafeUser | null> {
@@ -134,11 +157,15 @@ export class AuthService {
       return null;
     }
 
-    return { id: user.id, username: user.username };
+    return { id: user.id, username: user.username, role: user.role };
   }
 
   async login(user: SafeUser): Promise<AuthTokens> {
-    const payload: JwtPayload = { username: user.username, sub: user.id };
+    const payload: JwtPayload = {
+      username: user.username,
+      sub: user.id,
+      role: user.role,
+    };
 
     const accessToken = this.jwtService.sign(payload, {
       secret: this.getAccessTokenSecret(),
@@ -164,6 +191,7 @@ export class AuthService {
     return {
       access_token: accessToken,
       refreshToken,
+      role: user.role,
     };
   }
 
@@ -191,7 +219,7 @@ export class AuthService {
       }
 
       const newAccessToken = this.jwtService.sign(
-        { sub: payload.sub, username: payload.username },
+        { sub: payload.sub, username: payload.username, role: payload.role },
         {
           secret: this.getAccessTokenSecret(),
           expiresIn: this.getAccessTokenTtl(),
@@ -204,17 +232,65 @@ export class AuthService {
     }
   }
 
-  // request reset: generate token, save hash, send email (do not reveal if email exists)
+  async startEmailVerification(
+    email: string,
+  ): Promise<{ ok: boolean; token: string; expiresAt: Date }> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException('Email không tồn tại');
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresMin = this.getEmailVerifyExpiresMinutes();
+    const expiresAt = addMinutes(new Date(), expiresMin);
+
+    const token = this.jwtService.sign(
+      { email, code },
+      {
+        secret: this.getEmailVerifySecret(),
+        expiresIn: `${expiresMin}m`,
+      },
+    );
+
+    await sendEmailVerificationEmail(email, code);
+    return { ok: true, token, expiresAt };
+  }
+
+  async verifyEmailCode(dto: EmailVerifyDto): Promise<{ ok: boolean }> {
+    let payload: { email: string; code: string };
+    try {
+      payload = this.jwtService.verify<{ email: string; code: string }>(
+        dto.token,
+        {
+          secret: this.getEmailVerifySecret(),
+        },
+      );
+    } catch {
+      throw new UnauthorizedException(
+        'Mã xác thực không hợp lệ hoặc đã hết hạn',
+      );
+    }
+
+    if (payload.email !== dto.email || payload.code !== dto.code) {
+      throw new UnauthorizedException('Mã xác thực không hợp lệ');
+    }
+
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user) {
+      throw new UnauthorizedException('Tài khoản không tồn tại');
+    }
+
+    await this.usersService.markEmailVerified(user.id, dto.email);
+    return { ok: true };
+  }
+
   async requestPasswordReset(email: string): Promise<void> {
     const user = await this.usersService.findByEmail(email);
-    // Always return 200 to not reveal whether email exists
     if (!user) {
-      // Optionally log
       return;
     }
 
-    // create a secure random token (plaintext will be sent by email)
-    const token = randomBytes(32).toString('hex'); // 64 chars
+    const token = randomBytes(32).toString('hex');
     const tokenHash = await hash(token, 10);
 
     const expiresMinutes = Number(
@@ -230,18 +306,14 @@ export class AuthService {
     });
     await this.passwordResetRepo.save(entity);
 
-    // build reset link to frontend
     const link = `${process.env.FRONTEND_URL}/reset-password?token=${token}&uid=${user.id}`;
-    // send email (see util)
     await sendResetEmail(user.email, link);
   }
 
-  // reset password: client sends token + newPassword
   async resetPassword(
     token: string,
     newPassword: string,
   ): Promise<{ ok: boolean }> {
-    // Find all not-used token rows not expired (small) — we must compare hashed token
     const now = new Date();
     const rows = await this.passwordResetRepo.find({
       where: { used: false },
@@ -250,20 +322,18 @@ export class AuthService {
     for (const row of rows) {
       const ok = await compare(token, row.tokenHash);
       if (!ok) continue;
-      if (row.expiresAt < now) continue; // expired
+      if (row.expiresAt < now) continue;
 
-      // everything good — update user password
       const hashed = await hash(newPassword, 10);
       await this.usersService.updatePassword(row.userId, hashed);
 
-      // mark token used
       row.used = true;
       await this.passwordResetRepo.save(row);
 
       try {
         await this.refreshTokenRepository.delete({ userId: row.userId });
       } catch {
-        // Ignore cleanup errors
+        // ignore
       }
 
       return { ok: true };
@@ -334,7 +404,6 @@ export class AuthService {
       throw new BadRequestException('FIREBASE_API_KEY is not configured');
     }
 
-    // find latest unused OTPs for this phone
     const rows = await this.phoneOtpRepo.find({
       where: { phone, used: false },
       order: { createdAt: 'DESC' },
@@ -392,6 +461,51 @@ export class AuthService {
   async logout(userId: number): Promise<{ message: string }> {
     await this.refreshTokenRepository.delete({ userId });
     return { message: 'Logged out' };
+  }
+
+  private async ensureDefaultAdminAccount(): Promise<void> {
+    const username =
+      this.configService.get<string>('DEFAULT_ADMIN_USERNAME')?.trim() ||
+      'admin';
+    const email = this.configService.get<string>('DEFAULT_ADMIN_EMAIL');
+    const fullName =
+      this.configService.get<string>('DEFAULT_ADMIN_FULL_NAME')?.trim() ||
+      'Traveline Admin';
+
+    const passwordConfig = this.configService
+      .get<string>('DEFAULT_ADMIN_PASSWORD')
+      ?.trim();
+
+    const password =
+      passwordConfig && passwordConfig.length >= 8
+        ? passwordConfig
+        : 'Admin@Traveline2025';
+
+    const existing = await this.usersService.findByUsername(username);
+    if (existing) {
+      if (existing.role !== UserRole.Admin) {
+        await this.usersService.update(existing.id, { role: UserRole.Admin });
+        this.logger.log(
+          `Upgraded existing user "${username}" to admin role during bootstrap`,
+        );
+      }
+      return;
+    }
+
+    const hashed = await hash(password, 10);
+    const admin = await this.usersService.create({
+      username,
+      password: hashed,
+      email: email?.trim(),
+      fullName,
+      role: UserRole.Admin,
+    });
+
+    this.logger.warn(
+      `Provisioned default admin account "${username}". Please update DEFAULT_ADMIN_PASSWORD env variable to change the initial password.`,
+    );
+
+    await this.walletService.createWallet(admin.id);
   }
 
   async changePassword(

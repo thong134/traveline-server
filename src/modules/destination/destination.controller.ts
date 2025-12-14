@@ -26,6 +26,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
+import { UserRole } from '../user/entities/user-role.enum';
 
 @ApiTags('destinations')
 @Controller('destinations')
@@ -33,7 +34,7 @@ export class DestinationsController {
   constructor(private readonly destinationsService: DestinationsService) {}
 
   @Post()
-  @RequireAuth()
+  @RequireAuth(UserRole.Admin)
   @ApiOperation({ summary: 'Tạo địa điểm du lịch' })
   @ApiCreatedResponse({ description: 'Destination created' })
   create(@Body() dto: CreateDestinationDto) {
@@ -53,6 +54,11 @@ export class DestinationsController {
     description: 'Filter by availability (true/false)',
   })
   @ApiQuery({
+    name: 'province',
+    required: false,
+    description: 'Lọc theo tỉnh/thành phố',
+  })
+  @ApiQuery({
     name: 'limit',
     required: false,
     description: 'Limit number of items',
@@ -70,6 +76,7 @@ export class DestinationsController {
     @Query('available') available?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('province') province?: string,
   ) {
     return this.destinationsService.findAll({
       q,
@@ -77,6 +84,7 @@ export class DestinationsController {
         typeof available === 'string' ? available === 'true' : undefined,
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
+      province,
     });
   }
 
@@ -133,7 +141,7 @@ export class DestinationsController {
   }
 
   @Patch(':id')
-  @RequireAuth()
+  @RequireAuth(UserRole.Admin)
   @ApiOperation({ summary: 'Cập nhật địa điểm du lịch' })
   @ApiOkResponse({ description: 'Destination updated' })
   update(
@@ -144,7 +152,7 @@ export class DestinationsController {
   }
 
   @Delete(':id')
-  @RequireAuth()
+  @RequireAuth(UserRole.Admin)
   @ApiOperation({ summary: 'Xóa địa điểm du lịch' })
   @ApiOkResponse({ description: 'Destination deleted' })
   remove(@Param('id', ParseIntPipe) id: number) {

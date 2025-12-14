@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { APP_GUARD } from '@nestjs/core';
 import { UsersModule } from '../user/user.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshToken } from './entities/refresh-token.entity';
@@ -13,6 +14,7 @@ import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 import { EateriesModule } from '../eatery/eatery.module';
 import { CooperationsModule } from '../cooperation/cooperation.module';
 import { WalletModule } from '../wallet/wallet.module';
+import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
@@ -30,7 +32,14 @@ import { WalletModule } from '../wallet/wallet.module';
     TypeOrmModule.forFeature([PhoneOtp]),
     CloudinaryModule,
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
   controllers: [AuthController],
   exports: [AuthService],
 })

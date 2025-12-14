@@ -1,7 +1,12 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { TravelRoute } from './entities/travel-route.entity';
+import { TravelRoute, TravelRouteStatus } from './entities/travel-route.entity';
 import { RouteStop, RouteStopStatus } from './entities/route-stop.entity';
 import { CreateTravelRouteDto } from './dto/create-travel-route.dto';
 import { UpdateTravelRouteDto } from './dto/update-travel-route.dto';
@@ -17,7 +22,47 @@ interface TravelRouteQueryOptions {
   q?: string;
   userId?: number;
   province?: string;
+  shared?: boolean;
 }
+
+interface SharedRouteQueryOptions {
+  q?: string;
+  province?: string;
+  limit?: number;
+  offset?: number;
+}
+
+type PublicTravelRoute = {
+  id: number;
+  name: string;
+  province?: string;
+  shared: boolean;
+  status: TravelRouteStatus;
+  numberOfDays: number;
+  totalTravelPoints: number;
+  startDate?: Date;
+  endDate?: Date;
+  stops: {
+    id: number;
+    dayOrder: number;
+    sequence: number;
+    startTime?: string;
+    endTime?: string;
+    status: RouteStopStatus;
+    destination?:
+      | {
+          id: number;
+          name: string;
+          province?: string;
+          type?: string;
+          latitude: number;
+          longitude: number;
+          openTime?: string;
+          closeTime?: string;
+        }
+      | undefined;
+  }[];
+};
 
 @Injectable()
 export class TravelRoutesService {
@@ -34,8 +79,78 @@ export class TravelRoutesService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async create(dto: CreateTravelRouteDto): Promise<TravelRoute> {
+  async cloneRoute(routeId: number, userId: number): Promise<TravelRoute> {
     return this.dataSource.transaction(async (manager) => {
+      const routeRepo = manager.getRepository(TravelRoute);
+      const stopRepo = manager.getRepository(RouteStop);
+      const userRepo = manager.getRepository(User);
+
+      const source = await routeRepo.findOne({
+        where: { id: routeId },
+        relations: { stops: { destination: true }, user: true },
+        order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
+      });
+
+      if (!source) {
+        throw new NotFoundException(`Travel route ${routeId} not found`);
+      }
+
+      if (!source.shared && source.user?.id !== userId) {
+        throw new ForbiddenException('Bạn không thể sao chép lộ trình này');
+      }
+
+      const user = await userRepo.findOne({ where: { id: userId } });
+      if (!user) {
+        throw new NotFoundException(`User ${userId} not found`);
+      }
+
+      const clone = new TravelRoute();
+      clone.name = source.name;
+      clone.province = source.province;
+      clone.numberOfDays = source.numberOfDays;
+      clone.startDate = source.startDate ?? undefined;
+      clone.endDate = source.endDate ?? undefined;
+      clone.shared = false;
+      clone.status = TravelRouteStatus.DRAFT;
+      clone.user = user;
+      clone.totalTravelPoints = 0;
+      clone.averageRating = 0;
+
+      const savedRoute = await routeRepo.save(clone);
+
+      if (source.stops?.length) {
+        const stops = source.stops.map((stop) => {
+          const newStop = new RouteStop();
+          newStop.route = savedRoute;
+          newStop.dayOrder = stop.dayOrder;
+          newStop.sequence = stop.sequence;
+          newStop.startTime = stop.startTime;
+          newStop.endTime = stop.endTime;
+          newStop.notes = undefined; // tránh copy thông tin cá nhân
+          newStop.images = [];
+          newStop.videos = [];
+          newStop.status = this.determineStopStatus(
+            savedRoute.startDate ?? undefined,
+            stop.dayOrder,
+            undefined,
+          );
+          newStop.travelPoints = 0;
+          if (stop.destination) {
+            newStop.destination = stop.destination;
+          }
+          return newStop;
+        });
+
+        await stopRepo.save(stops);
+      }
+
+      await this.updateRouteAggregates(savedRoute.id, manager);
+      return this.findOne(savedRoute.id);
+    });
+  }
+
+  async create(dto: CreateTravelRouteDto): Promise<TravelRoute> {
+    const savedId = await this.dataSource.transaction(async (manager) => {
       const route = await this.prepareRouteEntity(
         dto,
         manager.getRepository(User),
@@ -53,12 +168,14 @@ export class TravelRoutesService {
         await this.updateRouteAggregates(savedRoute.id, manager);
       }
 
-      return this.findOne(savedRoute.id);
+      return savedRoute.id;
     });
+
+    return this.findOne(savedId);
   }
 
   async findAll(options: TravelRouteQueryOptions = {}): Promise<TravelRoute[]> {
-    const { q, userId, province } = options;
+    const { q, userId, province, shared } = options;
     const qb = this.routeRepo
       .createQueryBuilder('route')
       .leftJoinAndSelect('route.stops', 'stops')
@@ -69,11 +186,15 @@ export class TravelRoutesService {
     }
 
     if (userId) {
-      qb.andWhere('route.userId = :userId', { userId });
+      qb.andWhere('user.id = :userId', { userId });
     }
 
     if (province) {
       qb.andWhere('route.province = :province', { province });
+    }
+
+    if (shared !== undefined) {
+      qb.andWhere('route.shared = :shared', { shared });
     }
 
     qb.orderBy('route.createdAt', 'DESC')
@@ -81,6 +202,78 @@ export class TravelRoutesService {
       .addOrderBy('stops.sequence', 'ASC');
 
     return qb.getMany();
+  }
+
+  async findByUser(userId: number): Promise<TravelRoute[]> {
+    return this.routeRepo.find({
+      where: { user: { id: userId } },
+      relations: { stops: true },
+      order: {
+        createdAt: 'DESC',
+        stops: { dayOrder: 'ASC', sequence: 'ASC' },
+      },
+    });
+  }
+
+  async findSharedRoutes(
+    options: SharedRouteQueryOptions = {},
+  ): Promise<PublicTravelRoute[]> {
+    const { q, province, limit = 20, offset = 0 } = options;
+    const qb = this.routeRepo
+      .createQueryBuilder('route')
+      .leftJoinAndSelect('route.stops', 'stops')
+      .leftJoinAndSelect('stops.destination', 'destination')
+      .where('route.shared = TRUE');
+
+    if (q) {
+      qb.andWhere('route.name ILIKE :q', { q: `%${q}%` });
+    }
+
+    if (province) {
+      qb.andWhere('route.province = :province', { province });
+    }
+
+    qb
+      .orderBy('route.createdAt', 'DESC')
+      .addOrderBy('stops.dayOrder', 'ASC')
+      .addOrderBy('stops.sequence', 'ASC')
+      .take(limit)
+      .skip(offset);
+
+    const routes = await qb.getMany();
+
+    return routes.map((route) => ({
+      id: route.id,
+      name: route.name,
+      province: route.province,
+      shared: route.shared,
+      status: route.status,
+      numberOfDays: route.numberOfDays,
+      startDate: route.startDate ?? undefined,
+      endDate: route.endDate ?? undefined,
+      totalTravelPoints: route.totalTravelPoints,
+      stops:
+        route.stops?.map((stop) => ({
+          id: stop.id,
+          dayOrder: stop.dayOrder,
+          sequence: stop.sequence,
+          startTime: stop.startTime ?? undefined,
+          endTime: stop.endTime ?? undefined,
+          status: stop.status,
+          destination: stop.destination
+            ? {
+                id: stop.destination.id,
+                name: stop.destination.name,
+                province: stop.destination.province,
+                type: stop.destination.type,
+                latitude: stop.destination.latitude,
+                longitude: stop.destination.longitude,
+                openTime: stop.destination.openTime,
+                closeTime: stop.destination.closeTime,
+              }
+            : undefined,
+        })) ?? [],
+    }));
   }
 
   async findOne(id: number): Promise<TravelRoute> {
@@ -95,6 +288,67 @@ export class TravelRoutesService {
     return route;
   }
 
+  async getStopDetail(routeId: number, stopId: number): Promise<RouteStop> {
+    return this.getStopOrFail(routeId, stopId, undefined, {
+      withDestination: true,
+    });
+  }
+
+  async findRouteDatesByUser(
+    userId: number,
+  ): Promise<
+    Array<{
+      id: number;
+      name: string;
+      startDate: Date | null;
+      endDate: Date | null;
+      status: TravelRouteStatus;
+    }>
+  > {
+    const routes = await this.routeRepo.find({
+      select: {
+        id: true,
+        name: true,
+        startDate: true,
+        endDate: true,
+        status: true,
+      },
+      where: { user: { id: userId } },
+      order: { startDate: 'ASC', id: 'DESC' },
+    });
+    return routes.map((route) => ({
+      id: route.id,
+      name: route.name,
+      startDate: route.startDate ?? null,
+      endDate: route.endDate ?? null,
+      status: route.status,
+    }));
+  }
+
+  async updateShared(
+    routeId: number,
+    shared: boolean,
+    userId: number,
+  ): Promise<TravelRoute> {
+    return this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(TravelRoute);
+      const route = await repo.findOne({
+        where: { id: routeId },
+        relations: { user: true },
+      });
+      if (!route) {
+        throw new NotFoundException(`Travel route ${routeId} not found`);
+      }
+      if (route.user?.id && route.user.id !== userId) {
+        throw new ForbiddenException('Bạn không có quyền cập nhật lộ trình này');
+      }
+
+      route.shared = shared;
+      await repo.save(route);
+      return this.findOne(routeId);
+    });
+  }
+
   async update(id: number, dto: UpdateTravelRouteDto): Promise<TravelRoute> {
     return this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(TravelRoute);
@@ -107,7 +361,12 @@ export class TravelRoutesService {
       await repo.save(route);
 
       if (dto.stops) {
-        await manager.getRepository(RouteStop).delete({ routeId: id });
+        await manager
+          .getRepository(RouteStop)
+          .createQueryBuilder()
+          .delete()
+          .where('route_id = :id', { id })
+          .execute();
         if (dto.stops.length) {
           const stops = await this.prepareStops(
             dto.stops,
@@ -141,15 +400,16 @@ export class TravelRoutesService {
     payload: { startTime?: string; endTime?: string },
   ): Promise<RouteStop> {
     await this.dataSource.transaction(async (manager) => {
-      const stop = await this.getStopOrFail(routeId, stopId, manager);
+      const stop = await this.getStopOrFail(routeId, stopId, manager, {
+        withDestination: true,
+      });
+      const nextStart = payload.startTime ?? stop.startTime;
+      const nextEnd = payload.endTime ?? stop.endTime;
 
-      if (payload.startTime !== undefined) {
-        stop.startTime = payload.startTime;
-      }
+      this.validateStopTimeWindow(stop.destination, nextStart, nextEnd);
 
-      if (payload.endTime !== undefined) {
-        stop.endTime = payload.endTime;
-      }
+      stop.startTime = nextStart;
+      stop.endTime = nextEnd;
 
       await manager.getRepository(RouteStop).save(stop);
     });
@@ -165,25 +425,27 @@ export class TravelRoutesService {
     payload: {
       notes?: string;
       travelPoints?: number;
-      uniqueKey?: string;
       destinationId?: number;
     },
   ): Promise<RouteStop> {
     await this.dataSource.transaction(async (manager) => {
       const stopRepo = manager.getRepository(RouteStop);
-      const stop = await this.getStopOrFail(routeId, stopId, manager);
+      const stop = await this.getStopOrFail(routeId, stopId, manager, {
+        withDestination: true,
+      });
+      let destination = stop.destination;
 
       if (payload.destinationId !== undefined) {
-        const destination = await manager
+        const foundDestination = await manager
           .getRepository(Destination)
           .findOne({ where: { id: payload.destinationId } });
-        if (!destination) {
+        if (!foundDestination) {
           throw new NotFoundException(
             `Destination ${payload.destinationId} not found`,
           );
         }
+        destination = foundDestination;
         stop.destination = destination;
-        stop.destinationId = destination.id;
       }
 
       if (payload.notes !== undefined) {
@@ -194,9 +456,11 @@ export class TravelRoutesService {
         stop.travelPoints = Math.max(0, payload.travelPoints);
       }
 
-      if (payload.uniqueKey !== undefined) {
-        stop.uniqueKey = payload.uniqueKey;
-      }
+      this.validateStopTimeWindow(
+        destination,
+        stop.startTime ?? undefined,
+        stop.endTime ?? undefined,
+      );
 
       await stopRepo.save(stop);
 
@@ -219,7 +483,7 @@ export class TravelRoutesService {
       const stopRepo = manager.getRepository(RouteStop);
       const routeRepo = manager.getRepository(TravelRoute);
       const stops = await stopRepo.find({
-        where: { routeId },
+        where: { route: { id: routeId } },
         order: { dayOrder: 'ASC', sequence: 'ASC' },
       });
 
@@ -358,8 +622,8 @@ export class TravelRoutesService {
         distanceMeters: number;
         stop: RouteStop;
       }> => {
-        const stopRepo = manager.getRepository(RouteStop);
-        const stop = await this.getStopOrFail(routeId, stopId, manager, {
+      const stopRepo = manager.getRepository(RouteStop);
+      const stop = await this.getStopOrFail(routeId, stopId, manager, {
           withDestination: true,
         });
 
@@ -422,8 +686,10 @@ export class TravelRoutesService {
   ): Promise<RouteStop> {
     const repo = manager?.getRepository(RouteStop) ?? this.stopRepo;
     const stop = await repo.findOne({
-      where: { id: stopId, routeId },
-      relations: options.withDestination ? { destination: true } : undefined,
+      where: { id: stopId, route: { id: routeId } },
+      relations: options.withDestination
+        ? { destination: true, route: true }
+        : { route: true },
     });
 
     if (!stop) {
@@ -460,18 +726,24 @@ export class TravelRoutesService {
     dto: Partial<CreateTravelRouteDto>,
     userRepository: Repository<User>,
   ): Promise<void> {
-    const { userId, name, province, numberOfDays, startDate, endDate } = dto;
+    const {
+      userId,
+      name,
+      province,
+      numberOfDays,
+      startDate,
+      endDate,
+      shared,
+    } = dto;
 
     if (userId) {
       const user = await userRepository.findOne({ where: { id: userId } });
       if (!user) {
         throw new NotFoundException(`User ${userId} not found`);
       }
-      route.userId = userId;
       route.user = user;
     } else if (dto.userId === null) {
       route.user = undefined;
-      route.userId = undefined;
     }
 
     if (name !== undefined) {
@@ -482,12 +754,35 @@ export class TravelRoutesService {
       route.province = province;
     }
 
-    if (startDate !== undefined) {
-      route.startDate = startDate ? new Date(startDate) : undefined;
+    const parsedStart = this.parseDateInput(startDate);
+    const parsedEnd = this.parseDateInput(endDate);
+
+    if (parsedStart && parsedEnd && parsedStart > parsedEnd) {
+      throw new BadRequestException('startDate phải nhỏ hơn hoặc bằng endDate');
     }
 
-    if (endDate !== undefined) {
-      route.endDate = endDate ? new Date(endDate) : undefined;
+    const maxDay =
+      dto.stops?.length && dto.stops.some((s) => s?.dayOrder !== undefined)
+        ? Math.max(...dto.stops.map((s) => s.dayOrder))
+        : undefined;
+
+    if (parsedStart && parsedEnd && maxDay && maxDay > 0) {
+      const duration =
+        Math.floor(
+          (parsedEnd.getTime() - parsedStart.getTime()) / 86_400_000,
+        ) + 1;
+      if (duration < maxDay) {
+        throw new BadRequestException(
+          'Khoảng ngày (startDate - endDate) không đủ cho số dayOrder của các điểm dừng',
+        );
+      }
+    }
+
+    route.startDate = parsedStart;
+    route.endDate = parsedEnd;
+
+    if (shared !== undefined) {
+      route.shared = shared;
     }
 
     const computedDays = this.computeNumberOfDays(dto.stops, numberOfDays);
@@ -518,15 +813,31 @@ export class TravelRoutesService {
 
     for (const dto of dtos) {
       const stop = new RouteStop();
-      stop.routeId = routeId;
+      stop.route = { id: routeId } as TravelRoute;
       stop.dayOrder = dto.dayOrder;
       stop.sequence = dto.sequence;
-      stop.uniqueKey = dto.uniqueKey;
       stop.startTime = dto.startTime;
       stop.endTime = dto.endTime;
       stop.notes = dto.notes;
       stop.images = [];
       stop.videos = [];
+      let destination: Destination | undefined;
+
+      if (dto.destinationId) {
+        const foundDestination = await destinationRepository.findOne({
+          where: { id: dto.destinationId },
+        });
+        if (!foundDestination) {
+          throw new NotFoundException(
+            `Destination ${dto.destinationId} not found`,
+          );
+        }
+        destination = foundDestination;
+        stop.destination = foundDestination;
+      }
+
+      this.validateStopTimeWindow(destination, dto.startTime, dto.endTime);
+
       const status = this.determineStopStatus(
         routeStartDate,
         dto.dayOrder,
@@ -534,19 +845,6 @@ export class TravelRoutesService {
       );
       stop.status = status;
       stop.travelPoints = this.resolveTravelPoints(status, dto.travelPoints);
-
-      if (dto.destinationId) {
-        const destination = await destinationRepository.findOne({
-          where: { id: dto.destinationId },
-        });
-        if (!destination) {
-          throw new NotFoundException(
-            `Destination ${dto.destinationId} not found`,
-          );
-        }
-        stop.destinationId = destination.id;
-        stop.destination = destination;
-      }
 
       stops.push(stop);
     }
@@ -595,6 +893,98 @@ export class TravelRoutesService {
     return 0;
   }
 
+  private parseDateInput(input?: string | Date): Date | undefined {
+    if (!input) {
+      return undefined;
+    }
+    if (input instanceof Date) {
+      return new Date(input);
+    }
+    if (typeof input === 'string' && input.includes('/')) {
+      // dd/MM/yyyy
+      const [d, m, y] = input.split('/');
+      const parsed = new Date(Number(y), Number(m) - 1, Number(d));
+      return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+    }
+    const parsed = new Date(input);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }
+
+  private parseTimeToMinutes(time: string): number {
+    const match = /^(\d{2}):(\d{2})$/.exec(time);
+    if (!match) {
+      throw new BadRequestException('Thời gian phải ở định dạng HH:mm');
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    return hours * 60 + minutes;
+  }
+
+  private validateStopTimeWindow(
+    destination?: Destination,
+    startTime?: string,
+    endTime?: string,
+  ): void {
+    if (!startTime && !endTime) {
+      return;
+    }
+
+    if (startTime && endTime) {
+      const start = this.parseTimeToMinutes(startTime);
+      const end = this.parseTimeToMinutes(endTime);
+      if (start > end) {
+        throw new BadRequestException('Giờ bắt đầu phải trước giờ kết thúc');
+      }
+    }
+
+    if (destination?.openTime && destination?.closeTime) {
+      const openMinutes = this.parseTimeToMinutes(destination.openTime);
+      const closeMinutes = this.parseTimeToMinutes(destination.closeTime);
+
+      if (startTime && this.parseTimeToMinutes(startTime) < openMinutes) {
+        throw new BadRequestException(
+          `Giờ bắt đầu phải sau giờ mở cửa (${destination.openTime})`,
+        );
+      }
+
+      if (startTime && this.parseTimeToMinutes(startTime) > closeMinutes) {
+        throw new BadRequestException(
+          `Giờ bắt đầu phải trước giờ đóng cửa (${destination.closeTime})`,
+        );
+      }
+
+      if (endTime && this.parseTimeToMinutes(endTime) > closeMinutes) {
+        throw new BadRequestException(
+          `Giờ kết thúc phải trước giờ đóng cửa (${destination.closeTime})`,
+        );
+      }
+
+      if (endTime && this.parseTimeToMinutes(endTime) < openMinutes) {
+        throw new BadRequestException(
+          `Giờ kết thúc phải sau giờ mở cửa (${destination.openTime})`,
+        );
+      }
+    }
+  }
+
+  private resolveRouteStatusFromStops(
+    statuses: RouteStopStatus[],
+  ): TravelRouteStatus {
+    if (!statuses.length) {
+      return TravelRouteStatus.DRAFT;
+    }
+    if (statuses.every((status) => status === RouteStopStatus.COMPLETED)) {
+      return TravelRouteStatus.COMPLETED;
+    }
+    if (statuses.some((status) => status === RouteStopStatus.IN_PROGRESS)) {
+      return TravelRouteStatus.IN_PROGRESS;
+    }
+    if (statuses.every((status) => status === RouteStopStatus.MISSED)) {
+      return TravelRouteStatus.MISSED;
+    }
+    return TravelRouteStatus.UPCOMING;
+  }
+
   private async updateRouteAggregates(
     routeId: number,
     manager: EntityManager,
@@ -603,13 +993,21 @@ export class TravelRoutesService {
     const aggregation = await stopRepo
       .createQueryBuilder('stop')
       .select('COALESCE(SUM(stop.travelPoints), 0)', 'total')
-      .where('stop.routeId = :routeId', { routeId })
+      .where('stop.route_id = :routeId', { routeId })
       .getRawOne<{ total: string }>();
 
     const totalPoints = Number(aggregation?.total ?? 0);
+    const stopStatuses = await stopRepo.find({
+      select: ['status'],
+      where: { route: { id: routeId } },
+    });
+    const routeStatus = this.resolveRouteStatusFromStops(
+      stopStatuses.map((stop) => stop.status),
+    );
 
     await manager.getRepository(TravelRoute).update(routeId, {
       totalTravelPoints: totalPoints,
+      status: routeStatus,
     });
   }
 }

@@ -33,11 +33,6 @@ export class RouteStopDto {
   @Min(1)
   destinationId?: number;
 
-  @ApiPropertyOptional({ description: 'Unique key from client' })
-  @IsOptional()
-  @IsString()
-  uniqueKey?: string;
-
   @ApiPropertyOptional({ enum: RouteStopStatus })
   @IsOptional()
   @IsEnum(RouteStopStatus)

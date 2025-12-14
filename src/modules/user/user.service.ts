@@ -22,7 +22,6 @@ export type ProfileUpdateInput = {
 
 @Injectable()
 export class UsersService {
-
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
@@ -90,6 +89,14 @@ export class UsersService {
       { id: userId },
       { isPhoneVerified: true },
     );
+  }
+
+  async markEmailVerified(userId: number, email?: string): Promise<void> {
+    const payload: Partial<User> = { isEmailVerified: true };
+    if (email) {
+      payload.email = email;
+    }
+    await this.usersRepository.update({ id: userId }, payload);
   }
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
@@ -245,3 +252,5 @@ export class UsersService {
     return payload;
   }
 }
+
+

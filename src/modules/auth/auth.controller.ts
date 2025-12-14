@@ -1,18 +1,14 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
-  Param,
-  ParseIntPipe,
   Patch,
   Post,
   Request,
   UnauthorizedException,
-  UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
-  UploadedFiles,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -28,6 +24,8 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { PhoneStartDto } from './dto/phone-start.dto';
 import { PhoneVerifyDto } from './dto/phone-verify.dto';
+import { EmailStartDto } from './dto/email-start.dto';
+import { EmailVerifyDto } from './dto/email-verify.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RequestResetDto } from './dto/request-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -40,11 +38,13 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { RequestUser } from './decorators/current-user.decorator';
 import { imageMulterOptions } from '../../common/upload/image-upload.config';
+import { UserRole } from '../user/entities/user-role.enum';
 
 interface AuthenticatedRequest extends ExpressRequest {
   user: {
     userId: number;
     username: string;
+    role: UserRole;
   };
 }
 
@@ -94,6 +94,20 @@ export class AuthController {
     return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 
+  @Post('email/start')
+  @ApiOperation({ summary: 'Gửi mã xác thực email' })
+  @ApiOkResponse({ description: 'Mã xác thực đã gửi' })
+  async emailStart(@Body() dto: EmailStartDto) {
+    return this.authService.startEmailVerification(dto.email);
+  }
+
+  @Post('email/verify')
+  @ApiOperation({ summary: 'Xác thực email bằng mã' })
+  @ApiOkResponse({ description: 'Email verified' })
+  async emailVerify(@Body() dto: EmailVerifyDto) {
+    return this.authService.verifyEmailCode(dto);
+  }
+
   @Post('phone/start')
   @ApiOperation({ summary: 'Bắt đầu xác thực số điện thoại' })
   @ApiOkResponse({ description: 'OTP sent or logged for development' })
@@ -121,7 +135,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Lấy thông tin người dùng hiện tại' })
   @ApiOkResponse({ description: 'Authenticated user payload' })
   profile(@Request() req: AuthenticatedRequest) {
-    return req.user; // từ JwtStrategy.validate()
+    return req.user;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -175,48 +189,6 @@ export class AuthController {
       idCardImage,
     });
   }
-
-//   @Post('favorites/eateries/:eateryId')
-//   @RequireAuth()
-//   @ApiOperation({ summary: 'Thêm quán ăn vào danh sách yêu thích' })
-//   @ApiOkResponse({ description: 'Đã thêm quán ăn vào yêu thích' })
-//   addFavoriteEatery(
-//     @CurrentUser() user: RequestUser,
-//     @Param('eateryId', ParseIntPipe) eateryId: number,
-//   ) {
-//     return this.authService.favoriteEatery(user.userId, eateryId);
-//   }
-
-//   @Delete('favorites/eateries/:eateryId')
-//   @RequireAuth()
-//   @ApiOperation({ summary: 'Bỏ quán ăn khỏi danh sách yêu thích' })
-//   @ApiOkResponse({ description: 'Đã bỏ quán ăn khỏi yêu thích' })
-//   removeFavoriteEatery(
-//     @CurrentUser() user: RequestUser,
-//     @Param('eateryId', ParseIntPipe) eateryId: number,
-//   ) {
-//     return this.authService.unfavoriteEatery(user.userId, eateryId);
-//   }
-
-//   @Post('favorites/cooperations/:cooperationId')
-//   @RequireAuth()
-//   @ApiOperation({ summary: 'Thêm đối tác vào danh sách yêu thích' })
-//   @ApiOkResponse({ description: 'Đã thêm đối tác vào yêu thích' })
-//   addFavoriteCooperation(
-//     @CurrentUser() user: RequestUser,
-//     @Param('cooperationId', ParseIntPipe) cooperationId: number,
-//   ) {
-//     return this.authService.favoriteCooperation(user.userId, cooperationId);
-//   }
-
-//   @Delete('favorites/cooperations/:cooperationId')
-//   @RequireAuth()
-//   @ApiOperation({ summary: 'Bỏ đối tác khỏi danh sách yêu thích' })
-//   @ApiOkResponse({ description: 'Đã bỏ đối tác khỏi yêu thích' })
-//   removeFavoriteCooperation(
-//     @CurrentUser() user: RequestUser,
-//     @Param('cooperationId', ParseIntPipe) cooperationId: number,
-//   ) {
-//     return this.authService.unfavoriteCooperation(user.userId, cooperationId);
-//   }
 }
+
+

@@ -2,10 +2,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
-  IsDateString,
+  IsBoolean,
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   Min,
   MinLength,
   ValidateNested,
@@ -25,6 +26,13 @@ export class CreateTravelRouteDto {
   @Min(1)
   userId?: number;
 
+  @ApiPropertyOptional({
+    description: 'Đặt true nếu muốn chia sẻ lộ trình cho người khác sử dụng',
+  })
+  @IsOptional()
+  @IsBoolean()
+  shared?: boolean;
+
   @ApiPropertyOptional({ description: 'Province name' })
   @IsOptional()
   @IsString()
@@ -39,12 +47,18 @@ export class CreateTravelRouteDto {
 
   @ApiPropertyOptional({ description: 'Route start date (ISO string)' })
   @IsOptional()
-  @IsDateString()
+  @IsString()
+  @Matches(/^(?:\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4})$/, {
+    message: 'startDate phải ở định dạng dd/MM/yyyy hoặc yyyy-MM-dd',
+  })
   startDate?: string;
 
   @ApiPropertyOptional({ description: 'Route end date (ISO string)' })
   @IsOptional()
-  @IsDateString()
+  @IsString()
+  @Matches(/^(?:\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4})$/, {
+    message: 'endDate phải ở định dạng dd/MM/yyyy hoặc yyyy-MM-dd',
+  })
   endDate?: string;
 
   @ApiPropertyOptional({

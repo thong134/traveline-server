@@ -27,6 +27,8 @@ import { RentalContractStatus } from './entities/rental-contract.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../user/entities/user-role.enum';
 import {
   RenewRentalContractDto,
   RejectRentalContractDto,
@@ -139,6 +141,7 @@ export class RentalContractsController {
   }
 
   @Patch(':id/approve')
+  @Roles(UserRole.Admin)
   @ApiOperation({ summary: 'Duyệt hợp đồng cho thuê (quản trị viên)' })
   @ApiOkResponse({ description: 'Hợp đồng đã được duyệt' })
   approve(@Param('id', ParseIntPipe) id: number) {
@@ -146,6 +149,7 @@ export class RentalContractsController {
   }
 
   @Patch(':id/reject')
+  @Roles(UserRole.Admin)
   @ApiOperation({ summary: 'Từ chối hợp đồng cho thuê (quản trị viên)' })
   @ApiOkResponse({ description: 'Hợp đồng đã bị từ chối' })
   reject(

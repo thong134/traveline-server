@@ -26,9 +26,6 @@ export class RouteStop {
   @JoinColumn({ name: 'route_id' })
   route: TravelRoute;
 
-  @Column({ name: 'route_id' })
-  routeId: number;
-
   @ManyToOne(() => Destination, (destination) => destination.routeStops, {
     nullable: true,
     onDelete: 'SET NULL',
@@ -36,17 +33,11 @@ export class RouteStop {
   @JoinColumn({ name: 'destination_id' })
   destination?: Destination;
 
-  @Column({ name: 'destination_id', nullable: true })
-  destinationId?: number;
-
   @Column({ type: 'int' })
   dayOrder: number;
 
   @Column({ type: 'int' })
   sequence: number;
-
-  @Column({ nullable: true })
-  uniqueKey?: string;
 
   @Column({
     type: 'enum',

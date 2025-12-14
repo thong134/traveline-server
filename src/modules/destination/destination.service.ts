@@ -33,8 +33,9 @@ export class DestinationsService {
     available?: boolean;
     limit?: number;
     offset?: number;
+    province?: string;
   }): Promise<Destination[]> {
-    const { q, available, limit = 50, offset = 0 } = params || {};
+    const { q, available, limit = 50, offset = 0, province } = params || {};
     const qb = this.repo.createQueryBuilder('destination');
 
     if (q) {
@@ -46,6 +47,9 @@ export class DestinationsService {
         )`,
         { q: `%${q}%` },
       );
+    }
+    if (province) {
+      qb.andWhere('destination.province = :province', { province });
     }
     if (typeof available === 'boolean') {
       qb.andWhere('destination.available = :available', { available });

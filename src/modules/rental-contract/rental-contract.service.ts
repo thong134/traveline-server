@@ -108,6 +108,23 @@ export class RentalContractsService {
       .getMany();
   }
 
+  async findAllForAdmin(
+    params: { status?: RentalContractStatus } = {},
+  ): Promise<RentalContract[]> {
+    const { status } = params;
+    const qb = this.repo.createQueryBuilder('contract');
+
+    if (status) {
+      qb.andWhere('contract.status = :status', { status });
+    }
+
+    return qb
+      .leftJoinAndSelect('contract.vehicles', 'vehicles')
+      .leftJoinAndSelect('contract.user', 'user')
+      .orderBy('contract.createdAt', 'DESC')
+      .getMany();
+  }
+
   async findOne(
     id: number,
     userId: number,

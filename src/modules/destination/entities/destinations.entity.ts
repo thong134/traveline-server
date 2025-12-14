@@ -65,6 +65,12 @@ export class Destination {
   @Column({ nullable: true })
   googlePlaceId?: string;
 
+  @Column({ nullable: true })
+  openTime?: string;
+
+  @Column({ nullable: true })
+  closeTime?: string;
+
   @Column({ type: 'timestamp', nullable: true })
   sourceCreatedAt?: Date;
 
