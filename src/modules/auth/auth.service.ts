@@ -1,6 +1,8 @@
 ﻿import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   Logger,
   OnModuleInit,
@@ -77,8 +79,39 @@ export class AuthService implements OnModuleInit {
     private readonly walletService: WalletService,
   ) {}
 
+  private readonly rateBuckets = new Map<
+    string,
+    { count: number; resetAt: number }
+  >();
+
   async onModuleInit(): Promise<void> {
     await this.ensureDefaultAdminAccount();
+  }
+
+  private requireConfig(key: string): string {
+    const value = this.configService.get<string>(key)?.trim();
+    if (!value) {
+      throw new Error(`${key} is required but not configured`);
+    }
+    return value;
+  }
+
+  private checkRate(key: string, limit: number, windowMs: number): void {
+    const now = Date.now();
+    const bucket = this.rateBuckets.get(key);
+    if (!bucket || bucket.resetAt < now) {
+      this.rateBuckets.set(key, { count: 1, resetAt: now + windowMs });
+      return;
+    }
+    if (bucket.count + 1 > limit) {
+      const waitSec = Math.ceil((bucket.resetAt - now) / 1000);
+      throw new HttpException(
+        `Thao tác quá nhiều, thử lại sau ${waitSec}s`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    bucket.count += 1;
+    this.rateBuckets.set(key, bucket);
   }
 
   private getNumberConfig(key: string, fallback: number): number {
@@ -100,13 +133,11 @@ export class AuthService implements OnModuleInit {
   }
 
   private getAccessTokenSecret(): string {
-    const secret = this.configService.get<string>('JWT_SECRET')?.trim();
-    return secret && secret.length > 0 ? secret : 'uittraveline';
+    return this.requireConfig('JWT_SECRET');
   }
 
   private getRefreshTokenSecret(): string {
-    const secret = this.configService.get<string>('JWT_REFRESH_SECRET')?.trim();
-    return secret && secret.length > 0 ? secret : this.getAccessTokenSecret();
+    return this.requireConfig('JWT_REFRESH_SECRET');
   }
 
   private getAccessTokenTtl(): string {
@@ -122,10 +153,7 @@ export class AuthService implements OnModuleInit {
   }
 
   private getEmailVerifySecret(): string {
-    return (
-      this.configService.get<string>('EMAIL_VERIFY_SECRET')?.trim() ||
-      this.getAccessTokenSecret()
-    );
+    return this.requireConfig('EMAIL_VERIFY_SECRET');
   }
 
   private getEmailVerifyExpiresMinutes(): number {
@@ -147,6 +175,7 @@ export class AuthService implements OnModuleInit {
   }
 
   async validateUser(username: string, pass: string): Promise<SafeUser | null> {
+    this.checkRate(`login:${username}`, 5, 10 * 60 * 1000);
     const user = await this.usersService.findByUsername(username);
     if (!user) {
       return null;
@@ -235,6 +264,7 @@ export class AuthService implements OnModuleInit {
   async startEmailVerification(
     email: string,
   ): Promise<{ ok: boolean; token: string; expiresAt: Date }> {
+    this.checkRate(`email:start:${email}`, 5, 60 * 60 * 1000);
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       throw new UnauthorizedException('Email không tồn tại');
@@ -257,6 +287,7 @@ export class AuthService implements OnModuleInit {
   }
 
   async verifyEmailCode(dto: EmailVerifyDto): Promise<{ ok: boolean }> {
+    this.checkRate(`email:verify:${dto.email}`, 10, 60 * 60 * 1000);
     let payload: { email: string; code: string };
     try {
       payload = this.jwtService.verify<{ email: string; code: string }>(
@@ -346,6 +377,7 @@ export class AuthService implements OnModuleInit {
     phone: string,
     recaptchaToken: string,
   ): Promise<{ ok: boolean; sessionInfo: string; expiresAt: Date }> {
+    this.checkRate(`phone:start:${phone}`, 5, 60 * 60 * 1000);
     const apiKey = process.env.FIREBASE_API_KEY;
     if (!apiKey) {
       throw new BadRequestException('FIREBASE_API_KEY is not configured');
@@ -399,6 +431,7 @@ export class AuthService implements OnModuleInit {
     sessionInfo: string,
     code: string,
   ): Promise<{ ok: boolean; phoneNumber: string }> {
+    this.checkRate(`phone:verify:${phone}`, 10, 60 * 60 * 1000);
     const apiKey = process.env.FIREBASE_API_KEY;
     if (!apiKey) {
       throw new BadRequestException('FIREBASE_API_KEY is not configured');
@@ -488,6 +521,18 @@ export class AuthService implements OnModuleInit {
         this.logger.log(
           `Upgraded existing user "${username}" to admin role during bootstrap`,
         );
+      }
+
+      // rotate password if env password differs
+      if (passwordConfig && passwordConfig.length >= 8) {
+        const same = await compare(passwordConfig, existing.password);
+        if (!same) {
+          const newHash = await hash(passwordConfig, 10);
+          await this.usersService.updatePassword(existing.id, newHash);
+          this.logger.warn(
+            `Rotated admin password for "${username}" from DEFAULT_ADMIN_PASSWORD env.`,
+          );
+        }
       }
       return;
     }

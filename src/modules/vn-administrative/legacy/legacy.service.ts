@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { LegacyProvince } from './entities/legacy-province.entity';
 import { LegacyDistrict } from './entities/legacy-district.entity';
 import { LegacyWard } from './entities/legacy-ward.entity';
@@ -16,18 +16,8 @@ export class LegacyAdministrativeService {
     private readonly wardRepo: Repository<LegacyWard>,
   ) {}
 
-  findProvinces(params: { search?: string } = {}): Promise<LegacyProvince[]> {
-    const { search } = params;
-    const where = search
-      ? [
-          { name: ILike(`%${search}%`) },
-          { nameEn: ILike(`%${search}%`) },
-          { code: ILike(`%${search}%`) },
-        ]
-      : undefined;
-
+  findProvinces(): Promise<LegacyProvince[]> {
     return this.provinceRepo.find({
-      where,
       order: { name: 'ASC' },
       take: 200,
     });

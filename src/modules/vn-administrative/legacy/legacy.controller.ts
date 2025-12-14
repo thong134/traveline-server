@@ -15,8 +15,8 @@ export class LegacyAdministrativeController {
     summary: 'Danh sách tỉnh trước sáp nhập (63 tỉnh)',
   })
   @ApiOkResponse({ type: LegacyProvince, isArray: true })
-  listProvinces(@Query('search') search?: string): Promise<LegacyProvince[]> {
-    return this.service.findProvinces({ search });
+  listProvinces(): Promise<LegacyProvince[]> {
+    return this.service.findProvinces();
   }
 
   @Get('provinces/:code')

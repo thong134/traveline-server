@@ -5,7 +5,6 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { DestinationsModule } from './modules/destination/destination.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/user/user.module';
-import { ProvincesModule } from './modules/province/province.module';
 import { TravelRoutesModule } from './modules/travel-route/travel-route.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { VehicleCatalogModule } from './modules/vehicle-catalog/vehicle-catalog.module';
@@ -51,7 +50,6 @@ import { AdminModule } from './modules/admin/admin.module';
     DestinationsModule,
     AuthModule,
     UsersModule,
-    ProvincesModule,
     TravelRoutesModule,
     FeedbackModule,
     VehicleCatalogModule,
