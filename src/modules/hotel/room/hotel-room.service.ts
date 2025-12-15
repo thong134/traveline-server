@@ -66,7 +66,6 @@ export class HotelRoomsService {
 
     const room = this.roomRepo.create({
       name: dto.name,
-      cooperationId: cooperation.id,
       cooperation,
       numberOfBeds: dto.numberOfBeds ?? 1,
       maxPeople: dto.maxPeople ?? 1,
@@ -103,7 +102,7 @@ export class HotelRoomsService {
       .leftJoinAndSelect('room.cooperation', 'cooperation');
 
     if (cooperationId) {
-      qb.andWhere('room.cooperationId = :cooperationId', { cooperationId });
+      qb.andWhere('room.cooperation_id = :cooperationId', { cooperationId });
     }
 
     if (city) {
@@ -215,7 +214,7 @@ export class HotelRoomsService {
 
     if (
       dto.cooperationId !== undefined &&
-      dto.cooperationId !== room.cooperationId
+      dto.cooperationId !== room.cooperation?.id
     ) {
       const cooperation = await this.cooperationRepo.findOne({
         where: { id: dto.cooperationId },
@@ -231,7 +230,6 @@ export class HotelRoomsService {
         );
       }
       room.cooperation = cooperation;
-      room.cooperationId = cooperation.id;
     }
 
     return this.roomRepo.save(room);
@@ -264,7 +262,7 @@ export class HotelRoomsService {
       .createQueryBuilder('detail')
       .select('COALESCE(SUM(detail.quantity), 0)', 'reserved')
       .leftJoin('detail.bill', 'bill')
-      .where('detail.roomId = :roomId', { roomId })
+      .where('detail.room_id = :roomId', { roomId })
       .andWhere('bill.status IN (:...statuses)', {
         statuses: overlappingStatuses,
       })

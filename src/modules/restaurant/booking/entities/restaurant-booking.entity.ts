@@ -34,18 +34,12 @@ export class RestaurantBooking {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ name: 'user_id' })
-  userId: number;
-
   @ManyToOne(() => RestaurantTable, (table) => table.bookings, {
     nullable: false,
     onDelete: 'RESTRICT',
   })
   @JoinColumn({ name: 'table_id' })
   table: RestaurantTable;
-
-  @Column({ name: 'table_id' })
-  tableId: number;
 
   @ManyToOne(
     () => Cooperation,
@@ -57,9 +51,6 @@ export class RestaurantBooking {
   )
   @JoinColumn({ name: 'cooperation_id' })
   cooperation: Cooperation;
-
-  @Column({ name: 'cooperation_id' })
-  cooperationId: number;
 
   @Column({ type: 'timestamptz' })
   checkInDate: Date;

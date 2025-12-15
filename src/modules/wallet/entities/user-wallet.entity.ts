@@ -16,9 +16,6 @@ export class UserWallet {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'user_id', unique: true })
-  userId: number;
-
   @OneToOne(() => User, (user) => user.wallet, {
     onDelete: 'CASCADE',
   })

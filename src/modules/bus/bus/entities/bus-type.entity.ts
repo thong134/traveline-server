@@ -25,9 +25,6 @@ export class BusType {
   @JoinColumn({ name: 'cooperation_id' })
   cooperation: Cooperation;
 
-  @Column({ name: 'cooperation_id' })
-  cooperationId: number;
-
   @Column({ type: 'int', default: 0 })
   numberOfSeats: number;
 

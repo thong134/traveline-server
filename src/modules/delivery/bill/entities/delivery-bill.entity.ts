@@ -35,9 +35,6 @@ export class DeliveryBill {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ name: 'user_id' })
-  userId: number;
-
   @ManyToOne(() => DeliveryVehicle, (vehicle) => vehicle.bills, {
     nullable: false,
     onDelete: 'RESTRICT',
@@ -45,18 +42,12 @@ export class DeliveryBill {
   @JoinColumn({ name: 'vehicle_id' })
   vehicle: DeliveryVehicle;
 
-  @Column({ name: 'vehicle_id' })
-  vehicleId: number;
-
   @ManyToOne(() => Cooperation, (cooperation) => cooperation.deliveryBills, {
     nullable: false,
     onDelete: 'RESTRICT',
   })
   @JoinColumn({ name: 'cooperation_id' })
   cooperation: Cooperation;
-
-  @Column({ name: 'cooperation_id' })
-  cooperationId: number;
 
   @Column({ type: 'timestamptz' })
   deliveryDate: Date;
@@ -97,9 +88,6 @@ export class DeliveryBill {
   })
   @JoinColumn({ name: 'voucher_id' })
   voucher?: Voucher;
-
-  @Column({ name: 'voucher_id', nullable: true })
-  voucherId?: number;
 
   @Column({
     type: 'enum',

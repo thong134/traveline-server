@@ -114,10 +114,8 @@ export class TrainBillsService {
     const bill = this.billRepo.create({
       code: this.generateBillCode(),
       user,
-      userId: user.id,
       route,
-      routeId: route.id,
-      cooperationId: route.cooperationId,
+      cooperation: route.cooperation,
       travelDate,
       carriage: dto.carriage,
       numberOfTickets: dto.passengers.length,
@@ -133,7 +131,6 @@ export class TrainBillsService {
       paymentMethod: dto.paymentMethod,
       notes: dto.notes,
       voucher: voucher ?? undefined,
-      voucherId: voucher?.id,
       details: dto.passengers.map((passenger) =>
         this.detailRepo.create({
           passengerName: passenger.passengerName,
@@ -164,14 +161,15 @@ export class TrainBillsService {
       .leftJoinAndSelect('bill.user', 'user')
       .leftJoinAndSelect('bill.route', 'route')
       .leftJoinAndSelect('bill.details', 'details')
-      .leftJoinAndSelect('bill.voucher', 'voucher');
+      .leftJoinAndSelect('bill.voucher', 'voucher')
+      .leftJoinAndSelect('bill.cooperation', 'cooperation');
 
-    qb.andWhere('bill.userId = :userId', { userId });
+    qb.andWhere('bill.user_id = :userId', { userId });
     if (params.routeId) {
-      qb.andWhere('bill.routeId = :routeId', { routeId: params.routeId });
+      qb.andWhere('bill.route_id = :routeId', { routeId: params.routeId });
     }
     if (params.cooperationId) {
-      qb.andWhere('bill.cooperationId = :cooperationId', {
+      qb.andWhere('bill.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
       });
     }
@@ -184,7 +182,7 @@ export class TrainBillsService {
 
   async findOne(id: number, userId: number): Promise<TrainBill> {
     const bill = await this.billRepo.findOne({
-      where: { id, userId },
+      where: { id },
       relations: {
         user: true,
         route: true,
@@ -194,7 +192,7 @@ export class TrainBillsService {
       },
       order: { details: { id: 'ASC' } },
     });
-    if (!bill) {
+    if (!bill || bill.user?.id !== userId) {
       throw new NotFoundException(`Train bill ${id} not found`);
     }
     return bill;
@@ -208,7 +206,7 @@ export class TrainBillsService {
     const bill = await this.findOne(id, userId);
     const previousStatus = bill.status;
 
-    if (dto.routeId !== undefined && dto.routeId !== bill.routeId) {
+    if (dto.routeId !== undefined && dto.routeId !== bill.route?.id) {
       const route = await this.routeRepo.findOne({
         where: { id: dto.routeId },
       });
@@ -216,8 +214,7 @@ export class TrainBillsService {
         throw new NotFoundException(`Train route ${dto.routeId} not found`);
       }
       bill.route = route;
-      bill.routeId = route.id;
-      bill.cooperationId = route.cooperationId;
+      bill.cooperation = route.cooperation;
     }
 
     if (dto.travelDate !== undefined) {
@@ -239,7 +236,11 @@ export class TrainBillsService {
       if (!dto.passengers.length) {
         throw new BadRequestException('At least one passenger is required');
       }
-      await this.detailRepo.delete({ billId: bill.id });
+      await this.detailRepo
+        .createQueryBuilder()
+        .delete()
+        .where('bill_id = :billId', { billId: bill.id })
+        .execute();
       bill.details = dto.passengers.map((passenger) =>
         this.detailRepo.create({
           passengerName: passenger.passengerName,
@@ -261,7 +262,6 @@ export class TrainBillsService {
       if (!dto.voucherCode) {
         voucher = null;
         bill.voucher = undefined;
-        bill.voucherId = undefined;
       } else {
         voucher = await this.vouchersService.findByCode(dto.voucherCode);
         if (!voucher) {
@@ -269,7 +269,6 @@ export class TrainBillsService {
         }
         this.vouchersService.validateVoucherForBooking(voucher, subtotal);
         bill.voucher = voucher;
-        bill.voucherId = voucher.id;
       }
     } else if (voucher) {
       this.vouchersService.validateVoucherForBooking(voucher, subtotal);
@@ -280,9 +279,11 @@ export class TrainBillsService {
       dto.travelPointsUsed !== undefined &&
       dto.travelPointsUsed !== bill.travelPointsUsed
     ) {
-      const user = await this.userRepo.findOne({ where: { id: bill.userId } });
+      const user = bill.user
+        ? bill.user
+        : await this.userRepo.findOne({ where: { id: userId } });
       if (!user) {
-        throw new NotFoundException(`User ${bill.userId} not found`);
+        throw new NotFoundException(`User ${userId} not found`);
       }
       if (dto.travelPointsUsed > bill.travelPointsUsed) {
         const additional = dto.travelPointsUsed - bill.travelPointsUsed;
@@ -356,17 +357,20 @@ export class TrainBillsService {
     const nextRevenue = this.isRevenueStatus(nextStatus);
 
     if (!prevRevenue && nextRevenue) {
-      await this.cooperationsService.adjustBookingMetrics(
-        bill.cooperationId,
-        bill.numberOfTickets,
-        Number(bill.total),
-      );
-      if (bill.voucherId) {
-        await this.vouchersService.incrementUsage(bill.voucherId);
+      const cooperationId = bill.route?.cooperation?.id ?? bill.cooperation?.id;
+      if (cooperationId) {
+        await this.cooperationsService.adjustBookingMetrics(
+          cooperationId,
+          bill.numberOfTickets,
+          Number(bill.total),
+        );
+      }
+      if (bill.voucher?.id) {
+        await this.vouchersService.incrementUsage(bill.voucher.id);
       }
       if (bill.travelPointsUsed > 0 && bill.travelPointsRefunded) {
         const user = await this.userRepo.findOne({
-          where: { id: bill.userId },
+          where: { id: bill.user?.id },
         });
         if (user) {
           user.travelPoint = Math.max(
@@ -381,11 +385,14 @@ export class TrainBillsService {
     }
 
     if (prevRevenue && !nextRevenue) {
-      await this.cooperationsService.adjustBookingMetrics(
-        bill.cooperationId,
-        -bill.numberOfTickets,
-        -Number(bill.total),
-      );
+      const cooperationId = bill.route?.cooperation?.id ?? bill.cooperation?.id;
+      if (cooperationId) {
+        await this.cooperationsService.adjustBookingMetrics(
+          cooperationId,
+          -bill.numberOfTickets,
+          -Number(bill.total),
+        );
+      }
     }
 
     const shouldRefund =
@@ -394,7 +401,9 @@ export class TrainBillsService {
       !bill.travelPointsRefunded;
 
     if (shouldRefund) {
-      const user = await this.userRepo.findOne({ where: { id: bill.userId } });
+      const user = await this.userRepo.findOne({
+        where: { id: bill.user?.id },
+      });
       if (user) {
         user.travelPoint += bill.travelPointsUsed;
         user.travelExp += bill.travelPointsUsed;

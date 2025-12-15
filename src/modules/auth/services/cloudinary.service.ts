@@ -67,10 +67,16 @@ export class CloudinaryService {
           )
         : undefined;
 
-    return new InternalServerErrorException({ code, message, ...(meta ? { meta } : {}) });
+    return new InternalServerErrorException({
+      code,
+      message,
+      ...(meta ? { meta } : {}),
+    });
   }
 
-  private uploadFromBuffer(file: UploadedAvatarFile): Promise<UploadApiResponse> {
+  private uploadFromBuffer(
+    file: UploadedAvatarFile,
+  ): Promise<UploadApiResponse> {
     return new Promise((resolve, reject) => {
       const upload = cloudinary.uploader.upload_stream(
         {

@@ -108,9 +108,9 @@ export class HotelBillsService {
     }
 
     const roomsById = new Map(rooms.map((room) => [room.id, room] as const));
-    const cooperationId = rooms[0].cooperationId;
+    const cooperationId = rooms[0].cooperation?.id;
 
-    if (rooms.some((room) => room.cooperationId !== cooperationId)) {
+    if (rooms.some((room) => room.cooperation?.id !== cooperationId)) {
       throw new BadRequestException(
         'All rooms in a booking must belong to the same cooperation',
       );
@@ -178,9 +178,7 @@ export class HotelBillsService {
     const bill = new HotelBill();
     bill.code = this.generateBillCode();
     bill.user = user;
-    bill.userId = user.id;
     bill.cooperation = cooperation;
-    bill.cooperationId = cooperation.id;
     bill.checkInDate = checkInDate;
     bill.checkOutDate = checkOutDate;
     bill.numberOfRooms = totalRooms;
@@ -198,7 +196,7 @@ export class HotelBillsService {
     bill.details = contexts.map((ctx) =>
       this.buildDetail({
         bill,
-        roomId: ctx.room.id,
+        room: ctx.room,
         roomName: ctx.room.name,
         quantity: ctx.quantity,
         nights,
@@ -233,10 +231,10 @@ export class HotelBillsService {
       .leftJoinAndSelect('bill.voucher', 'voucher')
       .leftJoinAndSelect('details.room', 'room');
 
-    qb.andWhere('bill.userId = :userId', { userId });
+    qb.andWhere('bill.user_id = :userId', { userId });
 
     if (params.cooperationId) {
-      qb.andWhere('bill.cooperationId = :cooperationId', {
+      qb.andWhere('bill.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
       });
     }
@@ -246,7 +244,7 @@ export class HotelBillsService {
     }
 
     if (params.voucherId) {
-      qb.andWhere('bill.voucherId = :voucherId', {
+      qb.andWhere('bill.voucher_id = :voucherId', {
         voucherId: params.voucherId,
       });
     }
@@ -283,7 +281,7 @@ export class HotelBillsService {
     if (!bill) {
       throw new NotFoundException(`Hotel bill ${id} not found`);
     }
-    if (bill.userId !== userId) {
+    if (bill.user?.id !== userId) {
       throw new ForbiddenException('You do not have access to this hotel bill');
     }
     return bill;
@@ -322,7 +320,7 @@ export class HotelBillsService {
         const missing = roomIds.filter((val) => !existingIds.has(val));
         throw new NotFoundException(`Rooms not found: ${missing.join(', ')}`);
       }
-      if (rooms.some((room) => room.cooperationId !== bill.cooperationId)) {
+      if (rooms.some((room) => room.cooperation?.id !== bill.cooperation?.id)) {
         throw new BadRequestException(
           'All rooms must belong to the same cooperation',
         );
@@ -338,10 +336,13 @@ export class HotelBillsService {
       );
       bill.numberOfRooms = contexts.reduce((sum, ctx) => sum + ctx.quantity, 0);
       let subtotal = contexts.reduce((sum, ctx) => sum + ctx.lineTotal, 0);
-      if (bill.voucherId) {
+      const voucherId = bill.voucher?.id;
+      if (voucherId) {
         const voucher =
           bill.voucher ??
-          (await this.voucherRepo.findOne({ where: { id: bill.voucherId } }));
+          (await this.voucherRepo.findOne({
+            where: { id: voucherId },
+          }));
         if (voucher) {
           this.vouchersService.validateVoucherForBooking(voucher, subtotal);
           const discount = this.vouchersService.calculateDiscountAmount(
@@ -356,12 +357,15 @@ export class HotelBillsService {
         subtotal = 0;
       }
       bill.total = this.formatMoney(subtotal);
-      await this.detailRepo.delete({ billId: bill.id });
+      await this.detailRepo
+        .createQueryBuilder()
+        .delete()
+        .where('bill_id = :billId', { billId: bill.id })
+        .execute();
       bill.details = contexts.map((ctx: RoomBookingContext) =>
         this.buildDetail({
           bill,
-          billId: bill.id,
-          roomId: ctx.room.id,
+          room: ctx.room,
           roomName: ctx.room.name,
           quantity: ctx.quantity,
           nights: bill.nights,
@@ -383,7 +387,6 @@ export class HotelBillsService {
     if (dto.voucherCode !== undefined) {
       if (!dto.voucherCode) {
         bill.voucher = undefined;
-        bill.voucherId = undefined;
       } else {
         const voucher = await this.vouchersService.findByCode(dto.voucherCode);
         if (!voucher) {
@@ -394,7 +397,6 @@ export class HotelBillsService {
           Number(bill.total),
         );
         bill.voucher = voucher;
-        bill.voucherId = voucher.id;
       }
     }
 
@@ -402,9 +404,10 @@ export class HotelBillsService {
       dto.travelPointsUsed !== undefined &&
       dto.travelPointsUsed !== bill.travelPointsUsed
     ) {
-      const user = await this.userRepo.findOne({ where: { id: bill.userId } });
+      const user =
+        bill.user ?? (await this.userRepo.findOne({ where: { id: userId } }));
       if (!user) {
-        throw new NotFoundException(`User ${bill.userId} not found`);
+        throw new NotFoundException(`User ${userId} not found`);
       }
 
       if (dto.travelPointsUsed > bill.travelPointsUsed) {
@@ -438,7 +441,7 @@ export class HotelBillsService {
     const appliedContexts =
       contexts ??
       updated.details.map((detail) => {
-        const room = roomStub(detail.roomId);
+        const room = roomStub(detail.room?.id);
         return {
           room,
           quantity: detail.quantity,
@@ -468,7 +471,7 @@ export class HotelBillsService {
       HotelBillStatus.CANCELLED,
       bill,
       bill.details.map((detail) => ({
-        room: roomStub(detail.roomId),
+        room: roomStub(detail.room?.id),
         quantity: detail.quantity,
         pricePerNight: Number(detail.pricePerNight),
         lineTotal: Number(detail.total),
@@ -482,20 +485,16 @@ export class HotelBillsService {
 
   private buildDetail(input: {
     bill: HotelBill;
-    roomId: number;
+    room: HotelRoom;
     roomName: string;
     quantity: number;
     nights: number;
     pricePerNight: string;
     total: string;
-    billId?: number;
   }): HotelBillDetail {
     const detail = new HotelBillDetail();
     detail.bill = input.bill;
-    if (input.billId !== undefined) {
-      detail.billId = input.billId;
-    }
-    detail.roomId = input.roomId;
+    detail.room = input.room;
     detail.roomName = input.roomName;
     detail.quantity = input.quantity;
     detail.nights = input.nights;
@@ -551,10 +550,12 @@ export class HotelBillsService {
     const nextRevenue = this.isRevenueStatus(nextStatus);
 
     if (!prevRevenue && nextRevenue) {
-      await this.cooperationsService.adjustBookingMetrics(
-        bill.cooperationId,
-        1,
-      );
+      if (bill.cooperation?.id) {
+        await this.cooperationsService.adjustBookingMetrics(
+          bill.cooperation.id,
+          1,
+        );
+      }
       await this.hotelRoomsService.reserveRooms(contexts);
       if (voucher) {
         await this.vouchersService.incrementUsage(voucher.id);
@@ -562,10 +563,12 @@ export class HotelBillsService {
     }
 
     if (prevRevenue && !nextRevenue) {
-      await this.cooperationsService.adjustBookingMetrics(
-        bill.cooperationId,
-        -1,
-      );
+      if (bill.cooperation?.id) {
+        await this.cooperationsService.adjustBookingMetrics(
+          bill.cooperation.id,
+          -1,
+        );
+      }
       await this.hotelRoomsService.releaseRooms(contexts);
       if (voucher && removeVoucherUsage) {
         await this.vouchersService.decrementUsage(voucher.id);
@@ -574,8 +577,10 @@ export class HotelBillsService {
   }
 }
 
-function roomStub(roomId: number): HotelRoom {
+function roomStub(roomId?: number): HotelRoom {
   const stub = new HotelRoom();
-  stub.id = roomId;
+  if (roomId !== undefined) {
+    stub.id = roomId;
+  }
   return stub;
 }

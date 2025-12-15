@@ -124,16 +124,19 @@ export class AdministrativeMappingService {
       );
     }
 
-    const { commune, province } = await this.resolveMappingForLegacyWard(
-      legacyWard,
-    );
+    const { commune, province } =
+      await this.resolveMappingForLegacyWard(legacyWard);
 
     const oldAddress = [specificAddress, wardName, provinceName]
       .map((value) => value?.trim())
       .filter((value): value is string => Boolean(value && value.length))
       .join(', ');
 
-    const newAddress = this.composeNewAddress(specificAddress, commune, province);
+    const newAddress = this.composeNewAddress(
+      specificAddress,
+      commune,
+      province,
+    );
 
     return { oldAddress, newAddress };
   }
@@ -202,10 +205,10 @@ export class AdministrativeMappingService {
             ),
         );
 
-
-        const finalSpecificAddress = rewriteSpecificAddress && !hasExistingDistrict
-          ? suggestedSpecificAddress || destination.specificAddress || null
-          : destination.specificAddress ?? null;
+        const finalSpecificAddress =
+          rewriteSpecificAddress && !hasExistingDistrict
+            ? suggestedSpecificAddress || destination.specificAddress || null
+            : (destination.specificAddress ?? null);
 
         const updatePayload: Partial<Destination> = {
           district: analysis.legacy.districtName ?? undefined,
@@ -409,8 +412,7 @@ export class AdministrativeMappingService {
       );
     }
 
-    const provinceCodeToLoad =
-      mapping.newProvinceCode ?? commune.provinceCode;
+    const provinceCodeToLoad = mapping.newProvinceCode ?? commune.provinceCode;
 
     if (!provinceCodeToLoad) {
       throw new NotFoundException(
@@ -554,10 +556,7 @@ export class AdministrativeMappingService {
     ward: LegacyWardWithContext,
     district: LegacyDistrictWithProvince,
   ): string {
-    const components = [
-      ...baseParts,
-      ward.fullName ?? ward.name,
-    ];
+    const components = [...baseParts, ward.fullName ?? ward.name];
 
     const districtName = district?.fullName ?? district?.name;
     if (districtName) {
@@ -576,10 +575,7 @@ export class AdministrativeMappingService {
     district: LegacyDistrictWithProvince,
     provinceName?: string | null,
   ): string {
-    const components = [
-      ...baseParts,
-      ward.fullName ?? ward.name,
-    ];
+    const components = [...baseParts, ward.fullName ?? ward.name];
 
     const districtName = district?.fullName ?? district?.name;
     if (districtName) {

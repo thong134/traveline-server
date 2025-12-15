@@ -18,9 +18,6 @@ export class ChatUserProfile {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ name: 'user_id', unique: true })
-  userId: number;
-
   @Column('text', { name: 'preferred_regions', array: true, default: '{}' })
   preferredRegions: string[];
 

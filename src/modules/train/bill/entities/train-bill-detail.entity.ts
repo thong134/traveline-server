@@ -20,9 +20,6 @@ export class TrainBillDetail {
   @JoinColumn({ name: 'bill_id' })
   bill: TrainBill;
 
-  @Column({ name: 'bill_id' })
-  billId: number;
-
   @Column()
   passengerName: string;
 

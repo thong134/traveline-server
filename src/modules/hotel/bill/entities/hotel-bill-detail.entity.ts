@@ -20,18 +20,12 @@ export class HotelBillDetail {
   @JoinColumn({ name: 'bill_id' })
   bill: HotelBill;
 
-  @Column({ name: 'bill_id' })
-  billId: number;
-
   @ManyToOne(() => HotelRoom, (room: HotelRoom) => room.billDetails, {
     nullable: false,
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'room_id' })
   room: HotelRoom;
-
-  @Column({ name: 'room_id' })
-  roomId: number;
 
   @Column()
   roomName: string;

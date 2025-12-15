@@ -37,9 +37,6 @@ export class FlightBill {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ name: 'user_id' })
-  userId: number;
-
   @ManyToOne(() => Flight, (flight) => flight.bills, {
     nullable: false,
     onDelete: 'RESTRICT',
@@ -47,18 +44,12 @@ export class FlightBill {
   @JoinColumn({ name: 'flight_id' })
   flight: Flight;
 
-  @Column({ name: 'flight_id' })
-  flightId: number;
-
   @ManyToOne(() => Cooperation, (cooperation) => cooperation.flightBills, {
     nullable: false,
     onDelete: 'RESTRICT',
   })
   @JoinColumn({ name: 'cooperation_id' })
   cooperation: Cooperation;
-
-  @Column({ name: 'cooperation_id' })
-  cooperationId: number;
 
   @Column({ nullable: true })
   cabinClass?: string;
@@ -84,9 +75,6 @@ export class FlightBill {
   })
   @JoinColumn({ name: 'voucher_id' })
   voucher?: Voucher;
-
-  @Column({ name: 'voucher_id', nullable: true })
-  voucherId?: number;
 
   @Column({
     type: 'enum',

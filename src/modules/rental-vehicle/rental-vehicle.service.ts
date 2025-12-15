@@ -61,9 +61,16 @@ export class RentalVehiclesService {
   ): Promise<RentalVehicle> {
     const contract = await this.contractRepo.findOne({
       where: { id: dto.contractId },
+      relations: { user: true },
     });
     if (!contract) {
       throw new NotFoundException(`Contract ${dto.contractId} not found`);
+    }
+
+    if (!contract.user) {
+      throw new NotFoundException(
+        `Contract ${dto.contractId} does not have an owner`,
+      );
     }
 
     if (contract.status !== RentalContractStatus.APPROVED) {
@@ -73,11 +80,11 @@ export class RentalVehiclesService {
     }
 
     const owner = await this.userRepo.findOne({
-      where: { id: contract.userId },
+      where: { id: contract.user?.id },
     });
     if (!owner) {
       throw new NotFoundException(
-        `Contract owner ${contract.userId} not found`,
+        `Contract owner ${contract.user?.id} not found`,
       );
     }
 
@@ -224,13 +231,13 @@ export class RentalVehiclesService {
       description: dto.description,
     });
 
-    let ownerId: number | undefined = vehicle.contract?.userId;
+    let ownerId: number | undefined = vehicle.contract?.user?.id;
     if (ownerId === undefined) {
       const contract = await this.contractRepo.findOne({
         where: { id: vehicle.contractId },
-        select: ['id', 'userId'],
+        relations: { user: true },
       });
-      ownerId = contract?.userId;
+      ownerId = contract?.user?.id;
     }
 
     if (ownerId === undefined) {

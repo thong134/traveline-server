@@ -106,9 +106,6 @@ export class Cooperation {
   @JoinColumn({ name: 'user_id' })
   manager?: User;
 
-  @Column({ name: 'user_id', nullable: true })
-  userId?: number;
-
   @OneToMany(() => HotelRoom, (room: HotelRoom) => room.cooperation)
   rooms: HotelRoom[];
 

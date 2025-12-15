@@ -160,7 +160,9 @@ export class AuthService implements OnModuleInit {
     return this.getNumberConfig('EMAIL_VERIFY_EXPIRES_MIN', 10);
   }
 
-  async signup(dto: SignupDto): Promise<{ id: number; username: string; role: UserRole }> {
+  async signup(
+    dto: SignupDto,
+  ): Promise<{ id: number; username: string; role: UserRole }> {
     const existing = await this.usersService.findByUsername(dto.username);
     if (existing) throw new ConflictException('Username already exists');
 

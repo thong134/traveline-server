@@ -35,15 +35,13 @@ export class ReformCommune {
   })
   provinceCode?: string | null;
 
-  @Column({ name: 'administrative_unit_id', type: 'int', nullable: true })
-  administrativeUnitId?: number | null;
-
   @ManyToOne(() => ReformProvince, { nullable: true })
   @JoinColumn({ name: 'province_code', referencedColumnName: 'code' })
   province?: ReformProvince | null;
 
-
   @ManyToOne(() => ReformAdministrativeUnit, { nullable: true })
   @JoinColumn({ name: 'administrative_unit_id' })
   administrativeUnit?: ReformAdministrativeUnit | null;
+  @Column({ name: 'administrative_unit_id', type: 'int', nullable: true })
+  administrativeUnitId?: number | null;
 }

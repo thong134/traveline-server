@@ -20,9 +20,6 @@ export class FlightBillPassenger {
   @JoinColumn({ name: 'bill_id' })
   bill: FlightBill;
 
-  @Column({ name: 'bill_id' })
-  billId: number;
-
   @Column()
   passengerName: string;
 

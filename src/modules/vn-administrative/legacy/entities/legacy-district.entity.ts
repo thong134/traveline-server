@@ -43,9 +43,6 @@ export class LegacyDistrict {
   })
   provinceCode?: string | null;
 
-  @Column({ name: 'administrative_unit_id', type: 'int', nullable: true })
-  administrativeUnitId?: number | null;
-
   @ManyToOne(() => LegacyProvince, (province) => province.districts, {
     nullable: true,
     eager: false,
@@ -59,6 +56,9 @@ export class LegacyDistrict {
   })
   @JoinColumn({ name: 'administrative_unit_id' })
   administrativeUnit?: LegacyAdministrativeUnit | null;
+
+  @Column({ name: 'administrative_unit_id', type: 'int', nullable: true })
+  administrativeUnitId?: number | null;
 
   @OneToMany(() => LegacyWard, (ward: LegacyWard) => ward.district)
   wards?: LegacyWard[];

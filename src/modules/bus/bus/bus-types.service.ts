@@ -21,7 +21,9 @@ export class BusTypesService {
   ) {}
 
   private async ensureCooperation(id: number): Promise<Cooperation> {
-    const cooperation = await this.cooperationRepo.findOne({ where: { id } });
+    const cooperation = await this.cooperationRepo.findOne({
+      where: { id },
+    });
     if (!cooperation) {
       throw new NotFoundException(`Cooperation ${id} not found`);
     }
@@ -41,9 +43,9 @@ export class BusTypesService {
   }
 
   async create(dto: CreateBusTypeDto): Promise<BusType> {
-    await this.ensureCooperation(dto.cooperationId);
+    const cooperation = await this.ensureCooperation(dto.cooperationId);
     const busType = this.busTypeRepo.create({
-      cooperationId: dto.cooperationId,
+      cooperation,
       name: dto.name,
       numberOfSeats: dto.numberOfSeats ?? 0,
       numberOfBuses: dto.numberOfBuses ?? 0,
@@ -57,7 +59,7 @@ export class BusTypesService {
   async findAll(params: { cooperationId?: number } = {}): Promise<BusType[]> {
     const qb = this.busTypeRepo.createQueryBuilder('type');
     if (params.cooperationId) {
-      qb.andWhere('type.cooperationId = :cooperationId', {
+      qb.andWhere('type.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
       });
     }
@@ -65,7 +67,10 @@ export class BusTypesService {
   }
 
   async findOne(id: number): Promise<BusType> {
-    const busType = await this.busTypeRepo.findOne({ where: { id } });
+    const busType = await this.busTypeRepo.findOne({
+      where: { id },
+      relations: { cooperation: true },
+    });
     if (!busType) {
       throw new NotFoundException(`Bus type ${id} not found`);
     }
@@ -75,8 +80,7 @@ export class BusTypesService {
   async update(id: number, dto: UpdateBusTypeDto): Promise<BusType> {
     const busType = await this.findOne(id);
     if (dto.cooperationId !== undefined) {
-      await this.ensureCooperation(dto.cooperationId);
-      busType.cooperationId = dto.cooperationId;
+      busType.cooperation = await this.ensureCooperation(dto.cooperationId);
     }
     assignDefined(busType, {
       name: dto.name,

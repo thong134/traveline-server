@@ -1145,7 +1145,7 @@ export class ChatService {
       .take(this.historyLimit * 2);
 
     if (userId) {
-      qb.where('message.userId = :userId', { userId });
+      qb.where('message.user_id = :userId', { userId });
     } else if (sessionId) {
       qb.where('message.sessionId = :sessionId', { sessionId });
     }
@@ -1159,7 +1159,9 @@ export class ChatService {
         role: payload.role,
         content: payload.content,
         intent: payload.intent,
-        userId: payload.userId ?? null,
+        user: payload.userId
+          ? await this.userRepo.findOne({ where: { id: payload.userId } })
+          : null,
         sessionId: payload.sessionId ?? null,
         metadata: {
           ...(payload.metadata ?? {}),
@@ -1223,7 +1225,10 @@ export class ChatService {
   }
 
   private async getOrCreateProfile(userId: number): Promise<ChatUserProfile> {
-    const existing = await this.profileRepo.findOne({ where: { userId } });
+    const existing = await this.profileRepo.findOne({
+      where: { user: { id: userId } },
+      relations: { user: true },
+    });
     if (existing) {
       return existing;
     }
@@ -1235,13 +1240,13 @@ export class ChatService {
 
     const created = this.profileRepo.create({
       user,
-      userId,
       preferredRegions: [],
       preferredThemes: [],
       recentSearches: [],
       metadata: {},
     });
-    return this.profileRepo.save(created);
+    const saved = await this.profileRepo.save(created);
+    return this.profileRepo.findOneOrFail({ where: { id: saved.id } });
   }
 
   private async updateProfileFromInteraction(

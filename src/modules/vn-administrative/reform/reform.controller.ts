@@ -1,10 +1,10 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ReformAdministrativeService } from './reform.service';
 import { ReformProvince } from './entities/reform-province.entity';
 import { ReformCommune } from './entities/reform-commune.entity';
 
-@ApiTags('Vietnam Administrative (Reform)')
+@ApiTags('reform-administrative')
 @Controller('vn-admin/reform')
 export class ReformAdministrativeController {
   constructor(private readonly service: ReformAdministrativeService) {}
@@ -12,6 +12,11 @@ export class ReformAdministrativeController {
   @Get('provinces')
   @ApiOperation({
     summary: 'Danh sách tỉnh sau sáp nhập (34 tỉnh)',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Tìm theo tên, tên tiếng Anh hoặc mã (không bắt buộc)',
   })
   @ApiOkResponse({ type: ReformProvince, isArray: true })
   listProvinces(@Query('search') search?: string): Promise<ReformProvince[]> {

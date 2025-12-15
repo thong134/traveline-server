@@ -41,12 +41,12 @@ export class TrainRoutesService {
   }
 
   async create(dto: CreateTrainRouteDto): Promise<TrainRoute> {
-    await this.ensureCooperation(dto.cooperationId);
+    const cooperation = await this.ensureCooperation(dto.cooperationId);
     if (dto.durationMinutes !== undefined && dto.durationMinutes < 0) {
       throw new BadRequestException('durationMinutes must be non-negative');
     }
     const route = this.routeRepo.create({
-      cooperationId: dto.cooperationId,
+      cooperation,
       name: dto.name,
       departureStation: dto.departureStation,
       arrivalStation: dto.arrivalStation,
@@ -72,7 +72,7 @@ export class TrainRoutesService {
   ): Promise<TrainRoute[]> {
     const qb = this.routeRepo.createQueryBuilder('route');
     if (params.cooperationId) {
-      qb.andWhere('route.cooperationId = :cooperationId', {
+      qb.andWhere('route.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
       });
     }
@@ -90,7 +90,10 @@ export class TrainRoutesService {
   }
 
   async findOne(id: number): Promise<TrainRoute> {
-    const route = await this.routeRepo.findOne({ where: { id } });
+    const route = await this.routeRepo.findOne({
+      where: { id },
+      relations: { cooperation: true },
+    });
     if (!route) {
       throw new NotFoundException(`Train route ${id} not found`);
     }
@@ -100,8 +103,7 @@ export class TrainRoutesService {
   async update(id: number, dto: UpdateTrainRouteDto): Promise<TrainRoute> {
     const route = await this.findOne(id);
     if (dto.cooperationId !== undefined) {
-      await this.ensureCooperation(dto.cooperationId);
-      route.cooperationId = dto.cooperationId;
+      route.cooperation = await this.ensureCooperation(dto.cooperationId);
     }
     if (dto.durationMinutes !== undefined && dto.durationMinutes < 0) {
       throw new BadRequestException('durationMinutes must be non-negative');

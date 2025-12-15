@@ -37,9 +37,6 @@ export class TrainBill {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ name: 'user_id' })
-  userId: number;
-
   @ManyToOne(() => TrainRoute, (route) => route.bills, {
     nullable: false,
     onDelete: 'RESTRICT',
@@ -47,18 +44,12 @@ export class TrainBill {
   @JoinColumn({ name: 'route_id' })
   route: TrainRoute;
 
-  @Column({ name: 'route_id' })
-  routeId: number;
-
   @ManyToOne(() => Cooperation, (cooperation) => cooperation.trainBills, {
     nullable: false,
     onDelete: 'RESTRICT',
   })
   @JoinColumn({ name: 'cooperation_id' })
   cooperation: Cooperation;
-
-  @Column({ name: 'cooperation_id' })
-  cooperationId: number;
 
   @Column({ type: 'date' })
   travelDate: Date;
@@ -87,9 +78,6 @@ export class TrainBill {
   })
   @JoinColumn({ name: 'voucher_id' })
   voucher?: Voucher;
-
-  @Column({ name: 'voucher_id', nullable: true })
-  voucherId?: number;
 
   @Column({
     type: 'enum',

@@ -65,7 +65,6 @@ export class CooperationsService {
         throw new NotFoundException(`User ${dto.userId} not found`);
       }
       cooperation.manager = manager;
-      cooperation.userId = manager.id;
     }
 
     return this.cooperationRepo.save(cooperation);
@@ -149,7 +148,6 @@ export class CooperationsService {
     if (dto.userId !== undefined) {
       if (dto.userId === null) {
         cooperation.manager = undefined;
-        cooperation.userId = undefined;
       } else {
         const manager = await this.userRepo.findOne({
           where: { id: dto.userId },
@@ -158,7 +156,6 @@ export class CooperationsService {
           throw new NotFoundException(`User ${dto.userId} not found`);
         }
         cooperation.manager = manager;
-        cooperation.userId = manager.id;
       }
     }
 

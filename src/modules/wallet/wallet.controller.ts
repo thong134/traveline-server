@@ -22,7 +22,11 @@ export class WalletController {
 
   @Get('balance')
   @ApiOperation({ summary: 'Lấy số dư ví hiện tại' })
-  @ApiQuery({ name: 'currency', required: false, description: 'Future currency conversion (defaults to VND)' })
+  @ApiQuery({
+    name: 'currency',
+    required: false,
+    description: 'Future currency conversion (defaults to VND)',
+  })
   @ApiOkResponse({ description: 'Số dư ví của người dùng' })
   async getBalance(
     @CurrentUser() user: RequestUser,

@@ -25,9 +25,6 @@ export class RestaurantTable {
   @JoinColumn({ name: 'cooperation_id' })
   cooperation: Cooperation;
 
-  @Column({ name: 'cooperation_id' })
-  cooperationId: number;
-
   @Column({ type: 'int', default: 1 })
   quantity: number;
 

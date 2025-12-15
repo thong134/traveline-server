@@ -76,7 +76,9 @@ export class TravelRoutesController {
 
   @Post(':id/clone')
   @RequireAuth()
-  @ApiOperation({ summary: 'Sao chép một lộ trình đã share thành bản riêng của user hiện tại' })
+  @ApiOperation({
+    summary: 'Sao chép một lộ trình đã share thành bản riêng của user hiện tại',
+  })
   @ApiOkResponse({ description: 'Travel route cloned' })
   cloneRoute(
     @Param('id', ParseIntPipe) id: number,
@@ -117,7 +119,9 @@ export class TravelRoutesController {
       province,
       userId: userId ? Number(userId) : undefined,
       shared:
-        typeof shared === 'string' ? shared.toLowerCase() === 'true' : undefined,
+        typeof shared === 'string'
+          ? shared.toLowerCase() === 'true'
+          : undefined,
     });
   }
 
@@ -183,7 +187,9 @@ export class TravelRoutesController {
 
   @Get(':routeId/stops/:stopId')
   @RequireAuth()
-  @ApiOperation({ summary: 'Chi tiết một điểm dừng trong lộ trình (kèm địa điểm)' })
+  @ApiOperation({
+    summary: 'Chi tiết một điểm dừng trong lộ trình (kèm địa điểm)',
+  })
   @ApiOkResponse({ description: 'Route stop detail' })
   getStopDetail(
     @Param('routeId', ParseIntPipe) routeId: number,
@@ -221,7 +227,9 @@ export class TravelRoutesController {
 
   @Patch(':routeId/stops/:stopId/time')
   @RequireAuth()
-  @ApiOperation({ summary: 'Cập nhật thời gian bắt đầu/kết thúc của điểm dừng' })
+  @ApiOperation({
+    summary: 'Cập nhật thời gian bắt đầu/kết thúc của điểm dừng',
+  })
   @ApiOkResponse({ description: 'Thời gian điểm dừng đã được cập nhật' })
   updateStopTime(
     @Param('routeId', ParseIntPipe) routeId: number,
@@ -264,7 +272,11 @@ export class TravelRoutesController {
     @Param('stopId', ParseIntPipe) stopId: number,
     @Body() dto: UpdateRouteStopStatusDto,
   ) {
-    return this.travelRoutesService.updateStopStatus(routeId, stopId, dto.status);
+    return this.travelRoutesService.updateStopStatus(
+      routeId,
+      stopId,
+      dto.status,
+    );
   }
 
   @Post(':routeId/stops/:stopId/media')

@@ -6,5 +6,3 @@ export class EmailStartDto {
   @IsEmail()
   email: string;
 }
-
-

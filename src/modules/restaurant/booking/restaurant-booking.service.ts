@@ -47,7 +47,10 @@ export class RestaurantBookingsService {
       throw new NotFoundException(`User ${userId} not found`);
     }
 
-    const table = await this.tableRepo.findOne({ where: { id: dto.tableId } });
+    const table = await this.tableRepo.findOne({
+      where: { id: dto.tableId },
+      relations: { cooperation: true },
+    });
     if (!table) {
       throw new NotFoundException(`Restaurant table ${dto.tableId} not found`);
     }
@@ -65,10 +68,8 @@ export class RestaurantBookingsService {
     const booking = this.bookingRepo.create({
       code: this.generateBookingCode(),
       user,
-      userId: user.id,
       table,
-      tableId: table.id,
-      cooperationId: table.cooperationId,
+      cooperation: table.cooperation,
       checkInDate: new Date(dto.checkInDate),
       durationMinutes: dto.durationMinutes,
       numberOfGuests: dto.numberOfGuests ?? 1,
@@ -99,12 +100,12 @@ export class RestaurantBookingsService {
       .leftJoinAndSelect('booking.user', 'user')
       .leftJoinAndSelect('booking.table', 'table');
 
-    qb.andWhere('booking.userId = :userId', { userId });
+    qb.andWhere('booking.user_id = :userId', { userId });
     if (params.tableId) {
-      qb.andWhere('booking.tableId = :tableId', { tableId: params.tableId });
+      qb.andWhere('booking.table_id = :tableId', { tableId: params.tableId });
     }
     if (params.cooperationId) {
-      qb.andWhere('booking.cooperationId = :cooperationId', {
+      qb.andWhere('booking.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
       });
     }
@@ -123,7 +124,7 @@ export class RestaurantBookingsService {
     if (!booking) {
       throw new NotFoundException(`Restaurant booking ${id} not found`);
     }
-    if (booking.userId !== userId) {
+    if (booking.user?.id !== userId) {
       throw new ForbiddenException('You do not have access to this booking');
     }
     return booking;
@@ -137,9 +138,10 @@ export class RestaurantBookingsService {
     const booking = await this.findOne(id, userId);
     const previousStatus = booking.status;
 
-    if (dto.tableId !== undefined && dto.tableId !== booking.tableId) {
+    if (dto.tableId !== undefined && dto.tableId !== booking.table?.id) {
       const table = await this.tableRepo.findOne({
         where: { id: dto.tableId },
+        relations: { cooperation: true },
       });
       if (!table) {
         throw new NotFoundException(
@@ -147,8 +149,7 @@ export class RestaurantBookingsService {
         );
       }
       booking.table = table;
-      booking.tableId = table.id;
-      booking.cooperationId = table.cooperationId;
+      booking.cooperation = table.cooperation;
     }
 
     if (dto.checkInDate !== undefined) {
@@ -209,17 +210,21 @@ export class RestaurantBookingsService {
     const nextRevenue = this.isRevenueStatus(nextStatus);
 
     if (!prevRevenue && nextRevenue) {
-      await this.cooperationsService.adjustBookingMetrics(
-        booking.cooperationId,
-        1,
-      );
+      if (booking.cooperation?.id) {
+        await this.cooperationsService.adjustBookingMetrics(
+          booking.cooperation.id,
+          1,
+        );
+      }
     }
 
     if (prevRevenue && !nextRevenue) {
-      await this.cooperationsService.adjustBookingMetrics(
-        booking.cooperationId,
-        -1,
-      );
+      if (booking.cooperation?.id) {
+        await this.cooperationsService.adjustBookingMetrics(
+          booking.cooperation.id,
+          -1,
+        );
+      }
     }
   }
 }

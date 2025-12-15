@@ -109,10 +109,8 @@ export class BusBillsService {
     const bill = this.billRepo.create({
       code: this.generateBillCode(),
       user,
-      userId: user.id,
       busType,
-      busTypeId: busType.id,
-      cooperationId: busType.cooperationId,
+      cooperation: busType.cooperation,
       pickUpLocation: dto.pickUpLocation,
       pickUpTime: dto.pickUpTime,
       startDate: dto.startDate,
@@ -134,7 +132,6 @@ export class BusBillsService {
       paymentMethod: dto.paymentMethod,
       notes: dto.notes,
       voucher: voucher ?? undefined,
-      voucherId: voucher?.id,
       details: dto.seats.map((seat) =>
         this.detailRepo.create({
           seatNumber: seat.seatNumber,
@@ -164,14 +161,14 @@ export class BusBillsService {
       .leftJoinAndSelect('bill.details', 'details')
       .leftJoinAndSelect('bill.voucher', 'voucher');
 
-    qb.andWhere('bill.userId = :userId', { userId });
+    qb.andWhere('bill.user_id = :userId', { userId });
     if (params.busTypeId) {
-      qb.andWhere('bill.busTypeId = :busTypeId', {
+      qb.andWhere('bill.bus_type_id = :busTypeId', {
         busTypeId: params.busTypeId,
       });
     }
     if (params.cooperationId) {
-      qb.andWhere('bill.cooperationId = :cooperationId', {
+      qb.andWhere('bill.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
       });
     }
@@ -197,7 +194,7 @@ export class BusBillsService {
     if (!bill) {
       throw new NotFoundException(`Bus bill ${id} not found`);
     }
-    if (bill.userId !== userId) {
+    if (bill.user?.id !== userId) {
       throw new ForbiddenException('You do not have access to this bus bill');
     }
     return bill;
@@ -261,11 +258,15 @@ export class BusBillsService {
     }
 
     if (this.isRevenueStatus(nextStatus)) {
-      await this.cooperationsService.adjustBookingMetrics(
-        bill.cooperationId,
-        1,
-        Number(bill.total ?? 0),
-      );
+      const cooperationId =
+        bill.busType?.cooperation?.id ?? bill.cooperation?.id;
+      if (cooperationId) {
+        await this.cooperationsService.adjustBookingMetrics(
+          cooperationId,
+          1,
+          Number(bill.total ?? 0),
+        );
+      }
     }
 
     if (
@@ -273,11 +274,15 @@ export class BusBillsService {
       this.isRevenueStatus(previousStatus) &&
       !this.isRevenueStatus(nextStatus)
     ) {
-      await this.cooperationsService.adjustBookingMetrics(
-        bill.cooperationId,
-        -1,
-        -Number(bill.total ?? 0),
-      );
+      const cooperationId =
+        bill.busType?.cooperation?.id ?? bill.cooperation?.id;
+      if (cooperationId) {
+        await this.cooperationsService.adjustBookingMetrics(
+          cooperationId,
+          -1,
+          -Number(bill.total ?? 0),
+        );
+      }
     }
   }
 }

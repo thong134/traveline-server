@@ -59,5 +59,3 @@ export async function sendEmailVerificationEmail(
     console.log('Preview email URL:', preview);
   }
 }
-
-

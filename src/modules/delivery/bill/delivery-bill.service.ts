@@ -88,6 +88,7 @@ export class DeliveryBillsService {
 
     const vehicle = await this.vehicleRepo.findOne({
       where: { id: dto.vehicleId },
+      relations: { cooperation: true },
     });
     if (!vehicle) {
       throw new NotFoundException(
@@ -139,10 +140,8 @@ export class DeliveryBillsService {
     const bill = this.billRepo.create({
       code: this.generateBillCode(),
       user,
-      userId: user.id,
       vehicle,
-      vehicleId: vehicle.id,
-      cooperationId: vehicle.cooperationId,
+      cooperation: vehicle.cooperation,
       deliveryDate: new Date(dto.deliveryDate),
       deliveryAddress: dto.deliveryAddress,
       receiveAddress: dto.receiveAddress,
@@ -162,7 +161,6 @@ export class DeliveryBillsService {
       paymentMethod: dto.paymentMethod,
       notes: dto.notes,
       voucher: voucher ?? undefined,
-      voucherId: voucher?.id,
     });
 
     const saved = await this.billRepo.save(bill);
@@ -187,16 +185,16 @@ export class DeliveryBillsService {
       .leftJoinAndSelect('bill.user', 'user')
       .leftJoinAndSelect('bill.voucher', 'voucher');
 
-    qb.andWhere('bill.userId = :userId', { userId });
+    qb.andWhere('bill.user_id = :userId', { userId });
 
     if (params.vehicleId) {
-      qb.andWhere('bill.vehicleId = :vehicleId', {
+      qb.andWhere('bill.vehicle_id = :vehicleId', {
         vehicleId: params.vehicleId,
       });
     }
 
     if (params.cooperationId) {
-      qb.andWhere('bill.cooperationId = :cooperationId', {
+      qb.andWhere('bill.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
       });
     }
@@ -221,7 +219,7 @@ export class DeliveryBillsService {
     if (!bill) {
       throw new NotFoundException(`Delivery bill ${id} not found`);
     }
-    if (bill.userId !== userId) {
+    if (bill.user?.id !== userId) {
       throw new ForbiddenException(
         'You do not have access to this delivery bill',
       );
@@ -241,9 +239,10 @@ export class DeliveryBillsService {
       bill.deliveryDate = new Date(dto.deliveryDate);
     }
 
-    if (dto.vehicleId !== undefined && dto.vehicleId !== bill.vehicleId) {
+    if (dto.vehicleId !== undefined && dto.vehicleId !== bill.vehicle?.id) {
       const vehicle = await this.vehicleRepo.findOne({
         where: { id: dto.vehicleId },
+        relations: { cooperation: true },
       });
       if (!vehicle) {
         throw new NotFoundException(
@@ -251,8 +250,7 @@ export class DeliveryBillsService {
         );
       }
       bill.vehicle = vehicle;
-      bill.vehicleId = vehicle.id;
-      bill.cooperationId = vehicle.cooperationId;
+      bill.cooperation = vehicle.cooperation;
     }
 
     if (dto.deliveryAddress !== undefined) {
@@ -283,11 +281,11 @@ export class DeliveryBillsService {
     let subtotal = Number(bill.subtotal);
     if (dto.distanceKm !== undefined || dto.vehicleId !== undefined) {
       const vehicle = await this.vehicleRepo.findOne({
-        where: { id: bill.vehicleId },
+        where: { id: bill.vehicle?.id },
       });
       if (!vehicle) {
         throw new NotFoundException(
-          `Delivery vehicle ${bill.vehicleId} not found`,
+          `Delivery vehicle ${bill.vehicle?.id} not found`,
         );
       }
       subtotal = this.calculateSubtotal(distanceKm, vehicle);
@@ -301,7 +299,6 @@ export class DeliveryBillsService {
       if (!dto.voucherCode) {
         voucher = null;
         bill.voucher = undefined;
-        bill.voucherId = undefined;
       } else {
         voucher = await this.vouchersService.findByCode(dto.voucherCode);
         if (!voucher) {
@@ -309,7 +306,6 @@ export class DeliveryBillsService {
         }
         this.vouchersService.validateVoucherForBooking(voucher, subtotal);
         bill.voucher = voucher;
-        bill.voucherId = voucher.id;
       }
     } else if (voucher) {
       this.vouchersService.validateVoucherForBooking(voucher, subtotal);
@@ -320,9 +316,10 @@ export class DeliveryBillsService {
       dto.travelPointsUsed !== undefined &&
       dto.travelPointsUsed !== bill.travelPointsUsed
     ) {
-      const user = await this.userRepo.findOne({ where: { id: bill.userId } });
+      const user =
+        bill.user ?? (await this.userRepo.findOne({ where: { id: userId } }));
       if (!user) {
-        throw new NotFoundException(`User ${bill.userId} not found`);
+        throw new NotFoundException(`User ${userId} not found`);
       }
       if (dto.travelPointsUsed > bill.travelPointsUsed) {
         const additional = dto.travelPointsUsed - bill.travelPointsUsed;
@@ -396,17 +393,21 @@ export class DeliveryBillsService {
     const nextRevenue = this.isRevenueStatus(nextStatus);
 
     if (!prevRevenue && nextRevenue) {
-      await this.cooperationsService.adjustBookingMetrics(
-        bill.cooperationId,
-        1,
-        Number(bill.total),
-      );
-      if (bill.voucherId) {
-        await this.vouchersService.incrementUsage(bill.voucherId);
+      const cooperationId =
+        bill.vehicle?.cooperation?.id ?? bill.cooperation?.id;
+      if (cooperationId) {
+        await this.cooperationsService.adjustBookingMetrics(
+          cooperationId,
+          1,
+          Number(bill.total),
+        );
+      }
+      if (bill.voucher?.id) {
+        await this.vouchersService.incrementUsage(bill.voucher.id);
       }
       if (bill.travelPointsUsed > 0 && bill.travelPointsRefunded) {
         const user = await this.userRepo.findOne({
-          where: { id: bill.userId },
+          where: { id: bill.user?.id },
         });
         if (user) {
           user.travelPoint = Math.max(
@@ -421,11 +422,15 @@ export class DeliveryBillsService {
     }
 
     if (prevRevenue && !nextRevenue) {
-      await this.cooperationsService.adjustBookingMetrics(
-        bill.cooperationId,
-        -1,
-        -Number(bill.total),
-      );
+      const cooperationId =
+        bill.vehicle?.cooperation?.id ?? bill.cooperation?.id;
+      if (cooperationId) {
+        await this.cooperationsService.adjustBookingMetrics(
+          cooperationId,
+          -1,
+          -Number(bill.total),
+        );
+      }
     }
 
     const shouldRefund =
@@ -434,7 +439,9 @@ export class DeliveryBillsService {
       !bill.travelPointsRefunded;
 
     if (shouldRefund) {
-      const user = await this.userRepo.findOne({ where: { id: bill.userId } });
+      const user = await this.userRepo.findOne({
+        where: { id: bill.user?.id },
+      });
       if (user) {
         user.travelPoint += bill.travelPointsUsed;
         user.travelExp += bill.travelPointsUsed;

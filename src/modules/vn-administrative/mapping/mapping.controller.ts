@@ -12,15 +12,14 @@ import { TranslateAddressTextDto } from './dto/translate-address-text.dto';
 import { AdminUnitMapping } from './admin-reform-mapping.entity';
 import { EnrichDestinationsDto } from './dto/enrich-destinations.dto';
 
-@ApiTags('Vietnam Administrative (Mapping)')
+@ApiTags('mapping-administrative')
 @Controller('vn-admin/mapping')
 export class AdministrativeMappingController {
   constructor(private readonly service: AdministrativeMappingService) {}
 
   @Post('translate-address-text')
   @ApiOperation({
-    summary:
-      'Chuyển đổi địa chỉ dạng văn bản sang đơn vị hành chính mới',
+    summary: 'Chuyển đổi địa chỉ dạng văn bản sang đơn vị hành chính mới',
   })
   @ApiOkResponse({
     schema: {
@@ -42,9 +41,7 @@ export class AdministrativeMappingController {
     summary: 'Tra cứu xã/phường cũ đã được sắp xếp lại như thế nào',
   })
   @ApiOkResponse({ type: AdminUnitMapping, isArray: true })
-  findByLegacyWard(
-    @Param('code') code: string,
-  ): Promise<AdminUnitMapping[]> {
+  findByLegacyWard(@Param('code') code: string): Promise<AdminUnitMapping[]> {
     return this.service.findByOldWard(code);
   }
 
@@ -61,8 +58,7 @@ export class AdministrativeMappingController {
 
   @Get('destinations/:destinationId/translate')
   @ApiOperation({
-    summary:
-      'Phân tích địa chỉ địa điểm và trả về mã hành chính cũ/mới',
+    summary: 'Phân tích địa chỉ địa điểm và trả về mã hành chính cũ/mới',
   })
   @ApiOkResponse({
     description:

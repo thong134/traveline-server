@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  ParseIntPipe,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -73,7 +67,9 @@ export class AdminController {
     return this.destinationsService.findAll({
       q,
       available:
-        typeof available === 'string' ? available.toLowerCase() === 'true' : undefined,
+        typeof available === 'string'
+          ? available.toLowerCase() === 'true'
+          : undefined,
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
     });
@@ -91,7 +87,7 @@ export class AdminController {
     const normalizedStatus =
       typeof status === 'string' &&
       (Object.values(RentalContractStatus) as string[]).includes(status)
-        ? (status as RentalContractStatus)
+        ? status
         : undefined;
 
     return this.rentalContractsService.findAllForAdmin({
@@ -131,7 +127,7 @@ export class AdminController {
     const normalizedStatus =
       typeof status === 'string' &&
       (Object.values(RentalVehicleApprovalStatus) as string[]).includes(status)
-        ? (status as RentalVehicleApprovalStatus)
+        ? status
         : undefined;
 
     const normalizedAvailability =
@@ -139,7 +135,7 @@ export class AdminController {
       (Object.values(RentalVehicleAvailabilityStatus) as string[]).includes(
         availability,
       )
-        ? (availability as RentalVehicleAvailabilityStatus)
+        ? availability
         : undefined;
 
     return this.rentalVehiclesService.findAll({
@@ -171,7 +167,9 @@ export class AdminController {
       city: city?.trim(),
       province: province?.trim(),
       active:
-        typeof active === 'string' ? active.toLowerCase() === 'true' : undefined,
+        typeof active === 'string'
+          ? active.toLowerCase() === 'true'
+          : undefined,
     });
   }
 }

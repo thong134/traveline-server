@@ -71,10 +71,7 @@ export class EateriesController {
   @RequireAuth()
   @ApiOperation({ summary: 'Cập nhật thông tin quán ăn' })
   @ApiOkResponse({ description: 'Đã cập nhật quán ăn' })
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateEateryDto,
-  ) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateEateryDto) {
     return this.service.update(id, dto);
   }
 

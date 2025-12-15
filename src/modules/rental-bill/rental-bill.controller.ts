@@ -64,7 +64,9 @@ export class RentalBillsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Cập nhật hóa đơn thuê xe (trạng thái hoặc thông tin)' })
+  @ApiOperation({
+    summary: 'Cập nhật hóa đơn thuê xe (trạng thái hoặc thông tin)',
+  })
   @ApiOkResponse({ description: 'Rental bill updated' })
   update(
     @Param('id', ParseIntPipe) id: number,

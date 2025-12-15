@@ -122,7 +122,10 @@ export class CreateUserDto {
   @IsString({ each: true })
   favoriteEateries?: string[];
 
-  @ApiPropertyOptional({ description: 'Favourite cooperation ids', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Favourite cooperation ids',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

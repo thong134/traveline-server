@@ -6,7 +6,6 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-  RelationId,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
@@ -30,9 +29,6 @@ export class RentalContract {
   })
   @JoinColumn({ name: 'userId' })
   user: User;
-
-  @RelationId((contract: RentalContract) => contract.user)
-  userId: number;
 
   @Column({ nullable: true })
   citizenId?: string;

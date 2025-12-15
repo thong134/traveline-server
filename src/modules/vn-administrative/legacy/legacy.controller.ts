@@ -1,11 +1,11 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { LegacyAdministrativeService } from './legacy.service';
 import { LegacyProvince } from './entities/legacy-province.entity';
 import { LegacyDistrict } from './entities/legacy-district.entity';
 import { LegacyWard } from './entities/legacy-ward.entity';
 
-@ApiTags('Vietnam Administrative (Legacy)')
+@ApiTags('legacy-administrative')
 @Controller('vn-admin/legacy')
 export class LegacyAdministrativeController {
   constructor(private readonly service: LegacyAdministrativeService) {}
@@ -13,6 +13,11 @@ export class LegacyAdministrativeController {
   @Get('provinces')
   @ApiOperation({
     summary: 'Danh sách tỉnh trước sáp nhập (63 tỉnh)',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Tìm theo tên, tên tiếng Anh hoặc mã (không bắt buộc)',
   })
   @ApiOkResponse({ type: LegacyProvince, isArray: true })
   listProvinces(@Query('search') search?: string): Promise<LegacyProvince[]> {
@@ -38,7 +43,9 @@ export class LegacyAdministrativeController {
   }
 
   @Get('districts/:code')
-  @ApiOperation({ summary: 'Chi tiết huyện trước sáp nhập (có thể kèm xã/phường)' })
+  @ApiOperation({
+    summary: 'Chi tiết huyện trước sáp nhập (có thể kèm xã/phường)',
+  })
   @ApiOkResponse({ type: LegacyDistrict })
   getDistrict(
     @Param('code') code: string,

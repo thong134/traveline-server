@@ -18,5 +18,3 @@ export class EmailVerifyDto {
   @IsNotEmpty()
   token: string;
 }
-
-

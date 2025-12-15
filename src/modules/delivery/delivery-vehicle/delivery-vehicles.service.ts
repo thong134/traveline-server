@@ -41,9 +41,9 @@ export class DeliveryVehiclesService {
   }
 
   async create(dto: CreateDeliveryVehicleDto): Promise<DeliveryVehicle> {
-    await this.ensureCooperation(dto.cooperationId);
+    const cooperation = await this.ensureCooperation(dto.cooperationId);
     const vehicle = this.vehicleRepo.create({
-      cooperationId: dto.cooperationId,
+      cooperation,
       typeName: dto.typeName,
       sizeLimit: dto.sizeLimit,
       weightLimit: dto.weightLimit,
@@ -60,7 +60,7 @@ export class DeliveryVehiclesService {
   ): Promise<DeliveryVehicle[]> {
     const qb = this.vehicleRepo.createQueryBuilder('vehicle');
     if (params.cooperationId) {
-      qb.where('vehicle.cooperationId = :cooperationId', {
+      qb.where('vehicle.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
       });
     }
@@ -68,7 +68,10 @@ export class DeliveryVehiclesService {
   }
 
   async findOne(id: number): Promise<DeliveryVehicle> {
-    const vehicle = await this.vehicleRepo.findOne({ where: { id } });
+    const vehicle = await this.vehicleRepo.findOne({
+      where: { id },
+      relations: { cooperation: true },
+    });
     if (!vehicle) {
       throw new NotFoundException(`Delivery vehicle ${id} not found`);
     }
@@ -81,8 +84,7 @@ export class DeliveryVehiclesService {
   ): Promise<DeliveryVehicle> {
     const vehicle = await this.findOne(id);
     if (dto.cooperationId !== undefined) {
-      await this.ensureCooperation(dto.cooperationId);
-      vehicle.cooperationId = dto.cooperationId;
+      vehicle.cooperation = await this.ensureCooperation(dto.cooperationId);
     }
     assignDefined(vehicle, {
       typeName: dto.typeName,

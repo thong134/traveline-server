@@ -25,9 +25,6 @@ export class DeliveryVehicle {
   @JoinColumn({ name: 'cooperation_id' })
   cooperation: Cooperation;
 
-  @Column({ name: 'cooperation_id' })
-  cooperationId: number;
-
   @Column({ nullable: true })
   sizeLimit?: string;
 

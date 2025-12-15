@@ -49,7 +49,7 @@ export class FlightsService {
   }
 
   async create(dto: CreateFlightDto): Promise<Flight> {
-    await this.ensureCooperation(dto.cooperationId);
+    const cooperation = await this.ensureCooperation(dto.cooperationId);
     if (dto.durationMinutes !== undefined && dto.durationMinutes < 0) {
       throw new BadRequestException('durationMinutes must be non-negative');
     }
@@ -59,7 +59,7 @@ export class FlightsService {
       throw new BadRequestException('arrivalTime must be after departureTime');
     }
     const flight = this.flightRepo.create({
-      cooperationId: dto.cooperationId,
+      cooperation,
       flightNumber: dto.flightNumber,
       airline: dto.airline,
       departureAirport: dto.departureAirport,
@@ -87,7 +87,7 @@ export class FlightsService {
   ): Promise<Flight[]> {
     const qb = this.flightRepo.createQueryBuilder('flight');
     if (params.cooperationId) {
-      qb.andWhere('flight.cooperationId = :cooperationId', {
+      qb.andWhere('flight.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
       });
     }
@@ -110,7 +110,10 @@ export class FlightsService {
   }
 
   async findOne(id: number): Promise<Flight> {
-    const flight = await this.flightRepo.findOne({ where: { id } });
+    const flight = await this.flightRepo.findOne({
+      where: { id },
+      relations: { cooperation: true },
+    });
     if (!flight) {
       throw new NotFoundException(`Flight ${id} not found`);
     }
@@ -120,8 +123,7 @@ export class FlightsService {
   async update(id: number, dto: UpdateFlightDto): Promise<Flight> {
     const flight = await this.findOne(id);
     if (dto.cooperationId !== undefined) {
-      await this.ensureCooperation(dto.cooperationId);
-      flight.cooperationId = dto.cooperationId;
+      flight.cooperation = await this.ensureCooperation(dto.cooperationId);
     }
     if (dto.durationMinutes !== undefined && dto.durationMinutes < 0) {
       throw new BadRequestException('durationMinutes must be non-negative');

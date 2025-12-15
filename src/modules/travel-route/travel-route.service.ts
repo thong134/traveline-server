@@ -14,7 +14,10 @@ import { RouteStopDto } from './dto/route-stop.dto';
 import { Destination } from '../destination/entities/destinations.entity';
 import { User } from '../user/entities/user.entity';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
-import { assertImageFile, assertVideoFile } from '../../common/upload/image-upload.utils';
+import {
+  assertImageFile,
+  assertVideoFile,
+} from '../../common/upload/image-upload.utils';
 import { randomUUID } from 'crypto';
 import type { Express } from 'express';
 
@@ -233,8 +236,7 @@ export class TravelRoutesService {
       qb.andWhere('route.province = :province', { province });
     }
 
-    qb
-      .orderBy('route.createdAt', 'DESC')
+    qb.orderBy('route.createdAt', 'DESC')
       .addOrderBy('stops.dayOrder', 'ASC')
       .addOrderBy('stops.sequence', 'ASC')
       .take(limit)
@@ -294,9 +296,7 @@ export class TravelRoutesService {
     });
   }
 
-  async findRouteDatesByUser(
-    userId: number,
-  ): Promise<
+  async findRouteDatesByUser(userId: number): Promise<
     Array<{
       id: number;
       name: string;
@@ -340,7 +340,9 @@ export class TravelRoutesService {
         throw new NotFoundException(`Travel route ${routeId} not found`);
       }
       if (route.user?.id && route.user.id !== userId) {
-        throw new ForbiddenException('Bạn không có quyền cập nhật lộ trình này');
+        throw new ForbiddenException(
+          'Bạn không có quyền cập nhật lộ trình này',
+        );
       }
 
       route.shared = shared;
@@ -617,13 +619,15 @@ export class TravelRoutesService {
     toleranceMeters = 100,
   ): Promise<{ matched: boolean; distanceMeters: number; stop: RouteStop }> {
     const result = await this.dataSource.transaction(
-      async (manager): Promise<{
+      async (
+        manager,
+      ): Promise<{
         matched: boolean;
         distanceMeters: number;
         stop: RouteStop;
       }> => {
-      const stopRepo = manager.getRepository(RouteStop);
-      const stop = await this.getStopOrFail(routeId, stopId, manager, {
+        const stopRepo = manager.getRepository(RouteStop);
+        const stop = await this.getStopOrFail(routeId, stopId, manager, {
           withDestination: true,
         });
 
@@ -726,15 +730,8 @@ export class TravelRoutesService {
     dto: Partial<CreateTravelRouteDto>,
     userRepository: Repository<User>,
   ): Promise<void> {
-    const {
-      userId,
-      name,
-      province,
-      numberOfDays,
-      startDate,
-      endDate,
-      shared,
-    } = dto;
+    const { userId, name, province, numberOfDays, startDate, endDate, shared } =
+      dto;
 
     if (userId) {
       const user = await userRepository.findOne({ where: { id: userId } });
@@ -768,9 +765,8 @@ export class TravelRoutesService {
 
     if (parsedStart && parsedEnd && maxDay && maxDay > 0) {
       const duration =
-        Math.floor(
-          (parsedEnd.getTime() - parsedStart.getTime()) / 86_400_000,
-        ) + 1;
+        Math.floor((parsedEnd.getTime() - parsedStart.getTime()) / 86_400_000) +
+        1;
       if (duration < maxDay) {
         throw new BadRequestException(
           'Khoảng ngày (startDate - endDate) không đủ cho số dayOrder của các điểm dừng',

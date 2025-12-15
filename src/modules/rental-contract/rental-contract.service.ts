@@ -69,7 +69,6 @@ export class RentalContractsService {
     const contract = this.repo.create({
       ...dto,
       user,
-      userId: user.id,
       businessType: dto.businessType,
       status: RentalContractStatus.PENDING,
       statusUpdatedAt: new Date(),
@@ -131,7 +130,7 @@ export class RentalContractsService {
     options: { asAdmin?: boolean } = {},
   ): Promise<RentalContract> {
     const contract = await this.getContractOrFail(id);
-    if (!options.asAdmin && contract.userId !== userId) {
+    if (!options.asAdmin && contract.user?.id !== userId) {
       throw new ForbiddenException('You do not have access to this contract');
     }
     return contract;
@@ -320,12 +319,11 @@ export class RentalContractsService {
 
       assertImageFile(mapping.file, { fieldName: mapping.key });
       const upload = await this.cloudinaryService.uploadImage(mapping.file, {
-        folder: `traveline/rental-contracts/${contract.userId}`,
-        publicId: contract.id
-          ? `${contract.id}_${mapping.label}`
-          : undefined,
+        folder: `traveline/rental-contracts/${contract.user?.id ?? 'unknown'}`,
+        publicId: contract.id ? `${contract.id}_${mapping.label}` : undefined,
       });
-      (contract as unknown as Record<string, unknown>)[mapping.key] = upload.url;
+      (contract as unknown as Record<string, unknown>)[mapping.key] =
+        upload.url;
       hasChanges = true;
     }
 

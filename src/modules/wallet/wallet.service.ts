@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { User } from '../user/entities/user.entity';
@@ -30,7 +34,10 @@ export class WalletService {
   ) {}
 
   async createWallet(userId: number): Promise<UserWallet> {
-    const existing = await this.walletRepo.findOne({ where: { userId } });
+    const existing = await this.walletRepo.findOne({
+      where: { user: { id: userId } },
+      relations: { user: true },
+    });
     if (existing) {
       return existing;
     }
@@ -40,12 +47,14 @@ export class WalletService {
       throw new NotFoundException(`User ${userId} không tồn tại`);
     }
 
-    const wallet = this.walletRepo.create({ userId, balance: '0.00', user });
+    const wallet = this.walletRepo.create({ balance: '0.00', user });
     return this.walletRepo.save(wallet);
   }
 
   async getBalance(userId: number): Promise<string> {
-    const wallet = await this.walletRepo.findOne({ where: { userId } });
+    const wallet = await this.walletRepo.findOne({
+      where: { user: { id: userId } },
+    });
     if (!wallet) {
       throw new NotFoundException('Wallet not found');
     }
@@ -138,8 +147,9 @@ export class WalletService {
 
     return this.dataSource.transaction(async (manager) => {
       const wallet = await manager.getRepository(UserWallet).findOne({
-        where: { userId },
+        where: { user: { id: userId } },
         lock: { mode: 'pessimistic_write' },
+        relations: { user: true },
       });
 
       if (!wallet) {
@@ -157,12 +167,14 @@ export class WalletService {
       await manager.getRepository(UserWallet).save(wallet);
 
       const transaction = manager.getRepository(WalletTransaction).create({
-        walletId: wallet.id,
+        wallet,
         amount: this.centsToDecimal(delta),
         type,
         referenceId,
       });
-      const persisted = await manager.getRepository(WalletTransaction).save(transaction);
+      const persisted = (await manager
+        .getRepository(WalletTransaction)
+        .save(transaction)) as WalletTransaction;
 
       return {
         balance: wallet.balance,

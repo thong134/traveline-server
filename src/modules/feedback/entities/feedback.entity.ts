@@ -25,9 +25,6 @@ export class Feedback {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @Column({ name: 'user_id', nullable: true })
-  userId?: number;
-
   @Column({ nullable: true })
   userUid?: string;
 
@@ -38,18 +35,12 @@ export class Feedback {
   @JoinColumn({ name: 'travel_route_id' })
   travelRoute?: TravelRoute;
 
-  @Column({ name: 'travel_route_id', nullable: true })
-  travelRouteId?: number;
-
   @ManyToOne(() => Destination, (destination) => destination.feedbacks, {
     nullable: true,
     onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'destination_id' })
   destination?: Destination;
-
-  @Column({ name: 'destination_id', nullable: true })
-  destinationId?: number;
 
   @ManyToOne(() => RentalVehicle, {
     nullable: true,
@@ -58,18 +49,12 @@ export class Feedback {
   @JoinColumn({ name: 'licensePlate', referencedColumnName: 'licensePlate' })
   rentalVehicle?: RentalVehicle;
 
-  @Column({ nullable: true })
-  licensePlate?: string;
-
   @ManyToOne(() => Cooperation, {
     nullable: true,
     onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'cooperationId' })
   cooperation?: Cooperation;
-
-  @Column({ nullable: true })
-  cooperationId?: number;
 
   @Column({ type: 'int', default: 0 })
   star: number;

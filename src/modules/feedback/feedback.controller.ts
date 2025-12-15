@@ -8,6 +8,8 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -15,11 +17,21 @@ import {
   ApiOperation,
   ApiQuery,
   ApiTags,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { FeedbackService } from './feedback.service';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 import { UpdateFeedbackDto } from './dto/update-feedback.dto';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
+import { mediaMulterOptions } from '../../common/upload/image-upload.config';
+import type { Express } from 'express';
+
+type FeedbackMediaFiles = {
+  photos?: Express.Multer.File[];
+  videos?: Express.Multer.File[];
+};
 
 @ApiTags('feedback')
 @Controller('feedback')
@@ -28,10 +40,49 @@ export class FeedbackController {
 
   @Post()
   @RequireAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        star: { type: 'integer', minimum: 1, maximum: 5 },
+        userId: { type: 'integer' },
+        userUid: { type: 'string' },
+        destinationId: { type: 'integer' },
+        travelRouteId: { type: 'integer' },
+        licensePlate: { type: 'string' },
+        cooperationId: { type: 'integer' },
+        comment: { type: 'string' },
+        photos: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+          description: 'Ảnh feedback (tối đa 10)',
+        },
+        videos: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+          description: 'Video feedback (tối đa 5)',
+        },
+      },
+      required: ['star'],
+    },
+  })
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'photos', maxCount: 10 },
+        { name: 'videos', maxCount: 5 },
+      ],
+      mediaMulterOptions,
+    ),
+  )
   @ApiOperation({ summary: 'Gửi phản hồi' })
   @ApiCreatedResponse({ description: 'Feedback created' })
-  create(@Body() dto: CreateFeedbackDto) {
-    return this.feedbackService.create(dto);
+  create(
+    @Body() dto: CreateFeedbackDto,
+    @UploadedFiles() files?: FeedbackMediaFiles,
+  ) {
+    return this.feedbackService.create(dto, files);
   }
 
   @Get()
@@ -114,5 +165,12 @@ export class FeedbackController {
   @ApiOkResponse({ description: 'Feedback removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.feedbackService.remove(id);
+  }
+
+  @Post('moderation/test')
+  @ApiOperation({ summary: 'Kiểm tra AI moderation cho comment feedback' })
+  @ApiCreatedResponse({ description: 'Kết quả moderation' })
+  testModeration(@Body('comment') comment: string) {
+    return this.feedbackService.moderateComment(comment);
   }
 }

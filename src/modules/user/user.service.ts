@@ -111,16 +111,11 @@ export class UsersService {
     return { id, message: 'User deleted' };
   }
 
-  async updateProfile(
-    userId: number,
-    data: ProfileUpdateInput,
-  ): Promise<User> {
+  async updateProfile(userId: number, data: ProfileUpdateInput): Promise<User> {
     const user = await this.findOne(userId);
 
     if (data.dateOfBirth !== undefined) {
-      user.dateOfBirth = data.dateOfBirth
-        ? new Date(data.dateOfBirth)
-        : null;
+      user.dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
     }
 
     assignDefined(user, {
@@ -157,7 +152,12 @@ export class UsersService {
     userId: number,
     cooperationId: number,
   ): Promise<string[]> {
-    return this.updateFavoriteList(userId, 'cooperationIds', cooperationId, true);
+    return this.updateFavoriteList(
+      userId,
+      'cooperationIds',
+      cooperationId,
+      true,
+    );
   }
 
   async removeFavoriteCooperation(
@@ -252,5 +252,3 @@ export class UsersService {
     return payload;
   }
 }
-
-

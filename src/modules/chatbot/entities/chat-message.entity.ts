@@ -17,9 +17,6 @@ export class ChatMessage {
   @JoinColumn({ name: 'user_id' })
   user?: User | null;
 
-  @Column({ name: 'user_id', nullable: true })
-  userId?: number | null;
-
   @Column({ name: 'session_id', type: 'varchar', nullable: true, length: 64 })
   sessionId?: string | null;
 

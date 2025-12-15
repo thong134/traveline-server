@@ -34,9 +34,9 @@ export class RestaurantTablesService {
   }
 
   async create(dto: CreateRestaurantTableDto): Promise<RestaurantTable> {
-    await this.ensureCooperation(dto.cooperationId);
+    const cooperation = await this.ensureCooperation(dto.cooperationId);
     const table = this.tableRepo.create({
-      cooperationId: dto.cooperationId,
+      cooperation,
       name: dto.name,
       quantity: dto.quantity ?? 1,
       dishType: dto.dishType,
@@ -54,7 +54,7 @@ export class RestaurantTablesService {
   ): Promise<RestaurantTable[]> {
     const qb = this.tableRepo.createQueryBuilder('table');
     if (params.cooperationId) {
-      qb.andWhere('table.cooperationId = :cooperationId', {
+      qb.andWhere('table.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
       });
     }
@@ -65,7 +65,10 @@ export class RestaurantTablesService {
   }
 
   async findOne(id: number): Promise<RestaurantTable> {
-    const table = await this.tableRepo.findOne({ where: { id } });
+    const table = await this.tableRepo.findOne({
+      where: { id },
+      relations: { cooperation: true },
+    });
     if (!table) {
       throw new NotFoundException(`Restaurant table ${id} not found`);
     }
@@ -78,8 +81,7 @@ export class RestaurantTablesService {
   ): Promise<RestaurantTable> {
     const table = await this.findOne(id);
     if (dto.cooperationId !== undefined) {
-      await this.ensureCooperation(dto.cooperationId);
-      table.cooperationId = dto.cooperationId;
+      table.cooperation = await this.ensureCooperation(dto.cooperationId);
     }
     assignDefined(table, {
       name: dto.name,

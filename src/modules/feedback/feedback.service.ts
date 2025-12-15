@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Feedback } from './entities/feedback.entity';
@@ -9,6 +13,12 @@ import { Destination } from '../destination/entities/destinations.entity';
 import { TravelRoute } from '../travel-route/entities/travel-route.entity';
 import { RentalVehicle } from '../rental-vehicle/entities/rental-vehicle.entity';
 import { Cooperation } from '../cooperation/entities/cooperation.entity';
+import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { lastValueFrom } from 'rxjs';
+import type { Express } from 'express';
+import type { AxiosResponse } from 'axios';
 
 interface FeedbackQueryOptions {
   userId?: number;
@@ -34,14 +44,22 @@ export class FeedbackService {
     private readonly rentalVehicleRepo: Repository<RentalVehicle>,
     @InjectRepository(Cooperation)
     private readonly cooperationRepo: Repository<Cooperation>,
+    private readonly cloudinary: CloudinaryService,
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
   ) {}
 
-  async create(dto: CreateFeedbackDto): Promise<Feedback> {
+  async create(
+    dto: CreateFeedbackDto,
+    mediaFiles?: { photos?: Express.Multer.File[]; videos?: Express.Multer.File[] },
+  ): Promise<Feedback> {
+    const resolved = await this.processMedia(dto, mediaFiles);
+    const moderated = await this.applyModeration(resolved);
     const feedback = new Feedback();
-    await this.assignFeedbackFields(feedback, dto);
+    await this.assignFeedbackFields(feedback, moderated);
     const saved = await this.feedbackRepo.save(feedback);
-    await this.recalculateDestinationRating(saved.destinationId);
-    await this.recalculateTravelRouteRating(saved.travelRouteId);
+    await this.recalculateDestinationRating(saved.destination?.id);
+    await this.recalculateTravelRouteRating(saved.travelRoute?.id);
     return this.findOne(saved.id);
   }
 
@@ -66,15 +84,19 @@ export class FeedbackService {
       .orderBy('feedback.createdAt', 'DESC');
 
     if (userId) {
-      qb.andWhere('feedback.userId = :userId', { userId });
+      qb.andWhere('feedback.user_id = :userId', { userId });
     }
 
     if (destinationId) {
-      qb.andWhere('feedback.destinationId = :destinationId', { destinationId });
+      qb.andWhere('feedback.destination_id = :destinationId', {
+        destinationId,
+      });
     }
 
     if (travelRouteId) {
-      qb.andWhere('feedback.travelRouteId = :travelRouteId', { travelRouteId });
+      qb.andWhere('feedback.travel_route_id = :travelRouteId', {
+        travelRouteId,
+      });
     }
 
     if (status) {
@@ -102,34 +124,46 @@ export class FeedbackService {
   }
 
   async update(id: number, dto: UpdateFeedbackDto): Promise<Feedback> {
-    const feedback = await this.feedbackRepo.findOne({ where: { id } });
+    const feedback = await this.feedbackRepo.findOne({
+      where: { id },
+      relations: {
+        user: true,
+        destination: true,
+        travelRoute: true,
+        rentalVehicle: true,
+        cooperation: true,
+      },
+    });
     if (!feedback) {
       throw new NotFoundException(`Feedback ${id} not found`);
     }
-    const previousDestinationId = feedback.destinationId;
-    const previousTravelRouteId = feedback.travelRouteId;
+    const previousDestinationId = feedback.destination?.id;
+    const previousTravelRouteId = feedback.travelRoute?.id;
     await this.assignFeedbackFields(feedback, dto);
     await this.feedbackRepo.save(feedback);
-    if (feedback.destinationId || previousDestinationId) {
+    if (feedback.destination?.id || previousDestinationId) {
       await this.recalculateDestinationRating(
-        feedback.destinationId ?? previousDestinationId ?? undefined,
+        feedback.destination?.id ?? previousDestinationId ?? undefined,
       );
     }
-    if (feedback.travelRouteId || previousTravelRouteId) {
+    if (feedback.travelRoute?.id || previousTravelRouteId) {
       await this.recalculateTravelRouteRating(
-        feedback.travelRouteId ?? previousTravelRouteId ?? undefined,
+        feedback.travelRoute?.id ?? previousTravelRouteId ?? undefined,
       );
     }
     return this.findOne(id);
   }
 
   async remove(id: number): Promise<{ id: number; message: string }> {
-    const feedback = await this.feedbackRepo.findOne({ where: { id } });
+    const feedback = await this.feedbackRepo.findOne({
+      where: { id },
+      relations: { destination: true, travelRoute: true },
+    });
     if (!feedback) {
       throw new NotFoundException(`Feedback ${id} not found`);
     }
-    const destinationId = feedback.destinationId;
-    const travelRouteId = feedback.travelRouteId;
+    const destinationId = feedback.destination?.id;
+    const travelRouteId = feedback.travelRoute?.id;
     await this.feedbackRepo.remove(feedback);
     if (destinationId) {
       await this.recalculateDestinationRating(destinationId);
@@ -149,7 +183,7 @@ export class FeedbackService {
       .createQueryBuilder('feedback')
       .select('COUNT(feedback.id)', 'count')
       .addSelect('COALESCE(SUM(feedback.star), 0)', 'sum')
-      .where('feedback.travelRouteId = :travelRouteId', { travelRouteId })
+      .where('feedback.travel_route_id = :travelRouteId', { travelRouteId })
       .andWhere('feedback.status IN (:...statuses)', {
         statuses: ['pending', 'approved'],
       })
@@ -178,11 +212,9 @@ export class FeedbackService {
       if (!user) {
         throw new NotFoundException(`User ${dto.userId} not found`);
       }
-      feedback.userId = user.id;
       feedback.user = user;
     } else if (dto.userId === null) {
       feedback.user = undefined;
-      feedback.userId = undefined;
     }
 
     if (dto.userUid !== undefined) {
@@ -198,10 +230,8 @@ export class FeedbackService {
           `Travel route ${dto.travelRouteId} not found`,
         );
       }
-      feedback.travelRouteId = route.id;
       feedback.travelRoute = route;
     } else if (dto.travelRouteId === null) {
-      feedback.travelRouteId = undefined;
       feedback.travelRoute = undefined;
     }
 
@@ -214,12 +244,10 @@ export class FeedbackService {
           `Destination ${dto.destinationId} not found`,
         );
       }
-      feedback.destinationId = destination.id;
       feedback.destination = destination;
     }
 
     if (dto.destinationId === null) {
-      feedback.destinationId = undefined;
       feedback.destination = undefined;
     }
 
@@ -232,10 +260,8 @@ export class FeedbackService {
           `Rental vehicle ${dto.licensePlate} not found`,
         );
       }
-      feedback.licensePlate = vehicle.licensePlate;
       feedback.rentalVehicle = vehicle;
     } else if (dto.licensePlate === null) {
-      feedback.licensePlate = undefined;
       feedback.rentalVehicle = undefined;
     }
 
@@ -248,10 +274,8 @@ export class FeedbackService {
           `Cooperation ${dto.cooperationId} not found`,
         );
       }
-      feedback.cooperationId = cooperation.id;
       feedback.cooperation = cooperation;
     } else if (dto.cooperationId === null) {
-      feedback.cooperationId = undefined;
       feedback.cooperation = undefined;
     }
 
@@ -307,5 +331,71 @@ export class FeedbackService {
     }
 
     await this.destinationRepo.save(destination);
+  }
+
+  async moderateComment(comment?: string) {
+    const baseUrl =
+      this.configService.get<string>('AI_REVIEW_BASE_URL') ??
+      'http://localhost:8000';
+    const trimmed = comment?.trim();
+    if (!trimmed) {
+      throw new BadRequestException('comment is required');
+    }
+    const observable = this.httpService.post(`${baseUrl}/review`, {
+      comment: trimmed,
+    });
+    const response: AxiosResponse = await lastValueFrom(observable);
+    return response.data;
+  }
+
+  private async applyModeration(
+    dto: CreateFeedbackDto,
+  ): Promise<CreateFeedbackDto> {
+    if (!dto.comment) return dto;
+    try {
+      const result = await this.moderateComment(dto.comment);
+      const decision: string = result?.decision;
+      if (decision === 'reject') {
+        dto.status = 'rejected';
+      } else if (decision === 'manual_review') {
+        dto.status = dto.status ?? 'pending';
+      } else if (decision === 'approve') {
+        dto.status = dto.status ?? 'approved';
+      }
+      return dto;
+    } catch {
+      // Nếu moderation lỗi, vẫn cho phép tạo nhưng giữ status mặc định
+      return dto;
+    }
+  }
+
+  private async processMedia(
+    dto: CreateFeedbackDto,
+    mediaFiles?: { photos?: Express.Multer.File[]; videos?: Express.Multer.File[] },
+  ): Promise<CreateFeedbackDto> {
+    const photos = mediaFiles?.photos ?? [];
+    const videos = mediaFiles?.videos ?? [];
+
+    const uploadedPhotos = await Promise.all(
+      photos.map((file) =>
+        this.cloudinary.uploadImage(file, {
+          folder: 'traveline/feedbacks/photos',
+        }),
+      ),
+    );
+
+    const uploadedVideos = await Promise.all(
+      videos.map((file) =>
+        this.cloudinary.uploadVideo(file, {
+          folder: 'traveline/feedbacks/videos',
+        }),
+      ),
+    );
+
+    return {
+      ...dto,
+      photos: [...(dto.photos ?? []), ...uploadedPhotos.map((p) => p.url)],
+      videos: [...(dto.videos ?? []), ...uploadedVideos.map((v) => v.url)],
+    };
   }
 }

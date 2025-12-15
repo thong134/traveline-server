@@ -27,7 +27,9 @@ export class EateriesService {
     return this.repo.save(eatery);
   }
 
-  async findAll(params: { province?: string; keyword?: string } = {}): Promise<Eatery[]> {
+  async findAll(
+    params: { province?: string; keyword?: string } = {},
+  ): Promise<Eatery[]> {
     const { province, keyword } = params;
     const where: Record<string, unknown> = {};
 

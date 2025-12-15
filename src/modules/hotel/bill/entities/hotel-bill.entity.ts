@@ -36,9 +36,6 @@ export class HotelBill {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ name: 'user_id' })
-  userId: number;
-
   @ManyToOne(
     () => Cooperation,
     (cooperation: Cooperation) => cooperation.hotelBills,
@@ -47,18 +44,12 @@ export class HotelBill {
   @JoinColumn({ name: 'cooperation_id' })
   cooperation: Cooperation;
 
-  @Column({ name: 'cooperation_id' })
-  cooperationId: number;
-
   @ManyToOne(() => Voucher, (voucher: Voucher) => voucher.hotelBills, {
     nullable: true,
     onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'voucher_id' })
   voucher?: Voucher;
-
-  @Column({ name: 'voucher_id', nullable: true })
-  voucherId?: number;
 
   @Column({ type: 'timestamptz' })
   checkInDate: Date;
