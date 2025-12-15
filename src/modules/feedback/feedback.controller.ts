@@ -27,6 +27,9 @@ import { UpdateFeedbackDto } from './dto/update-feedback.dto';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { mediaMulterOptions } from '../../common/upload/image-upload.config';
 import type { Express } from 'express';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { RequestUser } from '../auth/decorators/current-user.decorator';
+import { CreateReplyDto } from './dto/create-reply.dto';
 
 type FeedbackMediaFiles = {
   photos?: Express.Multer.File[];
@@ -77,12 +80,104 @@ export class FeedbackController {
     ),
   )
   @ApiOperation({ summary: 'Gửi phản hồi' })
-  @ApiCreatedResponse({ description: 'Feedback created' })
+  @ApiCreatedResponse({
+    description: 'Feedback created',
+    schema: {
+      type: 'object',
+      properties: {
+        feedback: { $ref: '#/components/schemas/Feedback' },
+        moderationResult: { type: 'object', nullable: true },
+      },
+    },
+  })
   create(
     @Body() dto: CreateFeedbackDto,
     @UploadedFiles() files?: FeedbackMediaFiles,
   ) {
     return this.feedbackService.create(dto, files);
+  }
+
+  @Get('by-object')
+  @ApiOperation({ summary: 'Danh sách feedback theo đối tượng dịch vụ' })
+  @ApiQuery({ name: 'destinationId', required: false, type: Number })
+  @ApiQuery({ name: 'travelRouteId', required: false, type: Number })
+  @ApiQuery({ name: 'cooperationId', required: false, type: Number })
+  @ApiQuery({ name: 'licensePlate', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  findByObject(
+    @Query('destinationId') destinationId?: string,
+    @Query('travelRouteId') travelRouteId?: string,
+    @Query('cooperationId') cooperationId?: string,
+    @Query('licensePlate') licensePlate?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.feedbackService.findByObject({
+      destinationId: destinationId ? Number(destinationId) : undefined,
+      travelRouteId: travelRouteId ? Number(travelRouteId) : undefined,
+      cooperationId: cooperationId ? Number(cooperationId) : undefined,
+      licensePlate: licensePlate || undefined,
+      status: status || undefined,
+    });
+  }
+
+  @Post(':id/replies')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Thêm trả lời cho một feedback' })
+  @ApiCreatedResponse({ description: 'Reply created' })
+  createReply(
+    @Param('id', ParseIntPipe) feedbackId: number,
+    @Body() dto: CreateReplyDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.feedbackService.createReply(feedbackId, user.userId, dto);
+  }
+
+  @Get(':id/replies')
+  @ApiOperation({ summary: 'Danh sách trả lời của một feedback' })
+  listReplies(@Param('id', ParseIntPipe) feedbackId: number) {
+    return this.feedbackService.listReplies(feedbackId);
+  }
+
+  @Post(':id/like')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Like một feedback' })
+  likeFeedback(
+    @Param('id', ParseIntPipe) feedbackId: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.feedbackService.like(feedbackId, user.userId);
+  }
+
+  @Delete(':id/like')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Bỏ like một feedback' })
+  unlikeFeedback(
+    @Param('id', ParseIntPipe) feedbackId: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.feedbackService.unlike(feedbackId, user.userId);
+  }
+
+  @Get('object-author')
+  @ApiOperation({
+    summary: 'Lấy thông tin người viết feedback cho một dịch vụ/đối tượng',
+  })
+  @ApiQuery({ name: 'destinationId', required: false, type: Number })
+  @ApiQuery({ name: 'travelRouteId', required: false, type: Number })
+  @ApiQuery({ name: 'cooperationId', required: false, type: Number })
+  @ApiQuery({ name: 'licensePlate', required: false, type: String })
+  getAuthor(
+    @Query('destinationId') destinationId?: string,
+    @Query('travelRouteId') travelRouteId?: string,
+    @Query('cooperationId') cooperationId?: string,
+    @Query('licensePlate') licensePlate?: string,
+  ) {
+    return this.feedbackService.getAuthorForService({
+      destinationId: destinationId ? Number(destinationId) : undefined,
+      travelRouteId: travelRouteId ? Number(travelRouteId) : undefined,
+      cooperationId: cooperationId ? Number(cooperationId) : undefined,
+      licensePlate: licensePlate || undefined,
+    });
   }
 
   @Get()
@@ -151,7 +246,16 @@ export class FeedbackController {
   @Patch(':id')
   @RequireAuth()
   @ApiOperation({ summary: 'Cập nhật phản hồi' })
-  @ApiOkResponse({ description: 'Feedback updated' })
+  @ApiOkResponse({
+    description: 'Feedback updated',
+    schema: {
+      type: 'object',
+      properties: {
+        feedback: { $ref: '#/components/schemas/Feedback' },
+        moderationResult: { type: 'object', nullable: true },
+      },
+    },
+  })
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateFeedbackDto,
@@ -168,6 +272,20 @@ export class FeedbackController {
   }
 
   @Post('moderation/test')
+  @ApiConsumes('application/json')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['comment'],
+      properties: {
+        comment: {
+          type: 'string',
+          example: 'Dịch vụ quá tệ, tôi không bao giờ quay lại!',
+          description: 'Nội dung feedback cần AI kiểm tra',
+        },
+      },
+    },
+  })
   @ApiOperation({ summary: 'Kiểm tra AI moderation cho comment feedback' })
   @ApiCreatedResponse({ description: 'Kết quả moderation' })
   testModeration(@Body('comment') comment: string) {

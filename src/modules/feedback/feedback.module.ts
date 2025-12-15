@@ -10,6 +10,9 @@ import { TravelRoute } from '../travel-route/entities/travel-route.entity';
 import { RentalVehicle } from '../rental-vehicle/entities/rental-vehicle.entity';
 import { Cooperation } from '../cooperation/entities/cooperation.entity';
 import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
+import { FeedbackReply } from './entities/feedback-reply.entity';
+import { FeedbackLike } from './entities/feedback-like.entity';
+import { FeedbackReaction } from './entities/feedback-reaction.entity';
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
       TravelRoute,
       RentalVehicle,
       Cooperation,
+      FeedbackLike,
+      FeedbackReply,
+      FeedbackReaction,
     ]),
   ],
   controllers: [FeedbackController],

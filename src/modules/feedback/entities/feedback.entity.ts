@@ -4,6 +4,7 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -12,6 +13,8 @@ import { TravelRoute } from '../../travel-route/entities/travel-route.entity';
 import { Destination } from '../../destination/entities/destinations.entity';
 import { RentalVehicle } from '../../rental-vehicle/entities/rental-vehicle.entity';
 import { Cooperation } from '../../cooperation/entities/cooperation.entity';
+import { FeedbackReply } from './feedback-reply.entity';
+import { FeedbackLike } from './feedback-like.entity';
 
 @Entity('feedbacks')
 export class Feedback {
@@ -76,4 +79,10 @@ export class Feedback {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(() => FeedbackReply, (reply) => reply.feedback, { cascade: true })
+  replies: FeedbackReply[];
+
+  @OneToMany(() => FeedbackLike, (like) => like.feedback, { cascade: true })
+  likes: FeedbackLike[];
 }

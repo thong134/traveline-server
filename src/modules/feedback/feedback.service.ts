@@ -19,6 +19,10 @@ import { ConfigService } from '@nestjs/config';
 import { lastValueFrom } from 'rxjs';
 import type { Express } from 'express';
 import type { AxiosResponse } from 'axios';
+import { FeedbackReply } from './entities/feedback-reply.entity';
+import { FeedbackLike } from './entities/feedback-like.entity';
+import { FeedbackReaction, FeedbackReactionType } from './entities/feedback-reaction.entity';
+import { CreateReplyDto } from './dto/create-reply.dto';
 
 interface FeedbackQueryOptions {
   userId?: number;
@@ -44,6 +48,12 @@ export class FeedbackService {
     private readonly rentalVehicleRepo: Repository<RentalVehicle>,
     @InjectRepository(Cooperation)
     private readonly cooperationRepo: Repository<Cooperation>,
+    @InjectRepository(FeedbackReply)
+    private readonly replyRepo: Repository<FeedbackReply>,
+    @InjectRepository(FeedbackLike)
+    private readonly likeRepo: Repository<FeedbackLike>,
+    @InjectRepository(FeedbackReaction)
+    private readonly feedbackReactionRepo: Repository<FeedbackReaction>,
     private readonly cloudinary: CloudinaryService,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
@@ -52,15 +62,16 @@ export class FeedbackService {
   async create(
     dto: CreateFeedbackDto,
     mediaFiles?: { photos?: Express.Multer.File[]; videos?: Express.Multer.File[] },
-  ): Promise<Feedback> {
+  ): Promise<{ feedback: Feedback; moderationResult?: Record<string, unknown> }> {
     const resolved = await this.processMedia(dto, mediaFiles);
-    const moderated = await this.applyModeration(resolved);
+    const { dto: moderated, moderationResult } = await this.applyModeration(resolved);
     const feedback = new Feedback();
     await this.assignFeedbackFields(feedback, moderated);
     const saved = await this.feedbackRepo.save(feedback);
     await this.recalculateDestinationRating(saved.destination?.id);
     await this.recalculateTravelRouteRating(saved.travelRoute?.id);
-    return this.findOne(saved.id);
+    const feedbackEntity = await this.findOne(saved.id);
+    return { feedback: feedbackEntity, moderationResult };
   }
 
   async findAll(options: FeedbackQueryOptions = {}): Promise<Feedback[]> {
@@ -115,6 +126,8 @@ export class FeedbackService {
         travelRoute: true,
         rentalVehicle: true,
         cooperation: true,
+        replies: { user: true },
+        likes: true,
       },
     });
     if (!feedback) {
@@ -123,7 +136,10 @@ export class FeedbackService {
     return feedback;
   }
 
-  async update(id: number, dto: UpdateFeedbackDto): Promise<Feedback> {
+  async update(
+    id: number,
+    dto: UpdateFeedbackDto,
+  ): Promise<{ feedback: Feedback; moderationResult?: Record<string, unknown> }> {
     const feedback = await this.feedbackRepo.findOne({
       where: { id },
       relations: {
@@ -139,7 +155,9 @@ export class FeedbackService {
     }
     const previousDestinationId = feedback.destination?.id;
     const previousTravelRouteId = feedback.travelRoute?.id;
-    await this.assignFeedbackFields(feedback, dto);
+    const { dto: moderated, moderationResult } = await this.applyModeration(dto);
+
+    await this.assignFeedbackFields(feedback, moderated);
     await this.feedbackRepo.save(feedback);
     if (feedback.destination?.id || previousDestinationId) {
       await this.recalculateDestinationRating(
@@ -151,7 +169,8 @@ export class FeedbackService {
         feedback.travelRoute?.id ?? previousTravelRouteId ?? undefined,
       );
     }
-    return this.findOne(id);
+    const updated = await this.findOne(id);
+    return { feedback: updated, moderationResult };
   }
 
   async remove(id: number): Promise<{ id: number; message: string }> {
@@ -299,6 +318,140 @@ export class FeedbackService {
     }
   }
 
+  async findByObject(params: {
+    destinationId?: number;
+    travelRouteId?: number;
+    cooperationId?: number;
+    licensePlate?: string;
+    status?: string;
+  }): Promise<Feedback[]> {
+    const qb = this.feedbackRepo
+      .createQueryBuilder('feedback')
+      .leftJoinAndSelect('feedback.user', 'user')
+      .leftJoinAndSelect('feedback.destination', 'destination')
+      .leftJoinAndSelect('feedback.travelRoute', 'travelRoute')
+      .leftJoinAndSelect('feedback.rentalVehicle', 'rentalVehicle')
+      .leftJoinAndSelect('feedback.cooperation', 'cooperation')
+      .orderBy('feedback.createdAt', 'DESC');
+
+    if (params.destinationId) {
+      qb.andWhere('feedback.destination_id = :destinationId', {
+        destinationId: params.destinationId,
+      });
+    }
+    if (params.travelRouteId) {
+      qb.andWhere('feedback.travel_route_id = :travelRouteId', {
+        travelRouteId: params.travelRouteId,
+      });
+    }
+    if (params.cooperationId) {
+      qb.andWhere('feedback.cooperationId = :cooperationId', {
+        cooperationId: params.cooperationId,
+      });
+    }
+    if (params.licensePlate) {
+      qb.andWhere('feedback.licensePlate = :licensePlate', {
+        licensePlate: params.licensePlate,
+      });
+    }
+    if (params.status) {
+      qb.andWhere('feedback.status = :status', { status: params.status });
+    }
+
+    return qb.getMany();
+  }
+
+  async getAuthorForService(params: {
+    destinationId?: number;
+    travelRouteId?: number;
+    cooperationId?: number;
+    licensePlate?: string;
+  }): Promise<User | null> {
+    const qb = this.feedbackRepo
+      .createQueryBuilder('feedback')
+      .leftJoinAndSelect('feedback.user', 'user')
+      .orderBy('feedback.createdAt', 'ASC')
+      .take(1);
+
+    if (params.destinationId) {
+      qb.where('feedback.destination_id = :destinationId', {
+        destinationId: params.destinationId,
+      });
+    } else if (params.travelRouteId) {
+      qb.where('feedback.travel_route_id = :travelRouteId', {
+        travelRouteId: params.travelRouteId,
+      });
+    } else if (params.cooperationId) {
+      qb.where('feedback.cooperationId = :cooperationId', {
+        cooperationId: params.cooperationId,
+      });
+    } else if (params.licensePlate) {
+      qb.where('feedback.licensePlate = :licensePlate', {
+        licensePlate: params.licensePlate,
+      });
+    } else {
+      return null;
+    }
+
+    const record = await qb.getOne();
+    return record?.user ?? null;
+  }
+
+  async addReaction(
+    feedbackId: number,
+    userId: number,
+    type: FeedbackReactionType = FeedbackReactionType.LIKE,
+  ): Promise<FeedbackReaction> {
+    const feedback = await this.feedbackRepo.findOne({ where: { id: feedbackId } });
+    if (!feedback) {
+      throw new NotFoundException(`Feedback ${feedbackId} not found`);
+    }
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+    const existing = await this.feedbackReactionRepo.findOne({
+      where: { feedback: { id: feedbackId }, user: { id: userId }, type },
+    });
+    if (existing) {
+      return existing;
+    }
+    const reaction = this.feedbackReactionRepo.create({
+      feedback,
+      user,
+      type,
+    });
+    return this.feedbackReactionRepo.save(reaction);
+  }
+
+  async removeReaction(
+    feedbackId: number,
+    userId: number,
+    type: FeedbackReactionType = FeedbackReactionType.LIKE,
+  ): Promise<void> {
+    await this.feedbackReactionRepo.delete({
+      feedback: { id: feedbackId },
+      user: { id: userId },
+      type,
+    });
+  }
+
+  async listReactions(feedbackId: number): Promise<
+    {
+      type: FeedbackReactionType;
+      count: number;
+    }[]
+  > {
+    const rows = await this.feedbackReactionRepo
+      .createQueryBuilder('reaction')
+      .select('reaction.type', 'type')
+      .addSelect('COUNT(reaction.id)', 'count')
+      .where('reaction.feedback_id = :feedbackId', { feedbackId })
+      .groupBy('reaction.type')
+      .getRawMany<{ type: FeedbackReactionType; count: string }>();
+    return rows.map((r) => ({ type: r.type, count: Number(r.count) }));
+  }
+
   private async recalculateDestinationRating(
     destinationId?: number,
   ): Promise<void> {
@@ -349,9 +502,9 @@ export class FeedbackService {
   }
 
   private async applyModeration(
-    dto: CreateFeedbackDto,
-  ): Promise<CreateFeedbackDto> {
-    if (!dto.comment) return dto;
+    dto: CreateFeedbackDto | UpdateFeedbackDto,
+  ): Promise<{ dto: typeof dto; moderationResult?: Record<string, unknown> }> {
+    if (!dto.comment) return { dto };
     try {
       const result = await this.moderateComment(dto.comment);
       const decision: string = result?.decision;
@@ -362,10 +515,10 @@ export class FeedbackService {
       } else if (decision === 'approve') {
         dto.status = dto.status ?? 'approved';
       }
-      return dto;
+      return { dto, moderationResult: result };
     } catch {
       // Nếu moderation lỗi, vẫn cho phép tạo nhưng giữ status mặc định
-      return dto;
+      return { dto };
     }
   }
 
@@ -397,5 +550,68 @@ export class FeedbackService {
       photos: [...(dto.photos ?? []), ...uploadedPhotos.map((p) => p.url)],
       videos: [...(dto.videos ?? []), ...uploadedVideos.map((v) => v.url)],
     };
+  }
+
+  async createReply(
+    feedbackId: number,
+    userId: number,
+    dto: CreateReplyDto,
+  ): Promise<FeedbackReply> {
+    const feedback = await this.feedbackRepo.findOne({ where: { id: feedbackId } });
+    if (!feedback) {
+      throw new NotFoundException(`Feedback ${feedbackId} not found`);
+    }
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+    const reply = this.replyRepo.create({
+      feedback,
+      user,
+      content: dto.content,
+    });
+    return this.replyRepo.save(reply);
+  }
+
+  async listReplies(feedbackId: number): Promise<FeedbackReply[]> {
+    return this.replyRepo.find({
+      where: { feedback: { id: feedbackId } },
+      relations: { user: true },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async like(feedbackId: number, userId: number): Promise<{ liked: boolean }> {
+    const feedback = await this.feedbackRepo.findOne({ where: { id: feedbackId } });
+    if (!feedback) {
+      throw new NotFoundException(`Feedback ${feedbackId} not found`);
+    }
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+    const existing = await this.likeRepo.findOne({
+      where: { feedback: { id: feedbackId }, user: { id: userId } },
+    });
+    if (existing) {
+      return { liked: true };
+    }
+    const like = this.likeRepo.create({
+      feedback,
+      user,
+    });
+    await this.likeRepo.save(like);
+    return { liked: true };
+  }
+
+  async unlike(
+    feedbackId: number,
+    userId: number,
+  ): Promise<{ liked: boolean }> {
+    await this.likeRepo.delete({
+      feedback: { id: feedbackId },
+      user: { id: userId },
+    });
+    return { liked: false };
   }
 }
