@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
-  IsBoolean,
   IsInt,
   IsOptional,
   IsString,
@@ -18,20 +17,6 @@ export class CreateTravelRouteDto {
   @IsString()
   @MinLength(1)
   name: string;
-
-  @ApiPropertyOptional({ description: 'Owner user id (internal)' })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  userId?: number;
-
-  @ApiPropertyOptional({
-    description: 'Đặt true nếu muốn chia sẻ lộ trình cho người khác sử dụng',
-  })
-  @IsOptional()
-  @IsBoolean()
-  shared?: boolean;
 
   @ApiPropertyOptional({ description: 'Province name' })
   @IsOptional()

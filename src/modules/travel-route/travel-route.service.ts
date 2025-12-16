@@ -152,12 +152,15 @@ export class TravelRoutesService {
     });
   }
 
-  async create(dto: CreateTravelRouteDto): Promise<TravelRoute> {
+  async create(
+    dto: CreateTravelRouteDto & { userId: number },
+  ): Promise<TravelRoute> {
     const savedId = await this.dataSource.transaction(async (manager) => {
       const route = await this.prepareRouteEntity(
         dto,
         manager.getRepository(User),
       );
+      route.shared = false; // luôn mặc định riêng tư khi tạo mới
       const savedRoute = await manager.getRepository(TravelRoute).save(route);
 
       if (dto.stops?.length) {
@@ -727,7 +730,7 @@ export class TravelRoutesService {
 
   private async assignRouteFields(
     route: TravelRoute,
-    dto: Partial<CreateTravelRouteDto>,
+    dto: Partial<CreateTravelRouteDto> & { userId?: number; shared?: boolean },
     userRepository: Repository<User>,
   ): Promise<void> {
     const { userId, name, province, numberOfDays, startDate, endDate, shared } =
@@ -776,10 +779,6 @@ export class TravelRoutesService {
 
     route.startDate = parsedStart;
     route.endDate = parsedEnd;
-
-    if (shared !== undefined) {
-      route.shared = shared;
-    }
 
     const computedDays = this.computeNumberOfDays(dto.stops, numberOfDays);
     route.numberOfDays = computedDays;

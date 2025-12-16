@@ -62,7 +62,7 @@ export class TravelRoutesController {
   create(@Body() dto: CreateTravelRouteDto, @CurrentUser() user: RequestUser) {
     return this.travelRoutesService.create({
       ...dto,
-      userId: dto.userId ?? user.userId,
+      userId: user.userId,
     });
   }
 
@@ -209,7 +209,7 @@ export class TravelRoutesController {
   ) {
     return this.travelRoutesService.update(id, {
       ...dto,
-      userId: dto.userId ?? user.userId,
+      userId: user.userId,
     });
   }
 
