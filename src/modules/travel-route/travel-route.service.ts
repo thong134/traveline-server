@@ -221,6 +221,46 @@ export class TravelRoutesService {
     });
   }
 
+  async addStops(routeId: number, dtos: RouteStopDto[]): Promise<TravelRoute> {
+    if (!dtos?.length) {
+      throw new BadRequestException('Danh sách điểm dừng không được để trống');
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      const routeRepo = manager.getRepository(TravelRoute);
+      const stopRepo = manager.getRepository(RouteStop);
+      const destinationRepo = manager.getRepository(Destination);
+
+      const route = await routeRepo.findOne({ where: { id: routeId } });
+      if (!route) {
+        throw new NotFoundException(`Travel route ${routeId} not found`);
+      }
+
+      const stops = await this.prepareStops(
+        dtos,
+        routeId,
+        destinationRepo,
+        route.startDate ?? undefined,
+      );
+      await stopRepo.save(stops);
+
+      // cập nhật numberOfDays theo max day hiện có
+      const allStops = await stopRepo.find({
+        select: { dayOrder: true },
+        where: { route: { id: routeId } },
+      });
+      const maxDay =
+        allStops.length > 0
+          ? Math.max(...allStops.map((stop) => stop.dayOrder))
+          : route.numberOfDays;
+      await routeRepo.update(routeId, { numberOfDays: Math.max(maxDay, 1) });
+
+      await this.updateRouteAggregates(routeId, manager);
+    });
+
+    return this.findOne(routeId);
+  }
+
   async findSharedRoutes(
     options: SharedRouteQueryOptions = {},
   ): Promise<PublicTravelRoute[]> {

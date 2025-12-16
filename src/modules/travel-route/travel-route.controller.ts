@@ -35,6 +35,7 @@ import { mediaMulterOptions } from '../../common/upload/image-upload.config';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { UpdateSharedDto } from './dto/update-shared.dto';
+import { RouteStopDto } from './dto/route-stop.dto';
 
 type RouteStopMediaFiles = {
   images?: Express.Multer.File[];
@@ -207,10 +208,19 @@ export class TravelRoutesController {
     @Body() dto: UpdateTravelRouteDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.travelRoutesService.update(id, {
-      ...dto,
-      userId: user.userId,
-    });
+    return this.travelRoutesService.update(id, dto);
+  }
+
+  @Post(':id/stops')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Thêm mới một hoặc nhiều điểm dừng vào lộ trình' })
+  @ApiBody({ type: [RouteStopDto] })
+  @ApiCreatedResponse({ description: 'Stops added to route' })
+  addStops(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() stops: RouteStopDto[],
+  ) {
+    return this.travelRoutesService.addStops(id, stops);
   }
 
   @Patch(':id/share')
