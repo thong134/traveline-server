@@ -324,7 +324,7 @@ export class TravelRoutesService {
   async findOne(id: number): Promise<TravelRoute> {
     const route = await this.routeRepo.findOne({
       where: { id },
-      relations: { stops: true, user: true },
+      relations: { stops: { destination: true }, user: true },
       order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
     });
     if (!route) {
