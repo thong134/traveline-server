@@ -1,14 +1,6 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-  IsEnum,
-  IsInt,
-  IsOptional,
-  IsString,
-  Matches,
-  Min,
-} from 'class-validator';
-import { RouteStopStatus } from '../entities/route-stop.entity';
+import { IsInt, IsOptional, IsString, Matches, Min } from 'class-validator';
 
 export class RouteStopDto {
   @ApiProperty({
@@ -33,12 +25,7 @@ export class RouteStopDto {
   @Min(1)
   destinationId?: number;
 
-  @ApiPropertyOptional({ enum: RouteStopStatus })
-  @IsOptional()
-  @IsEnum(RouteStopStatus)
-  status?: RouteStopStatus;
-
-  @ApiPropertyOptional({ description: 'Travel points awarded', default: 0 })
+  @ApiHideProperty()
   @IsOptional()
   @Type(() => Number)
   @IsInt()

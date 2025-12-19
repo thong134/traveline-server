@@ -32,6 +32,10 @@ export class TravelRoute {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
+  @ManyToOne(() => TravelRoute, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'cloned_from_route_id' })
+  clonedFromRoute?: TravelRoute;
+
   @Column()
   name: string;
 
