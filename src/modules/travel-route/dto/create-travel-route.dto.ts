@@ -1,16 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import {
-  IsArray,
-  IsInt,
-  IsOptional,
-  IsString,
-  Matches,
-  Min,
-  MinLength,
-  ValidateNested,
-} from 'class-validator';
-import { RouteStopDto } from './route-stop.dto';
+import { IsOptional, IsString, Matches, MinLength } from 'class-validator';
 
 export class CreateTravelRouteDto {
   @ApiProperty({ description: 'Route name' })
@@ -22,13 +11,6 @@ export class CreateTravelRouteDto {
   @IsOptional()
   @IsString()
   province?: string;
-
-  @ApiPropertyOptional({ description: 'Number of days in route' })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  numberOfDays?: number;
 
   @ApiPropertyOptional({ description: 'Route start date (ISO string)' })
   @IsOptional()
@@ -45,14 +27,4 @@ export class CreateTravelRouteDto {
     message: 'endDate phải ở định dạng dd/MM/yyyy hoặc yyyy-MM-dd',
   })
   endDate?: string;
-
-  @ApiPropertyOptional({
-    description: 'List of stops grouped by day',
-    type: [RouteStopDto],
-  })
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => RouteStopDto)
-  stops?: RouteStopDto[];
 }

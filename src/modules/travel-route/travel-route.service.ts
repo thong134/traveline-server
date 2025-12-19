@@ -1,3 +1,4 @@
+
 import {
   BadRequestException,
   ForbiddenException,
@@ -14,10 +15,7 @@ import { RouteStopDto } from './dto/route-stop.dto';
 import { Destination } from '../destination/entities/destinations.entity';
 import { User } from '../user/entities/user.entity';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
-import {
-  assertImageFile,
-  assertVideoFile,
-} from '../../common/upload/image-upload.utils';
+import { assertImageFile, assertVideoFile } from '../../common/upload/image-upload.utils';
 import { randomUUID } from 'crypto';
 import type { Express } from 'express';
 
@@ -163,18 +161,8 @@ export class TravelRoutesService {
         manager.getRepository(User),
       );
       route.shared = false; // luôn mặc định riêng tư khi tạo mới
+      route.status = TravelRouteStatus.DRAFT;
       const savedRoute = await manager.getRepository(TravelRoute).save(route);
-
-      if (dto.stops?.length) {
-        const stops = await this.prepareStops(
-          dto.stops,
-          savedRoute.id,
-          manager.getRepository(Destination),
-          savedRoute.startDate ?? undefined,
-        );
-        await manager.getRepository(RouteStop).save(stops);
-        await this.updateRouteAggregates(savedRoute.id, manager);
-      }
 
       return savedRoute.id;
     });
@@ -234,29 +222,29 @@ export class TravelRoutesService {
       const stopRepo = manager.getRepository(RouteStop);
       const destinationRepo = manager.getRepository(Destination);
 
-      const route = await routeRepo.findOne({ where: { id: routeId } });
+      const route = await routeRepo.findOne({
+        where: { id: routeId },
+        relations: { stops: true },
+        order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
+      });
       if (!route) {
         throw new NotFoundException(`Travel route ${routeId} not found`);
       }
 
-      const stops = await this.prepareStops(
-        dtos,
-        routeId,
-        destinationRepo,
-        route.startDate ?? undefined,
-      );
-      await stopRepo.save(stops);
 
-      // cập nhật numberOfDays theo max day hiện có
-      const allStops = await stopRepo.find({
-        select: { dayOrder: true },
-        where: { route: { id: routeId } },
-      });
-      const maxDay =
-        allStops.length > 0
-          ? Math.max(...allStops.map((stop) => stop.dayOrder))
-          : route.numberOfDays;
-      await routeRepo.update(routeId, { numberOfDays: Math.max(maxDay, 1) });
+      const newStops = await this.prepareStops(dtos, route, destinationRepo);
+      await stopRepo.save(newStops);
+
+      const allStops = [...(route.stops ?? []), ...newStops];
+      this.ensureSequentialStopCoverage(route, allStops);
+
+      const totalDays = this.calculateDurationDays(
+        route.startDate,
+        route.endDate,
+      );
+      if (totalDays) {
+        await routeRepo.update(routeId, { numberOfDays: totalDays });
+      }
 
       await this.updateRouteAggregates(routeId, manager);
     });
@@ -438,9 +426,8 @@ export class TravelRoutesService {
         if (dto.stops.length) {
           const stops = await this.prepareStops(
             dto.stops,
-            id,
+            route,
             manager.getRepository(Destination),
-            route.startDate ?? undefined,
           );
           await manager.getRepository(RouteStop).save(stops);
           await this.updateRouteAggregates(id, manager);
@@ -787,11 +774,14 @@ export class TravelRoutesService {
 
   private async assignRouteFields(
     route: TravelRoute,
-    dto: Partial<CreateTravelRouteDto> & { userId?: number; shared?: boolean },
+    dto: Partial<CreateTravelRouteDto> & {
+      userId?: number;
+      shared?: boolean;
+      stops?: RouteStopDto[];
+    },
     userRepository: Repository<User>,
   ): Promise<void> {
-    const { userId, name, province, numberOfDays, startDate, endDate, shared } =
-      dto;
+    const { userId, name, province, startDate, endDate, shared } = dto;
 
     if (userId) {
       const user = await userRepository.findOne({ where: { id: userId } });
@@ -840,7 +830,7 @@ export class TravelRoutesService {
 
     const computedDays = this.computeNumberOfDays(
       dto.stops,
-      numberOfDays,
+      route.numberOfDays,
       durationDays,
     );
     route.numberOfDays = computedDays;
@@ -851,28 +841,60 @@ export class TravelRoutesService {
     fallback?: number,
     durationDays?: number,
   ): number {
+    if (durationDays && durationDays > 0) {
+      return durationDays;
+    }
+
     const maxDayFromStops = stops?.length
       ? Math.max(...stops.map((stop) => stop.dayOrder))
       : undefined;
 
-    let computed = maxDayFromStops ?? fallback ?? 1;
-
-    if (durationDays) {
-      computed = Math.max(computed, durationDays);
+    if (maxDayFromStops !== undefined) {
+      return Math.max(1, maxDayFromStops);
     }
 
-    return Math.max(1, computed);
+    if (fallback && fallback > 0) {
+      return fallback;
+    }
+
+    return 1;
+  }
+
+  private calculateDurationDays(
+    startDate?: Date,
+    endDate?: Date,
+  ): number | undefined {
+    if (!startDate || !endDate) {
+      return undefined;
+    }
+    const normalizedStart = this.normalizeDate(startDate);
+    const normalizedEnd = this.normalizeDate(endDate);
+    if (normalizedEnd < normalizedStart) {
+      return undefined;
+    }
+    const diff =
+      (normalizedEnd.getTime() - normalizedStart.getTime()) / 86_400_000 + 1;
+    return Math.max(1, Math.floor(diff));
   }
 
   private async prepareStops(
     dtos: RouteStopDto[],
-    routeId: number,
+    route: TravelRoute,
     destinationRepository: Repository<Destination>,
-    routeStartDate?: Date,
   ): Promise<RouteStop[]> {
-    if (!routeStartDate) {
+    const routeStartDate = route.startDate;
+    const routeEndDate = route.endDate;
+
+    if (!routeStartDate || !routeEndDate) {
       throw new BadRequestException(
-        'startDate phải được thiết lập trước khi thêm điểm dừng',
+        'Route phải có startDate và endDate trước khi thêm điểm dừng',
+      );
+    }
+
+    const totalDays = this.calculateDurationDays(routeStartDate, routeEndDate);
+    if (!totalDays) {
+      throw new BadRequestException(
+        'Khoảng thời gian của route không hợp lệ để thêm điểm dừng',
       );
     }
 
@@ -889,8 +911,14 @@ export class TravelRoutesService {
     const now = new Date();
 
     for (const dto of sortedDtos) {
+      if (dto.dayOrder > totalDays) {
+        throw new BadRequestException(
+          `dayOrder ${dto.dayOrder} vượt quá số ngày của route`,
+        );
+      }
+
       const stop = new RouteStop();
-      stop.route = { id: routeId } as TravelRoute;
+      stop.route = { id: route.id } as TravelRoute;
       stop.dayOrder = dto.dayOrder;
       stop.sequence = dto.sequence;
       stop.startTime = dto.startTime;
@@ -919,6 +947,12 @@ export class TravelRoutesService {
         ? this.parseTimeToMinutes(dto.endTime)
         : undefined;
 
+      if (currentStartMinutes > 1_439) {
+        throw new BadRequestException(
+          `startTime của điểm dừng ngày ${dto.dayOrder} (thứ tự ${dto.sequence}) không hợp lệ`,
+        );
+      }
+
       if (previousEnd !== undefined) {
         if (currentStartMinutes < previousEnd) {
           throw new BadRequestException(
@@ -928,7 +962,6 @@ export class TravelRoutesService {
       }
 
       if (
-        currentStartMinutes !== undefined &&
         currentEndMinutes !== undefined &&
         currentStartMinutes >= currentEndMinutes
       ) {
@@ -936,13 +969,41 @@ export class TravelRoutesService {
           `startTime phải nhỏ hơn endTime cho điểm dừng ngày ${dto.dayOrder} (thứ tự ${dto.sequence})`,
         );
       }
+      if (currentEndMinutes !== undefined && currentEndMinutes > 1_439) {
+        throw new BadRequestException(
+          `endTime của điểm dừng ngày ${dto.dayOrder} (thứ tự ${dto.sequence}) không hợp lệ`,
+        );
+      }
 
-      const stopBaseDate = this.computeStopBaseDate(routeStartDate, dto.dayOrder);
-      const startDateTime = this.buildDateWithTime(stopBaseDate, dto.startTime, 0, 0);
+      const stopDate = this.normalizeDate(routeStartDate);
+      stopDate.setDate(stopDate.getDate() + (dto.dayOrder - 1));
+
+      if (stopDate > this.normalizeDate(routeEndDate)) {
+        throw new BadRequestException(
+          `dayOrder ${dto.dayOrder} vượt quá khoảng thời gian của route`,
+        );
+      }
+
+      const startDateTime = this.buildDateWithTime(stopDate, dto.startTime, 0, 0);
       if (startDateTime <= now) {
         throw new BadRequestException(
           `Thời gian bắt đầu của điểm dừng ngày ${dto.dayOrder} (thứ tự ${dto.sequence}) phải nằm trong tương lai`,
         );
+      }
+
+      if (dto.endTime) {
+        const endDateTime = this.buildDateWithTime(stopDate, dto.endTime, 23, 59);
+        const routeEndCutoff = this.buildDateWithTime(
+          this.normalizeDate(routeEndDate),
+          '23:59',
+          23,
+          59,
+        );
+        if (endDateTime > routeEndCutoff) {
+          throw new BadRequestException(
+            `Thời gian của điểm dừng ngày ${dto.dayOrder} vượt quá endDate của route`,
+          );
+        }
       }
 
       if (dto.destinationId) {
@@ -1151,6 +1212,7 @@ export class TravelRoutesService {
     const route = await routeRepo.findOne({
       where: { id: routeId },
       relations: { stops: true, clonedFromRoute: true },
+      order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
     });
     if (!route) {
       return;
@@ -1181,6 +1243,8 @@ export class TravelRoutesService {
     if (stopUpdates.length) {
       await stopRepo.save(stopUpdates);
     }
+
+    this.ensureSequentialStopCoverage(route, stops);
 
     const totalCompleted = stops.filter(
       (stop) => stop.status === RouteStopStatus.COMPLETED,
@@ -1229,5 +1293,60 @@ export class TravelRoutesService {
     await this.dataSource.transaction(async (manager) => {
       await this.updateRouteAggregates(routeId, manager);
     });
+  }
+
+  private ensureSequentialStopCoverage(route: TravelRoute, stops: RouteStop[]): void {
+    if (!route.startDate || !route.endDate || !stops.length) {
+      return;
+    }
+
+    const normalizedStart = this.normalizeDate(route.startDate);
+    const normalizedEnd = this.normalizeDate(route.endDate);
+    const totalDays = this.calculateDurationDays(normalizedStart, normalizedEnd);
+
+    if (!totalDays) {
+      return;
+    }
+
+    const stopsByDay = new Map<number, RouteStop[]>();
+    for (const stop of stops) {
+      const list = stopsByDay.get(stop.dayOrder) ?? [];
+      list.push(stop);
+      stopsByDay.set(stop.dayOrder, list);
+    }
+
+    for (let day = 1; day <= totalDays; day += 1) {
+      const dayStops = stopsByDay.get(day);
+      if (!dayStops || !dayStops.length) {
+        throw new BadRequestException(
+          `Thiếu điểm dừng cho dayOrder ${day}. Vui lòng tạo đầy đủ trước khi tiếp tục`,
+        );
+      }
+
+      dayStops.sort((a, b) => a.sequence - b.sequence);
+      for (let idx = 0; idx < dayStops.length - 1; idx += 1) {
+        const current = dayStops[idx];
+        const next = dayStops[idx + 1];
+
+        if (!current.endTime) {
+          throw new BadRequestException(
+            `Điểm dừng ngày ${current.dayOrder} (thứ tự ${current.sequence}) cần endTime để tạo khoảng trống cho điểm tiếp theo`,
+          );
+        }
+        if (!next.startTime) {
+          throw new BadRequestException(
+            `Điểm dừng ngày ${next.dayOrder} (thứ tự ${next.sequence}) cần startTime để xác định thứ tự thời gian`,
+          );
+        }
+
+        const currentEnd = this.parseTimeToMinutes(current.endTime);
+        const nextStart = this.parseTimeToMinutes(next.startTime);
+        if (currentEnd > nextStart) {
+          throw new BadRequestException(
+            `endTime của điểm dừng ngày ${current.dayOrder} (thứ tự ${current.sequence}) phải nhỏ hơn hoặc bằng startTime của điểm dừng thứ tự ${next.sequence}`,
+          );
+        }
+      }
+    }
   }
 }
