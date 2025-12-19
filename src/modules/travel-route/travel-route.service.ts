@@ -40,7 +40,7 @@ export class TravelRoutesService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async cloneRoute(routeId: number, userId: number): Promise<TravelRoute> {
+  async cloneRoute(routeId: number): Promise<TravelRoute> {
     return this.dataSource.transaction(async (manager) => {
       const routeRepo = manager.getRepository(TravelRoute);
       const stopRepo = manager.getRepository(RouteStop);
@@ -56,10 +56,7 @@ export class TravelRoutesService {
         throw new NotFoundException(`Travel route ${routeId} not found`);
       }
 
-      const user = await userRepo.findOne({ where: { id: userId } });
-      if (!user) {
-        throw new NotFoundException(`User ${userId} not found`);
-      }
+
 
       const clone = new TravelRoute();
       clone.name = source.name;
@@ -68,7 +65,7 @@ export class TravelRoutesService {
       clone.startDate = source.startDate ?? undefined;
       clone.endDate = source.endDate ?? undefined;
       clone.status = TravelRouteStatus.DRAFT;
-      clone.user = user;
+      clone.user = undefined;
       clone.totalTravelPoints = 0;
       clone.averageRating = 0;
       clone.clonedFromRoute = source;
@@ -115,7 +112,7 @@ export class TravelRoutesService {
         dto,
         manager.getRepository(User),
       );
-      route.status = TravelRouteStatus.DRAFT;
+      route.status = TravelRouteStatus.UPCOMING;
       const savedRoute = await manager.getRepository(TravelRoute).save(route);
 
       return savedRoute.id;
@@ -160,6 +157,109 @@ export class TravelRoutesService {
       },
     });
     return Promise.all(routes.map((route) => this.findOne(route.id)));
+  }
+
+  async findDrafts(province?: string): Promise<TravelRoute[]> {
+    const qb = this.routeRepo
+      .createQueryBuilder('route')
+      .leftJoinAndSelect('route.stops', 'stops')
+      .leftJoinAndSelect('stops.destination', 'destination')
+      .where('route.status = :status', { status: TravelRouteStatus.DRAFT })
+      .andWhere('route.cloned_from_route_id IS NOT NULL');
+
+    if (province) {
+      qb.andWhere('route.province = :province', { province });
+    }
+
+    qb.orderBy('route.createdAt', 'DESC')
+      .addOrderBy('stops.dayOrder', 'ASC')
+      .addOrderBy('stops.sequence', 'ASC');
+
+    const routes = await qb.getMany();
+    return Promise.all(routes.map((route) => this.findOne(route.id)));
+  }
+
+  async useClone(routeId: number, userId: number): Promise<TravelRoute> {
+    return this.dataSource.transaction(async (manager) => {
+      const routeRepo = manager.getRepository(TravelRoute);
+      const userRepo = manager.getRepository(User);
+
+      const draftRoute = await routeRepo.findOne({
+        where: { id: routeId },
+        relations: { stops: { destination: true }, clonedFromRoute: true },
+      });
+
+      if (!draftRoute) {
+        throw new NotFoundException(`Route ${routeId} not found`);
+      }
+
+      if (draftRoute.status !== TravelRouteStatus.DRAFT || !draftRoute.clonedFromRoute) {
+        throw new BadRequestException('Route is not a valid draft clone');
+      }
+
+      const user = await userRepo.findOne({ where: { id: userId } });
+      if (!user) {
+        throw new NotFoundException(`User ${userId} not found`);
+      }
+
+      draftRoute.user = user;
+      draftRoute.status = TravelRouteStatus.UPCOMING;
+      await routeRepo.save(draftRoute);
+
+      if (draftRoute.clonedFromRoute) {
+          const source = draftRoute.clonedFromRoute;
+           const fullSource = await routeRepo.findOne({
+            where: { id: source.id },
+            relations: { stops: { destination: true }, user: true },
+            order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
+          });
+          
+          if (fullSource) {
+              const newClone = new TravelRoute();
+              newClone.name = fullSource.name;
+              newClone.province = fullSource.province;
+              newClone.startDate = fullSource.startDate ?? undefined;
+              newClone.endDate = fullSource.endDate ?? undefined;
+              newClone.status = TravelRouteStatus.DRAFT;
+              newClone.user = undefined;
+              newClone.totalTravelPoints = 0;
+              newClone.averageRating = 0;
+              newClone.clonedFromRoute = fullSource;
+              
+              const savedNewClone = await routeRepo.save(newClone);
+              
+              if (fullSource.stops?.length) {
+                 const stopRepo = manager.getRepository(RouteStop);
+                 const stops = fullSource.stops.map((stop) => {
+                  const newStop = new RouteStop();
+                  newStop.route = savedNewClone;
+                  newStop.dayOrder = stop.dayOrder;
+                  newStop.sequence = stop.sequence;
+                  newStop.startTime = stop.startTime;
+                  newStop.endTime = stop.endTime;
+                  newStop.notes = undefined;
+                  newStop.images = [];
+                  newStop.videos = [];
+                  newStop.status = this.determineStopStatus(
+                    savedNewClone.startDate ?? undefined,
+                    stop.dayOrder,
+                    stop.startTime ?? undefined,
+                    stop.endTime ?? undefined,
+                  );
+                  newStop.travelPoints = 0;
+                  if (stop.destination) {
+                    newStop.destination = stop.destination;
+                  }
+                  return newStop;
+                });
+                await stopRepo.save(stops);
+              }
+              await this.updateRouteAggregates(savedNewClone.id, manager);
+          }
+      }
+
+      return this.findOne(draftRoute.id);
+    });
   }
 
   async addStops(routeId: number, dtos: RouteStopDto[]): Promise<TravelRoute> {
@@ -1086,6 +1186,7 @@ export class TravelRoutesService {
     // 2. Missed (if any stop missed)
     // 3. Completed (if all stops completed)
     // 4. Upcoming/InProgress (based on date)
+
 
     if (route.clonedFromRoute && !route.startDate) {
        // Keep as draft if cloned and not set up

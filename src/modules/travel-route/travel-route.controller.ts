@@ -86,9 +86,33 @@ export class TravelRoutesController {
   @ApiOkResponse({ description: 'Travel route cloned' })
   cloneRoute(
     @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.travelRoutesService.cloneRoute(id);
+  }
+
+  @Post(':id/use')
+  @RequireAuth()
+  @ApiOperation({
+    summary: 'Sử dụng bản clone gán cho user và tạo bản clone mới',
+  })
+  @ApiOkResponse({ description: 'Travel route used' })
+  useClone(
+    @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.travelRoutesService.cloneRoute(id, user.userId);
+    return this.travelRoutesService.useClone(id, user.userId);
+  }
+
+  @Get('drafts')
+  @ApiOperation({ summary: 'Danh sách lộ trình của các người dùng khác (draft) theo tỉnh' })
+  @ApiQuery({
+    name: 'province',
+    required: false,
+    description: 'Lọc theo tỉnh/thành phố',
+  })
+  @ApiOkResponse({ description: 'Draft travel route list' })
+  findDrafts(@Query('province') province?: string) {
+    return this.travelRoutesService.findDrafts(province);
   }
 
   @Post(':routeId/stops/:stopId/media')
@@ -163,32 +187,7 @@ export class TravelRoutesController {
     return this.travelRoutesService.findByUser(user.userId);
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Danh sách hành trình du lịch' })
-  @ApiQuery({ name: 'q', required: false, description: 'Search by route name' })
-  @ApiQuery({
-    name: 'userId',
-    required: false,
-    description: 'Filter by owner user id',
-    type: Number,
-  })
-  @ApiQuery({
-    name: 'province',
-    required: false,
-    description: 'Filter by province',
-  })
-  @ApiOkResponse({ description: 'Travel route list' })
-  findAll(
-    @Query('q') q?: string,
-    @Query('province') province?: string,
-    @Query('userId') userId?: string,
-  ) {
-    return this.travelRoutesService.findAll({
-      q,
-      province,
-      userId: userId ? Number(userId) : undefined,
-    });
-  }
+
 
   @Get('me/dates')
   @RequireAuth()
@@ -286,7 +285,6 @@ export class TravelRoutesController {
       dto.status,
     );
   }
-
   
   @Delete(':id')
   @RequireAuth()
@@ -294,5 +292,32 @@ export class TravelRoutesController {
   @ApiOkResponse({ description: 'Travel route removed' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.travelRoutesService.remove(id);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Danh sách hành trình du lịch (Admin)' })
+  @ApiQuery({ name: 'q', required: false, description: 'Search by route name' })
+  @ApiQuery({
+    name: 'userId',
+    required: false,
+    description: 'Filter by owner user id',
+    type: Number,
+  })
+  @ApiQuery({
+    name: 'province',
+    required: false,
+    description: 'Filter by province',
+  })
+  @ApiOkResponse({ description: 'Travel route list' })
+  findAll(
+    @Query('q') q?: string,
+    @Query('province') province?: string,
+    @Query('userId') userId?: string,
+  ) {
+    return this.travelRoutesService.findAll({
+      q,
+      province,
+      userId: userId ? Number(userId) : undefined,
+    });
   }
 }
