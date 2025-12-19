@@ -34,7 +34,6 @@ import type { Express } from 'express';
 import { mediaMulterOptions } from '../../common/upload/image-upload.config';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
-import { UpdateSharedDto } from './dto/update-shared.dto';
 import { RouteStopDto } from './dto/route-stop.dto';
 
 type RouteStopMediaFiles = {
@@ -78,7 +77,7 @@ export class TravelRoutesController {
   @Post(':id/clone')
   @RequireAuth()
   @ApiOperation({
-    summary: 'Sao chép một lộ trình đã share thành bản riêng của user hiện tại',
+    summary: 'Sao chép một lộ trình thành bản riêng của user hiện tại',
   })
   @ApiOkResponse({ description: 'Travel route cloned' })
   cloneRoute(
@@ -102,71 +101,20 @@ export class TravelRoutesController {
     required: false,
     description: 'Filter by province',
   })
-  @ApiQuery({
-    name: 'shared',
-    required: false,
-    description: 'Chỉ lấy các lộ trình đã được share (true/false)',
-    type: Boolean,
-  })
   @ApiOkResponse({ description: 'Travel route list' })
   findAll(
     @Query('q') q?: string,
     @Query('province') province?: string,
     @Query('userId') userId?: string,
-    @Query('shared') shared?: string,
   ) {
     return this.travelRoutesService.findAll({
       q,
       province,
       userId: userId ? Number(userId) : undefined,
-      shared:
-        typeof shared === 'string'
-          ? shared.toLowerCase() === 'true'
-          : undefined,
     });
   }
 
-  @Get('public')
-  @ApiOperation({
-    summary:
-      'Danh sách lộ trình du lịch công khai theo tỉnh (không kèm thông tin cá nhân)',
-  })
-  @ApiQuery({
-    name: 'province',
-    required: false,
-    description: 'Lọc theo tỉnh/thành phố',
-  })
-  @ApiQuery({
-    name: 'q',
-    required: false,
-    description: 'Tìm theo tên lộ trình',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Giới hạn số bản ghi',
-    type: Number,
-  })
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    description: 'Bỏ qua bao nhiêu bản ghi',
-    type: Number,
-  })
-  @ApiOkResponse({ description: 'Public travel route list' })
-  findSharedRoutes(
-    @Query('province') province?: string,
-    @Query('q') q?: string,
-    @Query('limit') limit?: string,
-    @Query('offset') offset?: string,
-  ) {
-    return this.travelRoutesService.findSharedRoutes({
-      province,
-      q,
-      limit: limit ? Number(limit) : undefined,
-      offset: offset ? Number(offset) : undefined,
-    });
-  }
+
 
   @Get('me/dates')
   @RequireAuth()
@@ -223,17 +171,7 @@ export class TravelRoutesController {
     return this.travelRoutesService.addStops(id, stops);
   }
 
-  @Patch(':id/share')
-  @RequireAuth()
-  @ApiOperation({ summary: 'Bật/tắt chia sẻ lộ trình' })
-  @ApiOkResponse({ description: 'Travel route share flag updated' })
-  updateShare(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateSharedDto,
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.travelRoutesService.updateShared(id, dto.shared, user.userId);
-  }
+
 
   @Patch(':routeId/stops/:stopId/time')
   @RequireAuth()

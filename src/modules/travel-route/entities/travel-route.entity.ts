@@ -65,8 +65,7 @@ export class TravelRoute {
   @Column({ type: 'double precision', default: 0 })
   averageRating: number;
 
-  @Column({ type: 'boolean', default: false })
-  shared: boolean;
+
 
   @Column({
     type: 'enum',

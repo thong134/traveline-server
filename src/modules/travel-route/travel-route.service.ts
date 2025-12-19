@@ -23,47 +23,7 @@ interface TravelRouteQueryOptions {
   q?: string;
   userId?: number;
   province?: string;
-  shared?: boolean;
 }
-
-interface SharedRouteQueryOptions {
-  q?: string;
-  province?: string;
-  limit?: number;
-  offset?: number;
-}
-
-type PublicTravelRoute = {
-  id: number;
-  name: string;
-  province?: string;
-  shared: boolean;
-  status: TravelRouteStatus;
-  numberOfDays: number;
-  totalTravelPoints: number;
-  startDate?: Date;
-  endDate?: Date;
-  stops: {
-    id: number;
-    dayOrder: number;
-    sequence: number;
-    startTime?: string;
-    endTime?: string;
-    status: RouteStopStatus;
-    destination?:
-      | {
-          id: number;
-          name: string;
-          province?: string;
-          type?: string;
-          latitude: number;
-          longitude: number;
-          openTime?: string;
-          closeTime?: string;
-        }
-      | undefined;
-  }[];
-};
 
 @Injectable()
 export class TravelRoutesService {
@@ -96,10 +56,6 @@ export class TravelRoutesService {
         throw new NotFoundException(`Travel route ${routeId} not found`);
       }
 
-      if (!source.shared && source.user?.id !== userId) {
-        throw new ForbiddenException('Bạn không thể sao chép lộ trình này');
-      }
-
       const user = await userRepo.findOne({ where: { id: userId } });
       if (!user) {
         throw new NotFoundException(`User ${userId} not found`);
@@ -111,7 +67,6 @@ export class TravelRoutesService {
       clone.numberOfDays = source.numberOfDays;
       clone.startDate = source.startDate ?? undefined;
       clone.endDate = source.endDate ?? undefined;
-      clone.shared = false;
       clone.status = TravelRouteStatus.DRAFT;
       clone.user = user;
       clone.totalTravelPoints = 0;
@@ -160,7 +115,6 @@ export class TravelRoutesService {
         dto,
         manager.getRepository(User),
       );
-      route.shared = false; // luôn mặc định riêng tư khi tạo mới
       route.status = TravelRouteStatus.DRAFT;
       const savedRoute = await manager.getRepository(TravelRoute).save(route);
 
@@ -171,7 +125,7 @@ export class TravelRoutesService {
   }
 
   async findAll(options: TravelRouteQueryOptions = {}): Promise<TravelRoute[]> {
-    const { q, userId, province, shared } = options;
+    const { q, userId, province } = options;
     const qb = this.routeRepo
       .createQueryBuilder('route')
       .leftJoinAndSelect('route.stops', 'stops')
@@ -188,10 +142,6 @@ export class TravelRoutesService {
 
     if (province) {
       qb.andWhere('route.province = :province', { province });
-    }
-
-    if (shared !== undefined) {
-      qb.andWhere('route.shared = :shared', { shared });
     }
 
     qb.orderBy('route.createdAt', 'DESC')
@@ -252,69 +202,7 @@ export class TravelRoutesService {
     return this.findOne(routeId);
   }
 
-  async findSharedRoutes(
-    options: SharedRouteQueryOptions = {},
-  ): Promise<PublicTravelRoute[]> {
-    const { q, province, limit = 20, offset = 0 } = options;
-    const qb = this.routeRepo
-      .createQueryBuilder('route')
-      .leftJoinAndSelect('route.stops', 'stops')
-      .leftJoinAndSelect('stops.destination', 'destination')
-      .where('route.shared = TRUE')
-      .andWhere('route.cloned_from_route_id IS NOT NULL');
 
-    if (q) {
-      qb.andWhere('route.name ILIKE :q', { q: `%${q}%` });
-    }
-
-    if (province) {
-      qb.andWhere('route.province = :province', { province });
-    }
-
-    qb.orderBy('route.createdAt', 'DESC')
-      .addOrderBy('stops.dayOrder', 'ASC')
-      .addOrderBy('stops.sequence', 'ASC')
-      .take(limit)
-      .skip(offset);
-
-    const routes = await qb.getMany();
-    const refreshedRoutes = await Promise.all(
-      routes.map((route) => this.findOne(route.id)),
-    );
-
-    return refreshedRoutes.map((route) => ({
-      id: route.id,
-      name: route.name,
-      province: route.province,
-      shared: route.shared,
-      status: route.status,
-      numberOfDays: route.numberOfDays,
-      startDate: route.startDate ?? undefined,
-      endDate: route.endDate ?? undefined,
-      totalTravelPoints: route.totalTravelPoints,
-      stops:
-        route.stops?.map((stop) => ({
-          id: stop.id,
-          dayOrder: stop.dayOrder,
-          sequence: stop.sequence,
-          startTime: stop.startTime ?? undefined,
-          endTime: stop.endTime ?? undefined,
-          status: stop.status,
-          destination: stop.destination
-            ? {
-                id: stop.destination.id,
-                name: stop.destination.name,
-                province: stop.destination.province,
-                type: stop.destination.type,
-                latitude: stop.destination.latitude,
-                longitude: stop.destination.longitude,
-                openTime: stop.destination.openTime,
-                closeTime: stop.destination.closeTime,
-              }
-            : undefined,
-        })) ?? [],
-    }));
-  }
 
   async findOne(id: number): Promise<TravelRoute> {
     await this.refreshRouteState(id);
@@ -379,31 +267,7 @@ export class TravelRoutesService {
     }));
   }
 
-  async updateShared(
-    routeId: number,
-    shared: boolean,
-    userId: number,
-  ): Promise<TravelRoute> {
-    return this.dataSource.transaction(async (manager) => {
-      const repo = manager.getRepository(TravelRoute);
-      const route = await repo.findOne({
-        where: { id: routeId },
-        relations: { user: true },
-      });
-      if (!route) {
-        throw new NotFoundException(`Travel route ${routeId} not found`);
-      }
-      if (route.user?.id && route.user.id !== userId) {
-        throw new ForbiddenException(
-          'Bạn không có quyền cập nhật lộ trình này',
-        );
-      }
 
-      route.shared = shared;
-      await repo.save(route);
-      return this.findOne(routeId);
-    });
-  }
 
   async update(id: number, dto: UpdateTravelRouteDto): Promise<TravelRoute> {
     return this.dataSource.transaction(async (manager) => {
@@ -781,7 +645,7 @@ export class TravelRoutesService {
     },
     userRepository: Repository<User>,
   ): Promise<void> {
-    const { userId, name, province, startDate, endDate, shared } = dto;
+    const { userId, name, province, startDate, endDate } = dto;
 
     if (userId) {
       const user = await userRepository.findOne({ where: { id: userId } });
@@ -1227,6 +1091,8 @@ export class TravelRoutesService {
       const previousPoints = stop.travelPoints ?? 0;
 
       let nextStatus = previousStatus;
+      // Only update status if it's not already completed (completed is final via check-in)
+      // But wait, if it was completed, can it become missed? No, check-in is final.
       if (previousStatus !== RouteStopStatus.COMPLETED) {
         nextStatus = this.resolveStopStatusBySchedule(route, stop, now);
       }
@@ -1255,22 +1121,31 @@ export class TravelRoutesService {
 
     let nextRouteStatus = route.status;
 
+    // Priority:
+    // 1. Draft (if new/cloned and no dates - handled by creation logic mostly, but here we check dates)
+    // 2. Missed (if any stop missed)
+    // 3. Completed (if all stops completed)
+    // 4. Upcoming/InProgress (based on date)
+
     if (route.clonedFromRoute && !route.startDate) {
-      nextRouteStatus = TravelRouteStatus.DRAFT;
-    } else if (allCompleted) {
-      nextRouteStatus = TravelRouteStatus.COMPLETED;
+       // Keep as draft if cloned and not set up
+       nextRouteStatus = TravelRouteStatus.DRAFT;
     } else if (hasMissed) {
       nextRouteStatus = TravelRouteStatus.MISSED;
+    } else if (allCompleted) {
+      nextRouteStatus = TravelRouteStatus.COMPLETED;
     } else if (route.startDate) {
       const routeStart = this.normalizeDate(route.startDate);
       const today = this.normalizeDate(now);
       if (today < routeStart) {
         nextRouteStatus = TravelRouteStatus.UPCOMING;
       } else {
+        // today >= routeStart
         nextRouteStatus = TravelRouteStatus.IN_PROGRESS;
       }
     } else if (nextRouteStatus !== TravelRouteStatus.DRAFT) {
-      nextRouteStatus = TravelRouteStatus.UPCOMING;
+      // Fallback if no start date but not draft? Should be draft.
+      nextRouteStatus = TravelRouteStatus.DRAFT;
     }
 
     const totalPoints = totalCompleted * 5000;
