@@ -73,9 +73,10 @@ export class TravelRoutesController {
   @ApiCreatedResponse({ description: 'Stops added to route' })
   addStops(
     @Param('id', ParseIntPipe) id: number,
-    @Body() stops: RouteStopDto[],
+    @Body() stops: RouteStopDto | RouteStopDto[],
   ) {
-    return this.travelRoutesService.addStops(id, stops);
+    const dtos = Array.isArray(stops) ? stops : [stops];
+    return this.travelRoutesService.addStops(id, dtos);
   }
 
   @Post(':id/clone')
