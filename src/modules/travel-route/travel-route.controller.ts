@@ -271,22 +271,19 @@ export class TravelRoutesController {
     return this.travelRoutesService.reorderStop(routeId, stopId, dto);
   }
 
-  @Patch(':routeId/stops/:stopId/status')
+
+  
+  @Delete(':routeId/stops/:stopId')
   @RequireAuth()
-  @ApiOperation({ summary: 'Cập nhật trạng thái của điểm dừng' })
-  @ApiOkResponse({ description: 'Trạng thái điểm dừng đã được cập nhật' })
-  updateStopStatus(
+  @ApiOperation({ summary: 'Xóa một điểm dừng khỏi lộ trình' })
+  @ApiOkResponse({ description: 'Route stop removed' })
+  removeStop(
     @Param('routeId', ParseIntPipe) routeId: number,
     @Param('stopId', ParseIntPipe) stopId: number,
-    @Body() dto: UpdateRouteStopStatusDto,
   ) {
-    return this.travelRoutesService.updateStopStatus(
-      routeId,
-      stopId,
-      dto.status,
-    );
+    return this.travelRoutesService.removeStop(routeId, stopId);
   }
-  
+
   @Delete(':id')
   @RequireAuth()
   @ApiOperation({ summary: 'Xóa hành trình du lịch' })
