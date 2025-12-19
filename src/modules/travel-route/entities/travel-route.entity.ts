@@ -42,9 +42,6 @@ export class TravelRoute {
   @Column({ nullable: true })
   province?: string;
 
-  @Column({ type: 'int', default: 1 })
-  numberOfDays: number;
-
   @Column({ type: 'date', nullable: true })
   startDate?: Date;
 
@@ -64,8 +61,6 @@ export class TravelRoute {
 
   @Column({ type: 'double precision', default: 0 })
   averageRating: number;
-
-
 
   @Column({
     type: 'enum',

@@ -64,7 +64,7 @@ export class TravelRoutesService {
       const clone = new TravelRoute();
       clone.name = source.name;
       clone.province = source.province;
-      clone.numberOfDays = source.numberOfDays;
+
       clone.startDate = source.startDate ?? undefined;
       clone.endDate = source.endDate ?? undefined;
       clone.status = TravelRouteStatus.DRAFT;
@@ -187,14 +187,6 @@ export class TravelRoutesService {
 
       const allStops = [...(route.stops ?? []), ...newStops];
       this.ensureSequentialStopCoverage(route, allStops);
-
-      const totalDays = this.calculateDurationDays(
-        route.startDate,
-        route.endDate,
-      );
-      if (totalDays) {
-        await routeRepo.update(routeId, { numberOfDays: totalDays });
-      }
 
       await this.updateRouteAggregates(routeId, manager);
     });
@@ -445,12 +437,7 @@ export class TravelRoutesService {
 
       await stopRepo.save(updated);
 
-      const maxDay = updated.length
-        ? Math.max(...updated.map((stop) => stop.dayOrder))
-        : newDay;
-      await routeRepo.update(routeId, {
-        numberOfDays: Math.max(1, maxDay),
-      });
+
 
       await this.updateRouteAggregates(routeId, manager);
     });
@@ -692,37 +679,10 @@ export class TravelRoutesService {
     route.startDate = parsedStart;
     route.endDate = parsedEnd;
 
-    const computedDays = this.computeNumberOfDays(
-      dto.stops,
-      route.numberOfDays,
-      durationDays,
-    );
-    route.numberOfDays = computedDays;
+
   }
 
-  private computeNumberOfDays(
-    stops?: RouteStopDto[],
-    fallback?: number,
-    durationDays?: number,
-  ): number {
-    if (durationDays && durationDays > 0) {
-      return durationDays;
-    }
 
-    const maxDayFromStops = stops?.length
-      ? Math.max(...stops.map((stop) => stop.dayOrder))
-      : undefined;
-
-    if (maxDayFromStops !== undefined) {
-      return Math.max(1, maxDayFromStops);
-    }
-
-    if (fallback && fallback > 0) {
-      return fallback;
-    }
-
-    return 1;
-  }
 
   private calculateDurationDays(
     startDate?: Date,

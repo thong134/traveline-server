@@ -57,7 +57,7 @@ export class TravelRoutesController {
 
   @Post()
   @RequireAuth()
-  @ApiOperation({ summary: 'Tạo hành trình du lịch kèm điểm dừng tùy chọn' })
+  @ApiOperation({ summary: 'Tạo lộ trình du lịch' })
   @ApiCreatedResponse({ description: 'Travel route created' })
   create(@Body() dto: CreateTravelRouteDto, @CurrentUser() user: RequestUser) {
     return this.travelRoutesService.create({
@@ -66,12 +66,16 @@ export class TravelRoutesController {
     });
   }
 
-  @Get('me')
+  @Post(':id/stops')
   @RequireAuth()
-  @ApiOperation({ summary: 'Danh sách hành trình du lịch của chính mình' })
-  @ApiOkResponse({ description: 'Travel route list of current user' })
-  findMine(@CurrentUser() user: RequestUser) {
-    return this.travelRoutesService.findByUser(user.userId);
+  @ApiOperation({ summary: 'Thêm mới một hoặc nhiều điểm dừng vào lộ trình' })
+  @ApiBody({ type: [RouteStopDto] })
+  @ApiCreatedResponse({ description: 'Stops added to route' })
+  addStops(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() stops: RouteStopDto[],
+  ) {
+    return this.travelRoutesService.addStops(id, stops);
   }
 
   @Post(':id/clone')
@@ -85,6 +89,78 @@ export class TravelRoutesController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.travelRoutesService.cloneRoute(id, user.userId);
+  }
+
+  @Post(':routeId/stops/:stopId/media')
+  @RequireAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        images: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+          description: 'Ảnh điểm dừng (tối đa 10)',
+        },
+        videos: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+          description: 'Video điểm dừng (tối đa 5)',
+        },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'images', maxCount: 10 },
+        { name: 'videos', maxCount: 5 },
+      ],
+      mediaMulterOptions,
+    ),
+  )
+  @ApiOperation({ summary: 'Tải ảnh/video cho điểm dừng' })
+  @ApiOkResponse({ description: 'Media đã được lưu' })
+  uploadStopMedia(
+    @Param('routeId', ParseIntPipe) routeId: number,
+    @Param('stopId', ParseIntPipe) stopId: number,
+    @UploadedFiles() files?: Record<string, Express.Multer.File[]>,
+  ) {
+    return this.travelRoutesService.uploadStopMedia(
+      routeId,
+      stopId,
+      mapRouteStopMediaFiles(files),
+    );
+  }
+
+  @Post(':routeId/stops/:stopId/check-in')
+  @RequireAuth()
+  @ApiOperation({
+    summary:
+      'Xác nhận người dùng đã đến điểm dừng dựa trên vị trí hiện tại',
+  })
+  @ApiOkResponse({ description: 'Kết quả check-in điểm dừng' })
+  checkInStop(
+    @Param('routeId', ParseIntPipe) routeId: number,
+    @Param('stopId', ParseIntPipe) stopId: number,
+    @Body() dto: CheckInRouteStopDto,
+  ) {
+    return this.travelRoutesService.checkInStop(
+      routeId,
+      stopId,
+      dto.latitude,
+      dto.longitude,
+      dto.toleranceMeters,
+    );
+  }
+
+  @Get('me')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Danh sách hành trình du lịch của chính mình' })
+  @ApiOkResponse({ description: 'Travel route list of current user' })
+  findMine(@CurrentUser() user: RequestUser) {
+    return this.travelRoutesService.findByUser(user.userId);
   }
 
   @Get()
@@ -113,8 +189,6 @@ export class TravelRoutesController {
       userId: userId ? Number(userId) : undefined,
     });
   }
-
-
 
   @Get('me/dates')
   @RequireAuth()
@@ -158,20 +232,6 @@ export class TravelRoutesController {
   ) {
     return this.travelRoutesService.update(id, dto);
   }
-
-  @Post(':id/stops')
-  @RequireAuth()
-  @ApiOperation({ summary: 'Thêm mới một hoặc nhiều điểm dừng vào lộ trình' })
-  @ApiBody({ type: [RouteStopDto] })
-  @ApiCreatedResponse({ description: 'Stops added to route' })
-  addStops(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() stops: RouteStopDto[],
-  ) {
-    return this.travelRoutesService.addStops(id, stops);
-  }
-
-
 
   @Patch(':routeId/stops/:stopId/time')
   @RequireAuth()
@@ -227,70 +287,7 @@ export class TravelRoutesController {
     );
   }
 
-  @Post(':routeId/stops/:stopId/media')
-  @RequireAuth()
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        images: {
-          type: 'array',
-          items: { type: 'string', format: 'binary' },
-          description: 'Ảnh điểm dừng (tối đa 10)',
-        },
-        videos: {
-          type: 'array',
-          items: { type: 'string', format: 'binary' },
-          description: 'Video điểm dừng (tối đa 5)',
-        },
-      },
-    },
-  })
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'images', maxCount: 10 },
-        { name: 'videos', maxCount: 5 },
-      ],
-      mediaMulterOptions,
-    ),
-  )
-  @ApiOperation({ summary: 'Tải ảnh/video cho điểm dừng' })
-  @ApiOkResponse({ description: 'Media đã được lưu' })
-  uploadStopMedia(
-    @Param('routeId', ParseIntPipe) routeId: number,
-    @Param('stopId', ParseIntPipe) stopId: number,
-    @UploadedFiles() files?: Record<string, Express.Multer.File[]>,
-  ) {
-    return this.travelRoutesService.uploadStopMedia(
-      routeId,
-      stopId,
-      mapRouteStopMediaFiles(files),
-    );
-  }
-
-  @Post(':routeId/stops/:stopId/check-in')
-  @RequireAuth()
-  @ApiOperation({
-    summary:
-      'Xác nhận người dùng đã đến điểm dừng dựa trên vị trí hiện tại và chuyển trạng thái sang completed',
-  })
-  @ApiOkResponse({ description: 'Kết quả check-in điểm dừng' })
-  checkInStop(
-    @Param('routeId', ParseIntPipe) routeId: number,
-    @Param('stopId', ParseIntPipe) stopId: number,
-    @Body() dto: CheckInRouteStopDto,
-  ) {
-    return this.travelRoutesService.checkInStop(
-      routeId,
-      stopId,
-      dto.latitude,
-      dto.longitude,
-      dto.toleranceMeters,
-    );
-  }
-
+  
   @Delete(':id')
   @RequireAuth()
   @ApiOperation({ summary: 'Xóa hành trình du lịch' })
