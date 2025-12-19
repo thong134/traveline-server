@@ -1255,9 +1255,7 @@ export class TravelRoutesService {
     for (let day = 1; day <= totalDays; day += 1) {
       const dayStops = stopsByDay.get(day);
       if (!dayStops || !dayStops.length) {
-        throw new BadRequestException(
-          `Thiếu điểm dừng cho dayOrder ${day}. Vui lòng tạo đầy đủ trước khi tiếp tục`,
-        );
+        continue;
       }
 
       dayStops.sort((a, b) => a.sequence - b.sequence);
