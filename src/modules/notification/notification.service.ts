@@ -1,0 +1,92 @@
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import * as admin from 'firebase-admin';
+import { createTransport, Transporter, SentMessageInfo } from 'nodemailer';
+import { ConfigService } from '@nestjs/config';
+
+@Injectable()
+export class NotificationService implements OnModuleInit {
+  private readonly logger = new Logger(NotificationService.name);
+  private mailTransporter: Transporter<SentMessageInfo>;
+  private firebaseApp: admin.app.App;
+
+  constructor(private readonly configService: ConfigService) {}
+
+  onModuleInit() {
+    this.initMailTransporter();
+    this.initFirebase();
+  }
+
+  private initMailTransporter() {
+    this.mailTransporter = createTransport({
+      host: this.configService.get('SMTP_HOST'),
+      port: Number(this.configService.get('SMTP_PORT') || 587),
+      secure: false, // true for 465, false for other ports
+      auth: {
+        user: this.configService.get('SMTP_USER'),
+        pass: this.configService.get('SMTP_PASS'),
+      },
+    });
+  }
+
+  private initFirebase() {
+    // Check if firebase is already initialized
+    if (admin.apps.length > 0) {
+      this.firebaseApp = admin.apps[0]!;
+      return;
+    }
+
+    // Try to initialize with service account from env or default
+    // This assumes GOOGLE_APPLICATION_CREDENTIALS is set or we use a specific config
+    // For now, we'll wrap in try-catch to avoid crashing if not configured
+    try {
+        // Example: if you have a path to serviceAccountKey.json
+        // const serviceAccount = require('path/to/serviceAccountKey.json');
+        
+        // Or using environment variables for the service account object
+        // const serviceAccount = JSON.parse(this.configService.get('FIREBASE_SERVICE_ACCOUNT') || '{}');
+
+        // If using GOOGLE_APPLICATION_CREDENTIALS env var, applicationDefault() works
+        this.firebaseApp = admin.initializeApp({
+            credential: admin.credential.applicationDefault(),
+        });
+        this.logger.log('Firebase Admin initialized successfully');
+    } catch (error) {
+        this.logger.warn('Failed to initialize Firebase Admin. Push notifications will not work.', error);
+    }
+  }
+
+  async sendEmail(to: string, subject: string, html: string) {
+    try {
+      const info = await this.mailTransporter.sendMail({
+        from: `"Traveline" <${this.configService.get('SMTP_USER')}>`,
+        to,
+        subject,
+        html,
+      });
+      this.logger.log(`Email sent to ${to}: ${info.messageId}`);
+    } catch (error) {
+      this.logger.error(`Failed to send email to ${to}`, error);
+    }
+  }
+
+  async sendPushNotification(token: string, title: string, body: string, data?: Record<string, string>) {
+    if (!this.firebaseApp) {
+        this.logger.warn('Firebase not initialized, skipping push notification');
+        return;
+    }
+
+    try {
+      await this.firebaseApp.messaging().send({
+        token,
+        notification: {
+          title,
+          body,
+        },
+        data,
+      });
+      this.logger.log(`Push notification sent to ${token}`);
+    } catch (error) {
+      this.logger.error(`Failed to send push notification to ${token}`, error);
+    }
+  }
+}

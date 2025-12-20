@@ -616,6 +616,50 @@ export class TravelRoutesService {
     });
   }
 
+  async deleteStopMedia(
+    routeId: number,
+    stopId: number,
+    mediaUrls: { images?: string[]; videos?: string[] },
+  ): Promise<RouteStop> {
+    await this.dataSource.transaction(async (manager) => {
+      const stopRepo = manager.getRepository(RouteStop);
+      const stop = await this.getStopOrFail(routeId, stopId, manager);
+
+      const imagesToDelete = mediaUrls.images ?? [];
+      const videosToDelete = mediaUrls.videos ?? [];
+
+      if (!imagesToDelete.length && !videosToDelete.length) {
+        return;
+      }
+
+      // Xóa ảnh khỏi Cloudinary và cập nhật mảng images
+      for (const url of imagesToDelete) {
+        if (!stop.images?.includes(url)) {
+          continue;
+        }
+        const publicId = this.cloudinaryService.extractPublicIdFromUrl(url);
+        await this.cloudinaryService.deleteImage(publicId);
+        stop.images = stop.images.filter((img) => img !== url);
+      }
+
+      // Xóa video khỏi Cloudinary và cập nhật mảng videos
+      for (const url of videosToDelete) {
+        if (!stop.videos?.includes(url)) {
+          continue;
+        }
+        const publicId = this.cloudinaryService.extractPublicIdFromUrl(url);
+        await this.cloudinaryService.deleteVideo(publicId);
+        stop.videos = stop.videos.filter((vid) => vid !== url);
+      }
+
+      await stopRepo.save(stop);
+    });
+
+    return this.getStopOrFail(routeId, stopId, undefined, {
+      withDestination: true,
+    });
+  }
+
   async checkInStop(
     routeId: number,
     stopId: number,

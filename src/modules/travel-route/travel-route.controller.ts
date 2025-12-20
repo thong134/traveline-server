@@ -35,6 +35,7 @@ import { mediaMulterOptions } from '../../common/upload/image-upload.config';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { RouteStopDto } from './dto/route-stop.dto';
+import { DeleteStopMediaDto } from './dto/delete-stop-media.dto';
 
 type RouteStopMediaFiles = {
   images?: Express.Multer.File[];
@@ -157,6 +158,22 @@ export class TravelRoutesController {
       stopId,
       mapRouteStopMediaFiles(files),
     );
+  }
+
+  @Delete(':routeId/stops/:stopId/media')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Xóa ảnh/video khỏi điểm dừng' })
+  @ApiBody({ type: DeleteStopMediaDto })
+  @ApiOkResponse({ description: 'Media đã được xóa' })
+  deleteStopMedia(
+    @Param('routeId', ParseIntPipe) routeId: number,
+    @Param('stopId', ParseIntPipe) stopId: number,
+    @Body() dto: DeleteStopMediaDto,
+  ) {
+    return this.travelRoutesService.deleteStopMedia(routeId, stopId, {
+      images: dto.images,
+      videos: dto.videos,
+    });
   }
 
   @Post(':routeId/stops/:stopId/check-in')

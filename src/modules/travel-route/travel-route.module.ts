@@ -7,6 +7,7 @@ import { RouteStop } from './entities/route-stop.entity';
 import { Destination } from '../destination/entities/destinations.entity';
 import { User } from '../user/entities/user.entity';
 import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
+import { TravelRouteCronService } from './travel-route.cron';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
     CloudinaryModule,
   ],
   controllers: [TravelRoutesController],
-  providers: [TravelRoutesService],
+  providers: [TravelRoutesService, TravelRouteCronService],
   exports: [TravelRoutesService],
 })
 export class TravelRoutesModule {}

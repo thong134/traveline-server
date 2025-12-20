@@ -172,4 +172,35 @@ export class CloudinaryService {
       );
     }
   }
+
+  async deleteVideo(publicId: string | null | undefined): Promise<void> {
+    if (!publicId) {
+      return;
+    }
+
+    this.ensureConfigured();
+
+    try {
+      await cloudinary.uploader.destroy(publicId, { resource_type: 'video' });
+    } catch (error) {
+      throw this.createCloudinaryException(
+        'CLOUDINARY_DELETE_FAILED',
+        error,
+        'Xoá video trên Cloudinary thất bại',
+      );
+    }
+  }
+
+  /**
+   * Trích xuất publicId từ URL Cloudinary
+   * URL format: https://res.cloudinary.com/<cloud>/image/upload/v<version>/<publicId>.<ext>
+   */
+  extractPublicIdFromUrl(url: string): string | null {
+    try {
+      const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.\w+$/);
+      return match ? match[1] : null;
+    } catch {
+      return null;
+    }
+  }
 }

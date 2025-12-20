@@ -39,6 +39,9 @@ export class User {
   @Column({ nullable: true })
   phone: string;
 
+  @Column({ name: 'fcm_token', nullable: true })
+  fcmToken?: string;
+
   @Column()
   password: string; // bcrypt hash
 
