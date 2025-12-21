@@ -27,12 +27,14 @@ import {
   RentalVehicleAvailabilityStatus,
 } from './entities/rental-vehicle.entity';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
-import {
-  RejectRentalVehicleDto,
-  UpdateRentalVehicleStatusDto,
-} from './dto/manage-rental-vehicle.dto';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { RequestUser } from '../auth/decorators/current-user.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../user/entities/user-role.enum';
+import { RejectRentalVehicleDto } from './dto/manage-rental-vehicle.dto';
 import type { Express } from 'express';
 import { imageMulterOptions } from '../../common/upload/image-upload.config';
+import { SearchRentalVehicleDto } from './dto/search-rental-vehicle.dto';
 
 type RentalVehicleUploadFiles = {
   vehicleRegistrationFront?: Express.Multer.File;
@@ -47,6 +49,7 @@ function mapVehicleRegistrationFiles(
     vehicleRegistrationBack: files?.vehicleRegistrationBack?.[0],
   };
 }
+
 
 @ApiTags('rental-vehicles')
 @Controller('rental-vehicles')
@@ -70,8 +73,32 @@ export class RentalVehiclesController {
   create(
     @UploadedFiles() files: Record<string, Express.Multer.File[]> = {},
     @Body() dto: CreateRentalVehicleDto,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.service.create(dto, mapVehicleRegistrationFiles(files));
+    return this.service.create(user.userId, dto, mapVehicleRegistrationFiles(files));
+  }
+
+  @Get('me')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Danh sách xe cho thuê của tôi' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: RentalVehicleApprovalStatus,
+  })
+  @ApiOkResponse({ description: 'Danh sách xe của user' })
+  findMyVehicles(
+    @CurrentUser() user: RequestUser,
+    @Query('status') status?: RentalVehicleApprovalStatus,
+  ) {
+    return this.service.findMyVehicles(user.userId, { status });
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Tìm kiếm xe cho thuê với bộ lọc' })
+  @ApiOkResponse({ description: 'Danh sách xe thỏa điều kiện' })
+  search(@Query() dto: SearchRentalVehicleDto) {
+    return this.service.search(dto);
   }
 
   @Get()
@@ -109,47 +136,19 @@ export class RentalVehiclesController {
 
   @Patch(':licensePlate')
   @RequireAuth()
-  @ApiOperation({ summary: 'Cập nhật thông tin xe cho thuê' })
+  @ApiOperation({ summary: 'Cập nhật thông tin xe cho thuê (giá, mô tả, yêu cầu)' })
   @ApiOkResponse({ description: 'Cập nhật xe thành công' })
-  @ApiConsumes('multipart/form-data')
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'vehicleRegistrationFront', maxCount: 1 },
-        { name: 'vehicleRegistrationBack', maxCount: 1 },
-      ],
-      imageMulterOptions,
-    ),
-  )
   update(
     @Param('licensePlate') licensePlate: string,
-    @UploadedFiles() files: Record<string, Express.Multer.File[]> = {},
     @Body() dto: UpdateRentalVehicleDto,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.service.update(
-      licensePlate,
-      dto,
-      mapVehicleRegistrationFiles(files),
-    );
-  }
-
-  @Patch(':licensePlate/status')
-  @RequireAuth()
-  @ApiOperation({ summary: 'Cập nhật trạng thái xe cho thuê' })
-  @ApiOkResponse({ description: 'Trạng thái xe đã được cập nhật' })
-  updateStatus(
-    @Param('licensePlate') licensePlate: string,
-    @Body() dto: UpdateRentalVehicleStatusDto,
-  ) {
-    return this.service.updateStatus(licensePlate, {
-      status: dto.status,
-      availability: dto.availability,
-      rejectedReason: dto.rejectedReason,
-    });
+    return this.service.update(user.userId, licensePlate, dto);
   }
 
   @Patch(':licensePlate/approve')
   @RequireAuth()
+  @Roles(UserRole.Admin)
   @ApiOperation({ summary: 'Duyệt xe cho thuê (quản trị viên)' })
   @ApiOkResponse({ description: 'Xe đã được duyệt' })
   approve(@Param('licensePlate') licensePlate: string) {
@@ -158,6 +157,7 @@ export class RentalVehiclesController {
 
   @Patch(':licensePlate/reject')
   @RequireAuth()
+  @Roles(UserRole.Admin)
   @ApiOperation({ summary: 'Từ chối xe cho thuê (quản trị viên)' })
   @ApiOkResponse({ description: 'Xe đã bị từ chối' })
   reject(
@@ -173,15 +173,34 @@ export class RentalVehiclesController {
     summary: 'Tạm ngưng xe để bảo dưỡng hoặc bảo trì',
   })
   @ApiOkResponse({ description: 'Xe đã được chuyển sang trạng thái bảo trì' })
-  disable(@Param('licensePlate') licensePlate: string) {
-    return this.service.disable(licensePlate);
+  disable(
+    @Param('licensePlate') licensePlate: string,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.service.disable(user.userId, licensePlate);
+  }
+
+  @Patch(':licensePlate/enable')
+  @RequireAuth()
+  @ApiOperation({
+    summary: 'Mở lại xe từ trạng thái bảo trì',
+  })
+  @ApiOkResponse({ description: 'Xe đã được mở lại' })
+  enable(
+    @Param('licensePlate') licensePlate: string,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.service.enable(user.userId, licensePlate);
   }
 
   @Delete(':licensePlate')
   @RequireAuth()
   @ApiOperation({ summary: 'Xóa xe cho thuê' })
   @ApiOkResponse({ description: 'Đã xóa xe' })
-  remove(@Param('licensePlate') licensePlate: string) {
-    return this.service.remove(licensePlate);
+  remove(
+    @Param('licensePlate') licensePlate: string,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.service.remove(user.userId, licensePlate);
   }
 }

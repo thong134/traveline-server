@@ -6,6 +6,8 @@ import { RentalVehicle } from './entities/rental-vehicle.entity';
 import { RentalContract } from '../rental-contract/entities/rental-contract.entity';
 import { VehicleCatalog } from '../vehicle-catalog/entities/vehicle-catalog.entity';
 import { User } from '../user/entities/user.entity';
+import { RentalBill } from '../rental-bill/entities/rental-bill.entity';
+import { RentalBillDetail } from '../rental-bill/entities/rental-bill-detail.entity';
 import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 
 @Module({
@@ -15,6 +17,8 @@ import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
       RentalContract,
       VehicleCatalog,
       User,
+      RentalBill,
+      RentalBillDetail,
     ]),
     CloudinaryModule,
   ],

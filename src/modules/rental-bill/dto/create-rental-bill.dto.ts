@@ -1,129 +1,51 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  ArrayMinSize,
   IsArray,
   IsDateString,
-  IsEmail,
   IsEnum,
-  IsInt,
-  IsNumber,
+  IsNotEmpty,
   IsOptional,
   IsString,
-  MaxLength,
-  Min,
+  ValidateNested,
 } from 'class-validator';
+import { RentalBillType } from '../entities/rental-bill.entity';
 import { RentalBillDetailDto } from './rental-bill-detail.dto';
-import {
-  RentalBillStatus,
-  RentalBillType,
-} from '../entities/rental-bill.entity';
 
 export class CreateRentalBillDto {
-  @ApiProperty({
-    enum: RentalBillType,
-    description: 'Rental type indicates hourly or daily pricing',
-    default: RentalBillType.DAILY,
-  })
+  @ApiProperty({ enum: RentalBillType, example: RentalBillType.DAILY })
   @IsEnum(RentalBillType)
+  @IsNotEmpty()
   rentalType: RentalBillType;
 
-  @ApiProperty({ description: 'Rental start time' })
+  @ApiProperty({ description: 'Ngày bắt đầu (ISO 8601)', example: '2024-12-25T08:00:00Z' })
   @IsDateString()
+  @IsNotEmpty()
   startDate: string;
 
-  @ApiProperty({ description: 'Rental end time' })
+  @ApiProperty({ description: 'Ngày kết thúc (ISO 8601)', example: '2024-12-27T18:00:00Z' })
   @IsDateString()
+  @IsNotEmpty()
   endDate: string;
 
-  @ApiPropertyOptional({ description: 'Pickup location or meeting place' })
+  @ApiPropertyOptional({ description: 'Địa chỉ nhận xe' })
   @IsOptional()
   @IsString()
   location?: string;
 
-  @ApiPropertyOptional({ description: 'Payment method selected by customer' })
-  @IsOptional()
-  @IsString()
-  paymentMethod?: string;
+  @ApiProperty({ type: [RentalBillDetailDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RentalBillDetailDto)
+  details: RentalBillDetailDto[];
 
-  @ApiPropertyOptional({ description: 'Contact person name displayed on bill' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  contactName?: string;
-
-  @ApiPropertyOptional({ description: 'Contact phone number' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(60)
-  contactPhone?: string;
-
-  @ApiPropertyOptional({ description: 'Contact email' })
-  @IsOptional()
-  @IsEmail()
-  contactEmail?: string;
-
-  @ApiPropertyOptional({ description: 'Voucher code applied to the booking' })
+  @ApiPropertyOptional({ description: 'Mã giảm giá' })
   @IsOptional()
   @IsString()
   voucherCode?: string;
 
-  @ApiPropertyOptional({
-    description: 'Travel points used to discount the bill',
-    default: 0,
-  })
-  @Type(() => Number)
+  @ApiPropertyOptional({ description: 'Số điểm TravelPoint muốn sử dụng' })
   @IsOptional()
-  @IsInt()
-  @Min(0)
+  @Type(() => Number)
   travelPointsUsed?: number;
-
-  @ApiPropertyOptional({
-    description: 'Bill status override (admins only)',
-    enum: RentalBillStatus,
-  })
-  @IsOptional()
-  @IsEnum(RentalBillStatus)
-  status?: RentalBillStatus;
-
-  @ApiPropertyOptional({ description: 'Reason for status override' })
-  @IsOptional()
-  @IsString()
-  statusReason?: string;
-
-  @ApiPropertyOptional({
-    description: 'Citizenship back photo URL for verification',
-  })
-  @IsOptional()
-  @IsString()
-  citizenBackPhoto?: string;
-
-  @ApiPropertyOptional({ description: 'Selfie verification photo URL' })
-  @IsOptional()
-  @IsString()
-  verifiedSelfiePhoto?: string;
-
-  @ApiPropertyOptional({ description: 'Additional notes' })
-  @IsOptional()
-  @IsString()
-  notes?: string;
-
-  @ApiProperty({
-    type: [RentalBillDetailDto],
-    description: 'List of vehicles associated with the bill',
-  })
-  @IsArray()
-  @ArrayMinSize(1)
-  @Type(() => RentalBillDetailDto)
-  details: RentalBillDetailDto[];
-
-  @ApiPropertyOptional({
-    description: 'Override total amount; defaults to sum of details',
-    example: 650000,
-  })
-  @Type(() => Number)
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  total?: number;
 }

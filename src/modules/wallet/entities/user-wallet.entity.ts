@@ -25,6 +25,15 @@ export class UserWallet {
   @Column({ type: 'decimal', precision: 18, scale: 2, default: '0.00' })
   balance: string;
 
+  @Column({
+    type: 'decimal',
+    precision: 18,
+    scale: 2,
+    default: '0.00',
+    name: 'locked_balance',
+  })
+  lockedBalance: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -1,8 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsEnum,
   IsInt,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -10,14 +10,11 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import {
-  RentalVehicleApprovalStatus,
-  RentalVehicleAvailabilityStatus,
-} from '../entities/rental-vehicle.entity';
 
 export class CreateRentalVehicleDto {
   @ApiProperty({ description: 'License plate number', example: '47L7-7886' })
   @IsString()
+  @IsNotEmpty()
   @Matches(/^[A-Za-z0-9\-\s]+$/)
   @MaxLength(32)
   licensePlate: string;
@@ -27,14 +24,13 @@ export class CreateRentalVehicleDto {
   @IsInt()
   contractId: number;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Vehicle catalog definition id',
     example: 5,
   })
   @Type(() => Number)
-  @IsOptional()
   @IsInt()
-  vehicleCatalogId?: number;
+  vehicleCatalogId: number;
 
   @ApiProperty({ description: 'Rental price per hour', example: 80000 })
   @Type(() => Number)
@@ -48,6 +44,57 @@ export class CreateRentalVehicleDto {
   @Min(0)
   pricePerDay: number;
 
+  // Hourly packages (optional)
+  @ApiPropertyOptional({ description: 'Price for 4-hour package' })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  priceFor4Hours?: number;
+
+  @ApiPropertyOptional({ description: 'Price for 8-hour package' })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  priceFor8Hours?: number;
+
+  @ApiPropertyOptional({ description: 'Price for 12-hour package' })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  priceFor12Hours?: number;
+
+  // Daily packages (optional)
+  @ApiPropertyOptional({ description: 'Price for 2-day package' })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  priceFor2Days?: number;
+
+  @ApiPropertyOptional({ description: 'Price for 3-day package' })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  priceFor3Days?: number;
+
+  @ApiPropertyOptional({ description: 'Price for 5-day package' })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  priceFor5Days?: number;
+
+  @ApiPropertyOptional({ description: 'Price for 7-day package' })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  priceFor7Days?: number;
+
   @ApiPropertyOptional({
     description: 'Rental requirements shown to customers',
   })
@@ -60,32 +107,19 @@ export class CreateRentalVehicleDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Vehicle registration front photo',
     type: 'string',
     format: 'binary',
   })
-  @IsOptional()
-  vehicleRegistrationFront?: string;
+  @IsNotEmpty()
+  vehicleRegistrationFront: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Vehicle registration back photo',
     type: 'string',
     format: 'binary',
   })
-  @IsOptional()
-  vehicleRegistrationBack?: string;
-
-  @ApiPropertyOptional({
-    enum: RentalVehicleApprovalStatus,
-    description: 'Optional manual status override',
-  })
-  @IsOptional()
-  @IsEnum(RentalVehicleApprovalStatus)
-  status?: RentalVehicleApprovalStatus;
-
-  @ApiPropertyOptional({ enum: RentalVehicleAvailabilityStatus })
-  @IsOptional()
-  @IsEnum(RentalVehicleAvailabilityStatus)
-  availability?: RentalVehicleAvailabilityStatus;
+  @IsNotEmpty()
+  vehicleRegistrationBack: string;
 }

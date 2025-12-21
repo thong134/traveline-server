@@ -9,6 +9,7 @@ import {
 import { WalletService } from './wallet.service';
 import { WalletDepositDto } from './dto/wallet-deposit.dto';
 import { WalletPayDto } from './dto/wallet-pay.dto';
+import { MomoDepositDto } from './dto/momo-deposit.dto';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
@@ -51,5 +52,19 @@ export class WalletController {
   @ApiOkResponse({ description: 'Số dư sau khi thanh toán' })
   async pay(@CurrentUser() user: RequestUser, @Body() dto: WalletPayDto) {
     return this.walletService.pay(user.userId, dto.amount, dto.referenceId);
+  }
+
+  @Post('momo-deposit')
+  @ApiOperation({ summary: 'Nạp tiền qua MoMo (giả lập)' })
+  @ApiOkResponse({ description: 'Số dư sau khi nạp qua MoMo' })
+  async momoDeposit(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: MomoDepositDto,
+  ) {
+    return this.walletService.simulateMomoDeposit(
+      user.userId,
+      dto.amount,
+      dto.momoTransactionId,
+    );
   }
 }

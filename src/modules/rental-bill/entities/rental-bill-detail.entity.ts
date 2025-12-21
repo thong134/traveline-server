@@ -37,9 +37,6 @@ export class RentalBillDetail {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   price: string;
 
-  @Column({ type: 'int', default: 1 })
-  quantity: number;
-
   @Column({ nullable: true })
   note?: string;
 }

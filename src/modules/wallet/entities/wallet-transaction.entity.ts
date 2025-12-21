@@ -11,9 +11,12 @@ import { UserWallet } from './user-wallet.entity';
 
 export enum WalletTransactionType {
   DEPOSIT = 'DEPOSIT',
+  MOMO_DEPOSIT = 'MOMO_DEPOSIT',
   PAYMENT = 'PAYMENT',
   REFUND = 'REFUND',
   REWARD = 'REWARD',
+  LOCK = 'LOCK',
+  UNLOCK = 'UNLOCK',
 }
 
 @Entity('wallet_transactions')

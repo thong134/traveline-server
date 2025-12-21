@@ -58,9 +58,6 @@ export class RentalContract {
   citizenBackPhoto?: string;
 
   @Column({ nullable: true })
-  contractTerm?: string;
-
-  @Column({ nullable: true })
   notes?: string;
 
   @Column({ nullable: true })

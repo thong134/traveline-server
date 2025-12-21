@@ -137,6 +137,177 @@ export class WalletService {
     });
   }
 
+  /**
+   * Simulate a MoMo deposit (for development/testing).
+   * In production, this would be replaced by actual MoMo payment verification.
+   */
+  async simulateMomoDeposit(
+    userId: number,
+    amount: number,
+    momoTransactionId: string,
+  ): Promise<WalletOperationResult> {
+    const cents = this.toCents(amount);
+    if (cents <= 0n) {
+      throw new BadRequestException('Deposit amount must be greater than zero');
+    }
+
+    return this.adjustBalance({
+      userId,
+      delta: cents,
+      type: WalletTransactionType.MOMO_DEPOSIT,
+      referenceId: `momo:${momoTransactionId}`,
+    });
+  }
+
+  /**
+   * Lock funds for a rental escrow. Moves amount from available balance to locked balance.
+   */
+  async lockFunds(
+    userId: number,
+    amount: number,
+    rentalReferenceId: string,
+  ): Promise<WalletOperationResult> {
+    const cents = this.toCents(amount);
+    if (cents <= 0n) {
+      throw new BadRequestException('Lock amount must be greater than zero');
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const wallet = await manager.getRepository(UserWallet).findOne({
+        where: { user: { id: userId } },
+        lock: { mode: 'pessimistic_write' },
+        relations: { user: true },
+      });
+
+      if (!wallet) {
+        throw new NotFoundException('Wallet not found');
+      }
+
+      const currentBalance = this.decimalToCents(wallet.balance);
+      const currentLocked = this.decimalToCents(wallet.lockedBalance);
+
+      if (currentBalance < cents) {
+        throw new BadRequestException('Insufficient wallet balance');
+      }
+
+      wallet.balance = this.centsToDecimal(currentBalance - cents);
+      wallet.lockedBalance = this.centsToDecimal(currentLocked + cents);
+      await manager.getRepository(UserWallet).save(wallet);
+
+      const transaction = manager.getRepository(WalletTransaction).create({
+        wallet,
+        amount: this.centsToDecimal(-cents),
+        type: WalletTransactionType.LOCK,
+        referenceId: rentalReferenceId,
+      });
+      const persisted = await manager
+        .getRepository(WalletTransaction)
+        .save(transaction);
+
+      return {
+        balance: wallet.balance,
+        transactionId: persisted.id,
+        amount: persisted.amount,
+        type: persisted.type,
+        referenceId: persisted.referenceId ?? undefined,
+        currency: 'VND',
+      };
+    });
+  }
+
+  /**
+   * Release locked funds. Can either pay to owner or refund to renter.
+   * @param toOwnerUserId - If provided, releases funds to the owner's wallet. If null, refunds to original renter.
+   */
+  async releaseFunds(
+    renterUserId: number,
+    amount: number,
+    rentalReferenceId: string,
+    toOwnerUserId?: number,
+  ): Promise<WalletOperationResult> {
+    const cents = this.toCents(amount);
+    if (cents <= 0n) {
+      throw new BadRequestException('Release amount must be greater than zero');
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const renterWallet = await manager.getRepository(UserWallet).findOne({
+        where: { user: { id: renterUserId } },
+        lock: { mode: 'pessimistic_write' },
+        relations: { user: true },
+      });
+
+      if (!renterWallet) {
+        throw new NotFoundException('Renter wallet not found');
+      }
+
+      const currentLocked = this.decimalToCents(renterWallet.lockedBalance);
+      if (currentLocked < cents) {
+        throw new BadRequestException('Insufficient locked balance');
+      }
+
+      // Deduct from locked balance
+      renterWallet.lockedBalance = this.centsToDecimal(currentLocked - cents);
+      await manager.getRepository(UserWallet).save(renterWallet);
+
+      let targetWallet = renterWallet;
+      let transactionType = WalletTransactionType.REFUND;
+
+      if (toOwnerUserId && toOwnerUserId !== renterUserId) {
+        // Pay to owner
+        const ownerWallet = await manager.getRepository(UserWallet).findOne({
+          where: { user: { id: toOwnerUserId } },
+          lock: { mode: 'pessimistic_write' },
+          relations: { user: true },
+        });
+
+        if (!ownerWallet) {
+          throw new NotFoundException('Owner wallet not found');
+        }
+
+        const ownerBalance = this.decimalToCents(ownerWallet.balance);
+        ownerWallet.balance = this.centsToDecimal(ownerBalance + cents);
+        await manager.getRepository(UserWallet).save(ownerWallet);
+        targetWallet = ownerWallet;
+        transactionType = WalletTransactionType.PAYMENT;
+      } else {
+        // Refund to renter
+        const renterBalance = this.decimalToCents(renterWallet.balance);
+        renterWallet.balance = this.centsToDecimal(renterBalance + cents);
+        await manager.getRepository(UserWallet).save(renterWallet);
+      }
+
+      // Record unlock transaction on renter's wallet
+      const unlockTx = manager.getRepository(WalletTransaction).create({
+        wallet: renterWallet,
+        amount: this.centsToDecimal(cents),
+        type: WalletTransactionType.UNLOCK,
+        referenceId: rentalReferenceId,
+      });
+      await manager.getRepository(WalletTransaction).save(unlockTx);
+
+      // Record payment/refund transaction on target wallet
+      const transaction = manager.getRepository(WalletTransaction).create({
+        wallet: targetWallet,
+        amount: this.centsToDecimal(cents),
+        type: transactionType,
+        referenceId: rentalReferenceId,
+      });
+      const persisted = await manager
+        .getRepository(WalletTransaction)
+        .save(transaction);
+
+      return {
+        balance: targetWallet.balance,
+        transactionId: persisted.id,
+        amount: persisted.amount,
+        type: persisted.type,
+        referenceId: persisted.referenceId ?? undefined,
+        currency: 'VND',
+      };
+    });
+  }
+
   private async adjustBalance(params: {
     userId: number;
     delta: bigint;

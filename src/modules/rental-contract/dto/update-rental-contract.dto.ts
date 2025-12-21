@@ -1,19 +1,19 @@
-import { PartialType } from '@nestjs/swagger';
-import { CreateRentalContractDto } from './create-rental-contract.dto';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { RentalContractStatus } from '../entities/rental-contract.entity';
+import { IsOptional, IsString } from 'class-validator';
 
-export class UpdateRentalContractDto extends PartialType(
-  CreateRentalContractDto,
-) {
-  @ApiPropertyOptional({ enum: RentalContractStatus })
-  @IsOptional()
-  @IsEnum(RentalContractStatus)
-  status?: RentalContractStatus;
-
-  @ApiPropertyOptional({ description: 'Reason for rejecting the contract' })
+export class UpdateRentalContractDto {
+  @ApiPropertyOptional({ description: 'Bank name for payouts' })
   @IsOptional()
   @IsString()
-  rejectedReason?: string;
+  bankName?: string;
+
+  @ApiPropertyOptional({ description: 'Bank account number for payouts' })
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string;
+
+  @ApiPropertyOptional({ description: 'Bank account holder name' })
+  @IsOptional()
+  @IsString()
+  bankAccountName?: string;
 }

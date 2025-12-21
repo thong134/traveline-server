@@ -30,9 +30,8 @@ import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../user/entities/user-role.enum';
 import {
-  RenewRentalContractDto,
   RejectRentalContractDto,
-  UpdateRentalContractStatusDto,
+  SuspendRentalContractDto,
 } from './dto/manage-rental-contract.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { imageMulterOptions } from '../../common/upload/image-upload.config';
@@ -74,17 +73,24 @@ export class RentalContractsController {
     });
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Danh sách hợp đồng cho thuê' })
+  @Get('me')
+  @ApiOperation({ summary: 'Danh sách hợp đồng cho thuê của tôi' })
   @ApiQuery({ name: 'status', required: false, enum: RentalContractStatus })
-  @ApiOkResponse({ description: 'Danh sách hợp đồng' })
-  findAll(
+  @ApiOkResponse({ description: 'Danh sách hợp đồng của user' })
+  findMyContracts(
     @CurrentUser() user: RequestUser,
     @Query('status') status?: RentalContractStatus,
   ) {
-    return this.service.findAll(user.userId, {
-      status,
-    });
+    return this.service.findMyContracts(user.userId, { status });
+  }
+
+  @Get()
+  @Roles(UserRole.Admin)
+  @ApiOperation({ summary: 'Danh sách hợp đồng cho thuê (admin)' })
+  @ApiQuery({ name: 'status', required: false, enum: RentalContractStatus })
+  @ApiOkResponse({ description: 'Danh sách hợp đồng' })
+  findAll(@Query('status') status?: RentalContractStatus) {
+    return this.service.findAllForAdmin({ status });
   }
 
   @Get(':id')
@@ -98,46 +104,14 @@ export class RentalContractsController {
   }
 
   @Patch(':id')
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'businessRegisterPhoto', maxCount: 1 },
-        { name: 'citizenFrontPhoto', maxCount: 1 },
-        { name: 'citizenBackPhoto', maxCount: 1 },
-      ],
-      imageMulterOptions,
-    ),
-  )
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Cập nhật hợp đồng (chủ xe hoặc quản trị viên)' })
+  @ApiOperation({ summary: 'Cập nhật thông tin ngân hàng của hợp đồng' })
   @ApiOkResponse({ description: 'Cập nhật hợp đồng thành công' })
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRentalContractDto,
     @CurrentUser() user: RequestUser,
-    @UploadedFiles()
-    files?: {
-      businessRegisterPhoto?: Express.Multer.File[];
-      citizenFrontPhoto?: Express.Multer.File[];
-      citizenBackPhoto?: Express.Multer.File[];
-    },
   ) {
-    return this.service.update(id, user.userId, dto, {
-      businessRegisterPhoto: files?.businessRegisterPhoto?.[0],
-      citizenFrontPhoto: files?.citizenFrontPhoto?.[0],
-      citizenBackPhoto: files?.citizenBackPhoto?.[0],
-    });
-  }
-
-  @Patch(':id/status')
-  @ApiOperation({ summary: 'Cập nhật trạng thái hợp đồng cho thuê' })
-  @ApiOkResponse({ description: 'Trạng thái hợp đồng đã được cập nhật' })
-  updateStatus(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateRentalContractStatusDto,
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.service.updateStatus(id, user.userId, dto);
+    return this.service.update(id, user.userId, dto);
   }
 
   @Patch(':id/approve')
@@ -159,15 +133,15 @@ export class RentalContractsController {
     return this.service.reject(id, dto);
   }
 
-  @Patch(':id/renew')
-  @ApiOperation({ summary: 'Gia hạn hợp đồng đang tạm ngưng' })
-  @ApiOkResponse({ description: 'Hợp đồng đã được gia hạn' })
-  renew(
+  @Patch(':id/suspend')
+  @ApiOperation({ summary: 'Ngưng hợp tác (chủ xe)' })
+  @ApiOkResponse({ description: 'Hợp đồng đã được ngưng' })
+  suspend(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: RenewRentalContractDto,
+    @Body() dto: SuspendRentalContractDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.service.renew(id, user.userId, dto);
+    return this.service.suspend(id, user.userId, dto);
   }
 
   @Delete(':id')

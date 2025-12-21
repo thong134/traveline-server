@@ -13,15 +13,19 @@ import {
 import { CreateRentalContractDto } from './dto/create-rental-contract.dto';
 import { UpdateRentalContractDto } from './dto/update-rental-contract.dto';
 import {
-  RenewRentalContractDto,
   RejectRentalContractDto,
-  UpdateRentalContractStatusDto,
+  SuspendRentalContractDto,
 } from './dto/manage-rental-contract.dto';
 import { User } from '../user/entities/user.entity';
 import { assignDefined } from '../../common/utils/object.util';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import type { Express } from 'express';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
+import {
+  RentalVehicle,
+  RentalVehicleApprovalStatus,
+  RentalVehicleAvailabilityStatus,
+} from '../rental-vehicle/entities/rental-vehicle.entity';
 
 type ContractImageFiles = {
   businessRegisterPhoto?: Express.Multer.File;
@@ -36,13 +40,15 @@ export class RentalContractsService {
     private readonly repo: Repository<RentalContract>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(RentalVehicle)
+    private readonly vehicleRepo: Repository<RentalVehicle>,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   private async getContractOrFail(id: number): Promise<RentalContract> {
     const contract = await this.repo.findOne({
       where: { id },
-      relations: ['vehicles', 'user'],
+      relations: ['vehicles', 'vehicles.vehicleCatalog', 'user'],
     });
     if (!contract) {
       throw new NotFoundException(`Rental contract ${id} not found`);
@@ -87,7 +93,7 @@ export class RentalContractsService {
     return saved;
   }
 
-  async findAll(
+  async findMyContracts(
     userId: number,
     params: { status?: RentalContractStatus } = {},
   ): Promise<RentalContract[]> {
@@ -102,6 +108,7 @@ export class RentalContractsService {
 
     return qb
       .leftJoinAndSelect('contract.vehicles', 'vehicles')
+      .leftJoinAndSelect('vehicles.vehicleCatalog', 'vehicleCatalog')
       .leftJoinAndSelect('contract.user', 'user')
       .orderBy('contract.createdAt', 'DESC')
       .getMany();
@@ -119,6 +126,7 @@ export class RentalContractsService {
 
     return qb
       .leftJoinAndSelect('contract.vehicles', 'vehicles')
+      .leftJoinAndSelect('vehicles.vehicleCatalog', 'vehicleCatalog')
       .leftJoinAndSelect('contract.user', 'user')
       .orderBy('contract.createdAt', 'DESC')
       .getMany();
@@ -140,50 +148,15 @@ export class RentalContractsService {
     id: number,
     userId: number,
     dto: UpdateRentalContractDto,
-    files: ContractImageFiles = {},
   ): Promise<RentalContract> {
     const contract = await this.findOne(id, userId);
 
     assignDefined(contract, {
-      citizenId: dto.citizenId,
-      businessType: dto.businessType,
-      businessName: dto.businessName,
-      businessProvince: dto.businessProvince,
-      businessAddress: dto.businessAddress,
-      taxCode: dto.taxCode,
-      businessRegisterPhoto: dto.businessRegisterPhoto,
-      citizenFrontPhoto: dto.citizenFrontPhoto,
-      citizenBackPhoto: dto.citizenBackPhoto,
-      contractTerm: dto.contractTerm,
-      notes: dto.notes,
       bankName: dto.bankName,
       bankAccountNumber: dto.bankAccountNumber,
       bankAccountName: dto.bankAccountName,
-      termsAccepted: dto.termsAccepted,
     });
 
-    if (dto.status) {
-      this.applyStatusUpdate(contract, dto.status, {
-        rejectedReason: dto.rejectedReason,
-      });
-    } else if (dto.rejectedReason !== undefined) {
-      contract.rejectedReason = dto.rejectedReason;
-    }
-
-    const updated = await this.applyContractImages(contract, files);
-
-    return this.repo.save(contract);
-  }
-
-  async updateStatus(
-    id: number,
-    userId: number,
-    dto: UpdateRentalContractStatusDto,
-  ): Promise<RentalContract> {
-    const contract = await this.findOne(id, userId);
-    this.applyStatusUpdate(contract, dto.status, {
-      rejectedReason: dto.rejectedReason,
-    });
     return this.repo.save(contract);
   }
 
@@ -204,25 +177,37 @@ export class RentalContractsService {
     return this.repo.save(contract);
   }
 
-  async renew(
+  async suspend(
     id: number,
     userId: number,
-    dto: RenewRentalContractDto,
+    dto: SuspendRentalContractDto,
   ): Promise<RentalContract> {
     const contract = await this.findOne(id, userId);
-    if (contract.status !== RentalContractStatus.SUSPENDED) {
+
+    if (contract.status !== RentalContractStatus.APPROVED) {
       throw new BadRequestException(
-        'Contract must be suspended before it can be renewed',
+        'Only approved contracts can be suspended',
       );
     }
 
-    assignDefined(contract, {
-      contractTerm: dto.contractTerm,
-      notes: dto.notes,
+    this.applyStatusUpdate(contract, RentalContractStatus.SUSPENDED, {
+      rejectedReason: dto.reason,
     });
 
-    this.applyStatusUpdate(contract, RentalContractStatus.APPROVED);
+    // Set all vehicles to inactive
+    await this.setVehiclesInactive(contract.id);
+
     return this.repo.save(contract);
+  }
+
+  private async setVehiclesInactive(contractId: number): Promise<void> {
+    await this.vehicleRepo.update(
+      { contractId },
+      {
+        status: RentalVehicleApprovalStatus.INACTIVE,
+        availability: RentalVehicleAvailabilityStatus.UNAVAILABLE,
+      },
+    );
   }
 
   async remove(id: number, userId: number): Promise<void> {

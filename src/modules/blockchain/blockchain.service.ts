@@ -182,6 +182,89 @@ export class BlockchainService {
   }
 
   /**
+   * Server-side deposit using admin/custodial wallet.
+   * This allows the system to deposit on behalf of users without requiring their private keys.
+   * The amountEth is symbolic/converted from VND using a configured exchange rate.
+   */
+  async adminDepositForRental(
+    rentalId: number,
+    ownerAddress: string,
+    amountEth: string,
+  ): Promise<{ transactionHash: string; blockchainRecorded: boolean }> {
+    const adminPrivateKey = this.configService.get<string>(
+      'BLOCKCHAIN_ADMIN_PRIVATE_KEY',
+    );
+
+    if (!adminPrivateKey) {
+      this.logger.warn(
+        `No admin private key configured. Skipping blockchain deposit for rental ${rentalId}`,
+      );
+      return { transactionHash: '', blockchainRecorded: false };
+    }
+
+    if (!this.getContractAddress()) {
+      this.logger.warn(
+        `No escrow contract address configured. Skipping blockchain deposit for rental ${rentalId}`,
+      );
+      return { transactionHash: '', blockchainRecorded: false };
+    }
+
+    if (!isAddress(ownerAddress)) {
+      throw new Error('Invalid owner address provided.');
+    }
+
+    const wallet = new Wallet(adminPrivateKey, this.provider);
+    const contract = this.getContract(wallet);
+    const valueWei = parseEther(amountEth);
+
+    try {
+      const gasEstimate = await contract.deposit.estimateGas(
+        rentalId,
+        ownerAddress,
+        { value: valueWei },
+      );
+      const gasLimit = this.addGasBuffer(gasEstimate);
+
+      const tx = (await contract.deposit(rentalId, ownerAddress, {
+        value: valueWei,
+        gasLimit,
+      })) as ContractTransactionResponse;
+
+      const transaction = await this.recordPendingTransaction({
+        rentalId,
+        txHash: tx.hash,
+        from: wallet.address,
+        to: this.getContractAddress(),
+        amountWei: valueWei,
+        type: BlockchainTransactionType.DEPOSIT,
+      });
+
+      const receipt = await tx.wait();
+      if (!receipt) {
+        throw new Error('Transaction receipt not found.');
+      }
+
+      await this.markTransactionStatus(
+        transaction.id,
+        BlockchainTransactionStatus.CONFIRMED,
+      );
+
+      this.logger.log(
+        `Admin deposited ${amountEth} ETH for rental ${rentalId} (tx: ${tx.hash})`,
+      );
+
+      return { transactionHash: tx.hash, blockchainRecorded: true };
+    } catch (error) {
+      this.logger.error(
+        `Admin deposit failed for rental ${rentalId}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      // Don't throw - blockchain failure shouldn't block the rental flow
+      return { transactionHash: '', blockchainRecorded: false };
+    }
+  }
+
+  /**
    * Releases escrowed funds to the owner for a completed rental.
    */
   async releaseFunds(
@@ -227,6 +310,70 @@ export class BlockchainService {
     }
 
     return { transactionHash: tx.hash };
+  }
+
+  /**
+   * Server-side release funds using admin wallet.
+   */
+  async adminReleaseFundsForRental(
+    rentalId: number,
+  ): Promise<{ transactionHash: string; blockchainRecorded: boolean }> {
+    const adminPrivateKey = this.configService.get<string>(
+      'BLOCKCHAIN_ADMIN_PRIVATE_KEY',
+    );
+
+    if (!adminPrivateKey || !this.getContractAddress()) {
+      this.logger.warn(
+        `Blockchain not configured. Skipping release for rental ${rentalId}`,
+      );
+      return { transactionHash: '', blockchainRecorded: false };
+    }
+
+    try {
+      const result = await this.releaseFunds(rentalId, adminPrivateKey);
+      this.logger.log(
+        `Admin released funds for rental ${rentalId} (tx: ${result.transactionHash})`,
+      );
+      return { transactionHash: result.transactionHash, blockchainRecorded: true };
+    } catch (error) {
+      this.logger.error(
+        `Admin release failed for rental ${rentalId}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      return { transactionHash: '', blockchainRecorded: false };
+    }
+  }
+
+  /**
+   * Server-side refund using admin wallet.
+   */
+  async adminRefundForRental(
+    rentalId: number,
+  ): Promise<{ transactionHash: string; blockchainRecorded: boolean }> {
+    const adminPrivateKey = this.configService.get<string>(
+      'BLOCKCHAIN_ADMIN_PRIVATE_KEY',
+    );
+
+    if (!adminPrivateKey || !this.getContractAddress()) {
+      this.logger.warn(
+        `Blockchain not configured. Skipping refund for rental ${rentalId}`,
+      );
+      return { transactionHash: '', blockchainRecorded: false };
+    }
+
+    try {
+      const result = await this.refund(rentalId, adminPrivateKey);
+      this.logger.log(
+        `Admin refunded for rental ${rentalId} (tx: ${result.transactionHash})`,
+      );
+      return { transactionHash: result.transactionHash, blockchainRecorded: true };
+    } catch (error) {
+      this.logger.error(
+        `Admin refund failed for rental ${rentalId}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      return { transactionHash: '', blockchainRecorded: false };
+    }
   }
 
   /**

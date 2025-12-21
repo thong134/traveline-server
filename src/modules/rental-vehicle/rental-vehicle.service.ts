@@ -1,10 +1,11 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { MoreThan, Not, In, Repository } from 'typeorm';
 import {
   RentalVehicle,
   RentalVehicleApprovalStatus,
@@ -18,6 +19,8 @@ import {
 } from '../rental-contract/entities/rental-contract.entity';
 import { VehicleCatalog } from '../vehicle-catalog/entities/vehicle-catalog.entity';
 import { User } from '../user/entities/user.entity';
+import { RentalBill, RentalBillStatus } from '../rental-bill/entities/rental-bill.entity';
+import { RentalBillDetail } from '../rental-bill/entities/rental-bill-detail.entity';
 import { assignDefined } from '../../common/utils/object.util';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import type { Express } from 'express';
@@ -39,6 +42,10 @@ export class RentalVehiclesService {
     private readonly vehicleCatalogRepo: Repository<VehicleCatalog>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(RentalBill)
+    private readonly billRepo: Repository<RentalBill>,
+    @InjectRepository(RentalBillDetail)
+    private readonly billDetailRepo: Repository<RentalBillDetail>,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
@@ -55,7 +62,41 @@ export class RentalVehiclesService {
     return price.toFixed(2);
   }
 
+  private ensurePriceOptional(value?: number | string): string | undefined {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+
+    const price = typeof value === 'string' ? Number(value) : value;
+    if (Number.isNaN(price)) {
+      return undefined;
+    }
+
+    return price.toFixed(2);
+  }
+
+  private async getVehicleWithOwnerCheck(
+    userId: number,
+    licensePlate: string,
+  ): Promise<RentalVehicle> {
+    const vehicle = await this.repo.findOne({
+      where: { licensePlate },
+      relations: ['vehicleCatalog', 'contract', 'contract.user'],
+    });
+
+    if (!vehicle) {
+      throw new NotFoundException(`Vehicle ${licensePlate} not found`);
+    }
+
+    if (vehicle.contract?.user?.id !== userId) {
+      throw new ForbiddenException('You do not have access to this vehicle');
+    }
+
+    return vehicle;
+  }
+
   async create(
+    userId: number,
     dto: CreateRentalVehicleDto,
     files: VehicleImageFiles = {},
   ): Promise<RentalVehicle> {
@@ -73,6 +114,11 @@ export class RentalVehiclesService {
       );
     }
 
+    // Verify the user owns this contract
+    if (contract.user.id !== userId) {
+      throw new ForbiddenException('You do not have access to this contract');
+    }
+
     if (contract.status !== RentalContractStatus.APPROVED) {
       throw new BadRequestException(
         'Contract must be approved before registering vehicles',
@@ -88,16 +134,13 @@ export class RentalVehiclesService {
       );
     }
 
-    let vehicleCatalog: VehicleCatalog | null = null;
-    if (dto.vehicleCatalogId) {
-      vehicleCatalog = await this.vehicleCatalogRepo.findOne({
-        where: { id: dto.vehicleCatalogId },
-      });
-      if (!vehicleCatalog) {
-        throw new NotFoundException(
-          `Vehicle catalog ${dto.vehicleCatalogId} not found`,
-        );
-      }
+    const vehicleCatalog = await this.vehicleCatalogRepo.findOne({
+      where: { id: dto.vehicleCatalogId },
+    });
+    if (!vehicleCatalog) {
+      throw new NotFoundException(
+        `Vehicle catalog ${dto.vehicleCatalogId} not found`,
+      );
     }
 
     const ownerId = owner.id;
@@ -120,14 +163,21 @@ export class RentalVehiclesService {
       licensePlate: dto.licensePlate.trim(),
       contractId: dto.contractId,
       vehicleCatalogId: dto.vehicleCatalogId,
-      vehicleCatalog: vehicleCatalog ?? undefined,
+      vehicleCatalog: vehicleCatalog,
       pricePerHour: this.ensurePrice(dto.pricePerHour),
       pricePerDay: this.ensurePrice(dto.pricePerDay),
+      priceFor4Hours: this.ensurePriceOptional(dto.priceFor4Hours),
+      priceFor8Hours: this.ensurePriceOptional(dto.priceFor8Hours),
+      priceFor12Hours: this.ensurePriceOptional(dto.priceFor12Hours),
+      priceFor2Days: this.ensurePriceOptional(dto.priceFor2Days),
+      priceFor3Days: this.ensurePriceOptional(dto.priceFor3Days),
+      priceFor5Days: this.ensurePriceOptional(dto.priceFor5Days),
+      priceFor7Days: this.ensurePriceOptional(dto.priceFor7Days),
       requirements: dto.requirements,
       description: dto.description,
-      status: dto.status ?? RentalVehicleApprovalStatus.PENDING,
-      availability:
-        dto.availability ?? RentalVehicleAvailabilityStatus.AVAILABLE,
+      // Auto set status and availability
+      status: RentalVehicleApprovalStatus.PENDING,
+      availability: RentalVehicleAvailabilityStatus.UNAVAILABLE,
       rejectedReason: undefined,
       totalRentals: 0,
       averageRating: '0.00',
@@ -142,6 +192,27 @@ export class RentalVehiclesService {
       1,
     );
     return saved;
+  }
+
+  async findMyVehicles(
+    userId: number,
+    params: { status?: RentalVehicleApprovalStatus } = {},
+  ): Promise<RentalVehicle[]> {
+    const { status } = params;
+
+    const qb = this.repo.createQueryBuilder('vehicle');
+    qb.innerJoin('vehicle.contract', 'contract');
+    qb.andWhere('contract.userId = :userId', { userId });
+
+    if (status) {
+      qb.andWhere('vehicle.status = :status', { status });
+    }
+
+    return qb
+      .leftJoinAndSelect('vehicle.vehicleCatalog', 'vehicleCatalog')
+      .leftJoinAndSelect('vehicle.contract', 'contractSelect')
+      .orderBy('vehicle.createdAt', 'DESC')
+      .getMany();
   }
 
   async findAll(
@@ -173,6 +244,114 @@ export class RentalVehiclesService {
       .getMany();
   }
 
+  async search(params: {
+    rentalType?: 'hourly' | 'daily';
+    minPrice?: number;
+    maxPrice?: number;
+    startDate?: string;
+    endDate?: string;
+    province?: string;
+  }): Promise<RentalVehicle[]> {
+    const { rentalType, minPrice, maxPrice, startDate, endDate, province } = params;
+
+    const qb = this.repo.createQueryBuilder('vehicle');
+
+    // Only show approved and available vehicles
+    qb.andWhere('vehicle.status = :status', {
+      status: RentalVehicleApprovalStatus.APPROVED,
+    });
+    qb.andWhere('vehicle.availability = :availability', {
+      availability: RentalVehicleAvailabilityStatus.AVAILABLE,
+    });
+
+    // Join with contract to get province info
+    qb.innerJoin('vehicle.contract', 'contract');
+    qb.andWhere('contract.status = :contractStatus', {
+      contractStatus: RentalContractStatus.APPROVED,
+    });
+
+    // Filter by province (businessProvince from contract)
+    if (province) {
+      qb.andWhere('LOWER(contract.businessProvince) LIKE LOWER(:province)', {
+        province: `%${province}%`,
+      });
+    }
+
+    // Price filter based on rental type
+    if (rentalType === 'hourly') {
+      if (minPrice !== undefined) {
+        qb.andWhere('CAST(vehicle.pricePerHour AS DECIMAL) >= :minPrice', {
+          minPrice,
+        });
+      }
+      if (maxPrice !== undefined) {
+        qb.andWhere('CAST(vehicle.pricePerHour AS DECIMAL) <= :maxPrice', {
+          maxPrice,
+        });
+      }
+    } else if (rentalType === 'daily') {
+      if (minPrice !== undefined) {
+        qb.andWhere('CAST(vehicle.pricePerDay AS DECIMAL) >= :minPrice', {
+          minPrice,
+        });
+      }
+      if (maxPrice !== undefined) {
+        qb.andWhere('CAST(vehicle.pricePerDay AS DECIMAL) <= :maxPrice', {
+          maxPrice,
+        });
+      }
+    } else {
+      // If no rental type specified, filter by either hourly or daily price
+      if (minPrice !== undefined) {
+        qb.andWhere(
+          '(CAST(vehicle.pricePerHour AS DECIMAL) >= :minPrice OR CAST(vehicle.pricePerDay AS DECIMAL) >= :minPrice)',
+          { minPrice },
+        );
+      }
+      if (maxPrice !== undefined) {
+        qb.andWhere(
+          '(CAST(vehicle.pricePerHour AS DECIMAL) <= :maxPrice OR CAST(vehicle.pricePerDay AS DECIMAL) <= :maxPrice)',
+          { maxPrice },
+        );
+      }
+    }
+
+    // Date availability filter - exclude vehicles that are booked during the requested period
+    if (startDate && endDate) {
+      const requestedStart = new Date(startDate);
+      const requestedEnd = new Date(endDate);
+
+      // Find all license plates that are booked during the requested period
+      const bookedVehiclesSubQuery = this.billDetailRepo
+        .createQueryBuilder('detail')
+        .select('detail.licensePlate')
+        .innerJoin('detail.bill', 'bill')
+        .where('bill.status NOT IN (:...excludedStatuses)', {
+          excludedStatuses: [RentalBillStatus.CANCELLED, RentalBillStatus.COMPLETED],
+        })
+        .andWhere(
+          // Check for date overlap: 
+          // Booked period overlaps if: bookedStart < requestedEnd AND bookedEnd > requestedStart
+          '(bill.startDate < :requestedEnd AND bill.endDate > :requestedStart)',
+          {
+            requestedStart,
+            requestedEnd,
+          },
+        );
+
+      qb.andWhere(
+        `vehicle.licensePlate NOT IN (${bookedVehiclesSubQuery.getQuery()})`,
+      );
+      qb.setParameters(bookedVehiclesSubQuery.getParameters());
+    }
+
+    return qb
+      .leftJoinAndSelect('vehicle.vehicleCatalog', 'vehicleCatalog')
+      .leftJoinAndSelect('vehicle.contract', 'contractSelect')
+      .orderBy('vehicle.createdAt', 'DESC')
+      .getMany();
+  }
+
   async findOne(licensePlate: string): Promise<RentalVehicle> {
     const vehicle = await this.repo.findOne({
       where: { licensePlate },
@@ -185,28 +364,13 @@ export class RentalVehiclesService {
   }
 
   async update(
+    userId: number,
     licensePlate: string,
     dto: UpdateRentalVehicleDto,
-    files: VehicleImageFiles = {},
   ): Promise<RentalVehicle> {
-    const vehicle = await this.findOne(licensePlate);
+    const vehicle = await this.getVehicleWithOwnerCheck(userId, licensePlate);
 
-    if (
-      dto.vehicleCatalogId &&
-      dto.vehicleCatalogId !== vehicle.vehicleCatalogId
-    ) {
-      const info = await this.vehicleCatalogRepo.findOne({
-        where: { id: dto.vehicleCatalogId },
-      });
-      if (!info) {
-        throw new NotFoundException(
-          `Vehicle catalog ${dto.vehicleCatalogId} not found`,
-        );
-      }
-      vehicle.vehicleCatalog = info;
-      vehicle.vehicleCatalogId = info.id;
-    }
-
+    // Only allow updating prices, requirements, and description
     if (dto.pricePerHour !== undefined) {
       vehicle.pricePerHour = this.ensurePrice(dto.pricePerHour);
     }
@@ -215,15 +379,32 @@ export class RentalVehiclesService {
       vehicle.pricePerDay = this.ensurePrice(dto.pricePerDay);
     }
 
-    if (dto.status && dto.status !== vehicle.status) {
-      vehicle.status = dto.status;
-      vehicle.rejectedReason = dto.rejectedReason;
-    } else if (dto.rejectedReason) {
-      vehicle.rejectedReason = dto.rejectedReason;
+    if (dto.priceFor4Hours !== undefined) {
+      vehicle.priceFor4Hours = this.ensurePriceOptional(dto.priceFor4Hours);
     }
 
-    if (dto.availability) {
-      vehicle.availability = dto.availability;
+    if (dto.priceFor8Hours !== undefined) {
+      vehicle.priceFor8Hours = this.ensurePriceOptional(dto.priceFor8Hours);
+    }
+
+    if (dto.priceFor12Hours !== undefined) {
+      vehicle.priceFor12Hours = this.ensurePriceOptional(dto.priceFor12Hours);
+    }
+
+    if (dto.priceFor2Days !== undefined) {
+      vehicle.priceFor2Days = this.ensurePriceOptional(dto.priceFor2Days);
+    }
+
+    if (dto.priceFor3Days !== undefined) {
+      vehicle.priceFor3Days = this.ensurePriceOptional(dto.priceFor3Days);
+    }
+
+    if (dto.priceFor5Days !== undefined) {
+      vehicle.priceFor5Days = this.ensurePriceOptional(dto.priceFor5Days);
+    }
+
+    if (dto.priceFor7Days !== undefined) {
+      vehicle.priceFor7Days = this.ensurePriceOptional(dto.priceFor7Days);
     }
 
     assignDefined(vehicle, {
@@ -231,46 +412,11 @@ export class RentalVehiclesService {
       description: dto.description,
     });
 
-    let ownerId: number | undefined = vehicle.contract?.user?.id;
-    if (ownerId === undefined) {
-      const contract = await this.contractRepo.findOne({
-        where: { id: vehicle.contractId },
-        relations: { user: true },
-      });
-      ownerId = contract?.user?.id;
-    }
-
-    if (ownerId === undefined) {
-      throw new NotFoundException(
-        `Contract owner not found for vehicle ${vehicle.licensePlate}`,
-      );
-    }
-
-    const frontUrl = await this.uploadVehicleImage(
-      vehicle.licensePlate,
-      ownerId,
-      files.vehicleRegistrationFront,
-      'registration-front',
-    );
-    if (frontUrl) {
-      vehicle.vehicleRegistrationFront = frontUrl;
-    }
-
-    const backUrl = await this.uploadVehicleImage(
-      vehicle.licensePlate,
-      ownerId,
-      files.vehicleRegistrationBack,
-      'registration-back',
-    );
-    if (backUrl) {
-      vehicle.vehicleRegistrationBack = backUrl;
-    }
-
     return this.repo.save(vehicle);
   }
 
-  async remove(licensePlate: string): Promise<void> {
-    const vehicle = await this.findOne(licensePlate);
+  async remove(userId: number, licensePlate: string): Promise<void> {
+    const vehicle = await this.getVehicleWithOwnerCheck(userId, licensePlate);
     await this.repo.remove(vehicle);
     await this.contractRepo.decrement(
       { id: vehicle.contractId },
@@ -279,67 +425,92 @@ export class RentalVehiclesService {
     );
   }
 
-  async updateAvailability(
-    licensePlate: string,
-    availability: RentalVehicleAvailabilityStatus,
-  ): Promise<RentalVehicle> {
-    const vehicle = await this.findOne(licensePlate);
-    vehicle.availability = availability;
-    return this.repo.save(vehicle);
-  }
-
-  async updateStatus(
-    licensePlate: string,
-    params: {
-      status: RentalVehicleApprovalStatus;
-      availability?: RentalVehicleAvailabilityStatus;
-      rejectedReason?: string;
-    },
-  ): Promise<RentalVehicle> {
-    const vehicle = await this.findOne(licensePlate);
-
-    if (
-      params.status === RentalVehicleApprovalStatus.REJECTED &&
-      !params.rejectedReason
-    ) {
-      throw new BadRequestException('Rejected vehicles require a reason');
-    }
-
-    vehicle.status = params.status;
-    if (params.status === RentalVehicleApprovalStatus.APPROVED) {
-      vehicle.rejectedReason = undefined;
-    } else if (params.rejectedReason !== undefined) {
-      vehicle.rejectedReason = params.rejectedReason;
-    } else if (params.status !== RentalVehicleApprovalStatus.REJECTED) {
-      vehicle.rejectedReason = undefined;
-    }
-
-    if (params.availability) {
-      vehicle.availability = params.availability;
-    }
-
-    return this.repo.save(vehicle);
-  }
-
   async approve(licensePlate: string): Promise<RentalVehicle> {
-    return this.updateStatus(licensePlate, {
-      status: RentalVehicleApprovalStatus.APPROVED,
-      availability: RentalVehicleAvailabilityStatus.AVAILABLE,
-    });
+    const vehicle = await this.findOne(licensePlate);
+
+    vehicle.status = RentalVehicleApprovalStatus.APPROVED;
+    vehicle.availability = RentalVehicleAvailabilityStatus.AVAILABLE;
+    vehicle.rejectedReason = undefined;
+
+    return this.repo.save(vehicle);
   }
 
   async reject(licensePlate: string, reason: string): Promise<RentalVehicle> {
-    return this.updateStatus(licensePlate, {
-      status: RentalVehicleApprovalStatus.REJECTED,
-      rejectedReason: reason,
-    });
+    if (!reason) {
+      throw new BadRequestException('Rejected vehicles require a reason');
+    }
+
+    const vehicle = await this.findOne(licensePlate);
+
+    vehicle.status = RentalVehicleApprovalStatus.REJECTED;
+    vehicle.availability = RentalVehicleAvailabilityStatus.UNAVAILABLE;
+    vehicle.rejectedReason = reason;
+
+    return this.repo.save(vehicle);
   }
 
-  async disable(licensePlate: string): Promise<RentalVehicle> {
-    return this.updateStatus(licensePlate, {
-      status: RentalVehicleApprovalStatus.INACTIVE,
-      availability: RentalVehicleAvailabilityStatus.MAINTENANCE,
+  async disable(userId: number, licensePlate: string): Promise<RentalVehicle> {
+    const vehicle = await this.getVehicleWithOwnerCheck(userId, licensePlate);
+
+    // Check for future bookings
+    const hasFutureBookings = await this.hasFutureBookings(licensePlate);
+    if (hasFutureBookings) {
+      throw new BadRequestException(
+        'Không thể tạm ngưng xe này vì đang có đơn đặt xe trong tương lai',
+      );
+    }
+
+    vehicle.availability = RentalVehicleAvailabilityStatus.MAINTENANCE;
+
+    return this.repo.save(vehicle);
+  }
+
+  async enable(userId: number, licensePlate: string): Promise<RentalVehicle> {
+    const vehicle = await this.getVehicleWithOwnerCheck(userId, licensePlate);
+
+    if (vehicle.status !== RentalVehicleApprovalStatus.APPROVED) {
+      throw new BadRequestException(
+        'Only approved vehicles can be enabled',
+      );
+    }
+
+    if (vehicle.availability !== RentalVehicleAvailabilityStatus.MAINTENANCE) {
+      throw new BadRequestException(
+        'Vehicle is not in maintenance mode',
+      );
+    }
+
+    vehicle.availability = RentalVehicleAvailabilityStatus.AVAILABLE;
+
+    return this.repo.save(vehicle);
+  }
+
+  private async hasFutureBookings(licensePlate: string): Promise<boolean> {
+    // Find any bill details for this vehicle
+    const billDetails = await this.billDetailRepo.find({
+      where: { licensePlate },
+      relations: ['bill'],
     });
+
+    const now = new Date();
+    
+    // Check if any bills have end date in the future and are not cancelled/completed
+    for (const detail of billDetails) {
+      if (!detail.bill) continue;
+      
+      const isActiveStatus = ![
+        RentalBillStatus.CANCELLED,
+        RentalBillStatus.COMPLETED,
+      ].includes(detail.bill.status);
+      
+      const isFuture = detail.bill.endDate > now;
+      
+      if (isActiveStatus && isFuture) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private async uploadVehicleImage(

@@ -8,6 +8,8 @@ import { RentalVehicle } from '../rental-vehicle/entities/rental-vehicle.entity'
 import { User } from '../user/entities/user.entity';
 import { Voucher } from '../voucher/entities/voucher.entity';
 import { VouchersModule } from '../voucher/voucher.module';
+import { WalletModule } from '../wallet/wallet.module';
+import { BlockchainModule } from '../blockchain/blockchain.module';
 
 @Module({
   imports: [
@@ -19,9 +21,12 @@ import { VouchersModule } from '../voucher/voucher.module';
       Voucher,
     ]),
     VouchersModule,
+    WalletModule,
+    BlockchainModule,
   ],
   providers: [RentalBillsService],
   controllers: [RentalBillsController],
   exports: [RentalBillsService],
 })
 export class RentalBillsModule {}
+

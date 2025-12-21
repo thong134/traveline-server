@@ -1,24 +1,39 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export enum BusinessType {
   PERSONAL = 'personal',
   COMPANY = 'company',
 }
 
-export enum CreateRentalContractStatus {
-  PENDING = 'pending',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
-  SUSPENDED = 'suspended',
-}
-
 export class CreateRentalContractDto {
-  @ApiPropertyOptional({ description: 'Citizen identification number' })
-  @IsOptional()
+  @ApiProperty({ description: 'Full name for business contact' })
   @IsString()
-  citizenId?: string;
+  @IsNotEmpty()
+  fullName: string;
+
+  @ApiProperty({ description: 'Email for business contact' })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @ApiProperty({ description: 'Phone number for business contact' })
+  @IsString()
+  @IsNotEmpty()
+  phoneNumber: string;
+
+  @ApiProperty({ description: 'Citizen identification number' })
+  @IsString()
+  @IsNotEmpty()
+  citizenId: string;
 
   @ApiProperty({ enum: BusinessType, default: BusinessType.PERSONAL })
   @IsEnum(BusinessType)
@@ -71,32 +86,25 @@ export class CreateRentalContractDto {
   @IsString()
   citizenBackPhoto?: string;
 
-  @ApiPropertyOptional({
-    description: 'Contract term description (e.g. 12 months)',
-  })
-  @IsOptional()
-  @IsString()
-  contractTerm?: string;
-
   @ApiPropertyOptional({ description: 'Additional notes from owner' })
   @IsOptional()
   @IsString()
   notes?: string;
 
-  @ApiPropertyOptional({ description: 'Bank name for payouts' })
-  @IsOptional()
+  @ApiProperty({ description: 'Bank name for payouts' })
   @IsString()
-  bankName?: string;
+  @IsNotEmpty()
+  bankName: string;
 
-  @ApiPropertyOptional({ description: 'Bank account number for payouts' })
-  @IsOptional()
+  @ApiProperty({ description: 'Bank account number for payouts' })
   @IsString()
-  bankAccountNumber?: string;
+  @IsNotEmpty()
+  bankAccountNumber: string;
 
-  @ApiPropertyOptional({ description: 'Bank account holder name' })
-  @IsOptional()
+  @ApiProperty({ description: 'Bank account holder name' })
   @IsString()
-  bankAccountName?: string;
+  @IsNotEmpty()
+  bankAccountName: string;
 
   @ApiProperty({ description: 'Owner agrees to Traveline rental terms' })
   @Transform(

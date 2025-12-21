@@ -21,8 +21,7 @@ export enum RentalVehicleApprovalStatus {
 
 export enum RentalVehicleAvailabilityStatus {
   AVAILABLE = 'available',
-  //UNAVAILABLE = 'unavailable',
-  RENTED = 'rented',
+  UNAVAILABLE = 'unavailable',
   MAINTENANCE = 'maintenance',
 }
 
@@ -52,11 +51,35 @@ export class RentalVehicle {
   @Column({ nullable: true })
   vehicleCatalogId?: number;
 
+  // Base prices (required)
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   pricePerHour: string;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   pricePerDay: string;
+
+  // Hourly packages (optional)
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  priceFor4Hours?: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  priceFor8Hours?: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  priceFor12Hours?: string;
+
+  // Daily packages (optional)
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  priceFor2Days?: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  priceFor3Days?: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  priceFor5Days?: string;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  priceFor7Days?: string;
 
   @Column({ nullable: true })
   requirements?: string;
@@ -83,7 +106,7 @@ export class RentalVehicle {
   @Column({
     type: 'enum',
     enum: RentalVehicleAvailabilityStatus,
-    default: RentalVehicleAvailabilityStatus.AVAILABLE,
+    default: RentalVehicleAvailabilityStatus.UNAVAILABLE,
   })
   availability: RentalVehicleAvailabilityStatus;
 

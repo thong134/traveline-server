@@ -64,9 +64,6 @@ export class RentalBill {
   @Column({ nullable: true })
   contactPhone?: string;
 
-  @Column({ nullable: true })
-  contactEmail?: string;
-
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   total: string;
 
@@ -89,12 +86,6 @@ export class RentalBill {
     default: RentalBillStatus.PENDING,
   })
   status: RentalBillStatus;
-
-  @Column({ nullable: true })
-  statusReason?: string;
-
-  @Column({ nullable: true })
-  citizenBackPhoto?: string;
 
   @Column({ nullable: true })
   verifiedSelfiePhoto?: string;
