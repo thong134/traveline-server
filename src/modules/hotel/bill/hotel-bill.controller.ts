@@ -25,6 +25,7 @@ import { HotelBillStatus } from './entities/hotel-bill.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../../auth/decorators/current-user.decorator';
+import { RequireVerification } from '../../auth/decorators/require-verification.decorator';
 
 @ApiTags('hotel-bills')
 @ApiBearerAuth()
@@ -33,6 +34,7 @@ import type { RequestUser } from '../../auth/decorators/current-user.decorator';
 export class HotelBillsController {
   constructor(private readonly hotelBillsService: HotelBillsService) {}
 
+  @RequireVerification()
   @Post()
   @ApiOperation({ summary: 'Tạo hóa đơn đặt phòng khách sạn' })
   @ApiCreatedResponse({ description: 'Hotel bill created' })

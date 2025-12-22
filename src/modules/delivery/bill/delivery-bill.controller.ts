@@ -25,6 +25,7 @@ import { DeliveryBillStatus } from './entities/delivery-bill.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../../auth/decorators/current-user.decorator';
+import { RequireVerification } from '../../auth/decorators/require-verification.decorator';
 
 @ApiTags('delivery-bills')
 @ApiBearerAuth()
@@ -33,6 +34,7 @@ import type { RequestUser } from '../../auth/decorators/current-user.decorator';
 export class DeliveryBillsController {
   constructor(private readonly service: DeliveryBillsService) {}
 
+  @RequireVerification()
   @Post()
   @ApiOperation({ summary: 'Tạo hóa đơn giao hàng' })
   @ApiCreatedResponse({ description: 'Delivery bill created' })

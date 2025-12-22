@@ -172,6 +172,7 @@ export class AuthService implements OnModuleInit {
       password: hashed,
       role: UserRole.User,
     });
+    // Other fields in CreateUserDto will be ignore by prepareUserPayload if they are not passed
     await this.walletService.createWallet(user.id);
     return { id: user.id, username: user.username, role: user.role };
   }
@@ -264,13 +265,14 @@ export class AuthService implements OnModuleInit {
   }
 
   async startEmailVerification(
-    email: string,
+    userId: number,
   ): Promise<{ ok: boolean; token: string; expiresAt: Date }> {
-    this.checkRate(`email:start:${email}`, 5, 60 * 60 * 1000);
-    const user = await this.usersService.findByEmail(email);
-    if (!user) {
-      throw new UnauthorizedException('Email không tồn tại');
+    const user = await this.usersService.findOne(userId);
+    const email = user.email;
+    if (!email) {
+      throw new BadRequestException('Vui lòng điền email trước khi xác thực');
     }
+    this.checkRate(`email:start:${email}`, 5, 60 * 60 * 1000);
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresMin = this.getEmailVerifyExpiresMinutes();
@@ -376,9 +378,14 @@ export class AuthService implements OnModuleInit {
   }
 
   async startPhoneVerification(
-    phone: string,
+    userId: number,
     recaptchaToken: string,
   ): Promise<{ ok: boolean; sessionInfo: string; expiresAt: Date }> {
+    const user = await this.usersService.findOne(userId);
+    const phone = user.phone;
+    if (!phone) {
+      throw new BadRequestException('Vui lòng điền số điện thoại trước khi xác thực');
+    }
     this.checkRate(`phone:start:${phone}`, 5, 60 * 60 * 1000);
     const apiKey = process.env.FIREBASE_API_KEY;
     if (!apiKey) {
@@ -543,10 +550,19 @@ export class AuthService implements OnModuleInit {
     const admin = await this.usersService.create({
       username,
       password: hashed,
-      email: email?.trim(),
-      fullName,
       role: UserRole.Admin,
+    } as any);
+
+    // Update other fields after creation if needed, or use a method that allows it
+    await this.usersService.updateProfile(admin.id, {
+      fullName,
     });
+    if (email?.trim()) {
+      await this.usersService.updateVerificationInfo(admin.id, {
+        email: email.trim(),
+      });
+      await this.usersService.markEmailVerified(admin.id);
+    }
 
     this.logger.warn(
       `Provisioned default admin account "${username}". Please update DEFAULT_ADMIN_PASSWORD env variable to change the initial password.`,

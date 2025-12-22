@@ -21,6 +21,7 @@ import { TrainBill } from '../../train/bill/entities/train-bill.entity';
 import { FlightBill } from '../../flight/bill/entities/flight-bill.entity';
 import { UserWallet } from '../../wallet/entities/user-wallet.entity';
 import { UserRole } from './user-role.enum';
+import { UserTier } from './user-tier.enum';
 
 @Entity()
 export class User {
@@ -29,9 +30,6 @@ export class User {
 
   @Column({ unique: true })
   username: string;
-
-  @Column({ nullable: true })
-  name?: string;
 
   @Column({ nullable: true })
   email: string;
@@ -50,6 +48,9 @@ export class User {
 
   @Column({ default: false })
   isPhoneVerified: boolean;
+
+  @Column({ default: false })
+  isCitizenIdVerified: boolean;
 
   @OneToMany(() => RefreshToken, (rt: RefreshToken) => rt.user)
   refreshTokens: RefreshToken[];
@@ -153,11 +154,12 @@ export class User {
   @Column({ type: 'int', default: 0 })
   feedbackTimes: number;
 
-  @Column({ type: 'int', default: 0 })
-  dayParticipation: number;
-
-  @Column({ default: 'dong' })
-  userTier: string;
+  @Column({
+    type: 'enum',
+    enum: UserTier,
+    default: UserTier.EXPLORER,
+  })
+  userTier: UserTier;
 
   @Column({
     type: 'enum',

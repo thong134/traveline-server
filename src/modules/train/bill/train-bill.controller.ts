@@ -25,6 +25,7 @@ import { TrainBillStatus } from './entities/train-bill.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../../auth/decorators/current-user.decorator';
+import { RequireVerification } from '../../auth/decorators/require-verification.decorator';
 
 @ApiTags('train-bills')
 @ApiBearerAuth()
@@ -33,6 +34,7 @@ import type { RequestUser } from '../../auth/decorators/current-user.decorator';
 export class TrainBillsController {
   constructor(private readonly service: TrainBillsService) {}
 
+  @RequireVerification()
   @Post()
   @ApiOperation({ summary: 'Tạo hóa đơn tàu' })
   @ApiCreatedResponse({ description: 'Train bill created' })

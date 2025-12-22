@@ -22,6 +22,7 @@ import { RentalBillStatus } from './entities/rental-bill.entity';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
+import { RequireVerification } from '../auth/decorators/require-verification.decorator';
 
 @ApiTags('rental-bills')
 @RequireAuth()
@@ -29,6 +30,7 @@ import type { RequestUser } from '../auth/decorators/current-user.decorator';
 export class RentalBillsController {
   constructor(private readonly service: RentalBillsService) {}
 
+  @RequireVerification()
   @Post()
   @ApiOperation({ summary: 'Tạo hóa đơn thuê xe mới (trạng thái pending)' })
   create(
@@ -67,6 +69,7 @@ export class RentalBillsController {
     return this.service.update(id, user.userId, dto);
   }
 
+  @RequireVerification()
   @Patch(':id/confirm')
   @ApiOperation({ summary: 'Xác nhận thông tin và chọn phương thức thanh toán' })
   @ApiQuery({ name: 'paymentMethod', required: true, example: 'wallet' })
@@ -78,6 +81,7 @@ export class RentalBillsController {
     return this.service.confirm(id, user.userId, paymentMethod);
   }
 
+  @RequireVerification()
   @Patch(':id/pay')
   @ApiOperation({ summary: 'Thực hiện thanh toán' })
   pay(

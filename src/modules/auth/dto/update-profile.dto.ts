@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsDateString, IsIn, IsOptional, IsString } from 'class-validator';
-import { GENDER_VALUES } from '../../user/dto/create-user.dto';
+import { GENDER_VALUES } from '../../user/dto/update-initial-profile.dto';
 
 export class UpdateProfileDto {
   @ApiPropertyOptional({ description: 'Họ và tên' })

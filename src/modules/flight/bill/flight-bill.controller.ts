@@ -25,6 +25,7 @@ import { FlightBillStatus } from './entities/flight-bill.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../../auth/decorators/current-user.decorator';
+import { RequireVerification } from '../../auth/decorators/require-verification.decorator';
 
 @ApiTags('flight-bills')
 @ApiBearerAuth()
@@ -33,6 +34,7 @@ import type { RequestUser } from '../../auth/decorators/current-user.decorator';
 export class FlightBillsController {
   constructor(private readonly service: FlightBillsService) {}
 
+  @RequireVerification()
   @Post()
   @ApiOperation({ summary: 'Tạo hóa đơn chuyến bay' })
   @ApiCreatedResponse({ description: 'Flight bill created' })

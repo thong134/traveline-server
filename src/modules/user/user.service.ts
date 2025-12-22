@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
+import { UserTier } from './entities/user-tier.enum';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { assignDefined } from '../../common/utils/object.util';
@@ -27,20 +28,23 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  private static tierThresholds: Array<{ min: number; tier: string }> = [
-    { min: 10000, tier: 'kim_cuong' },
-    { min: 5000, tier: 'vang' },
-    { min: 2000, tier: 'bac' },
-    { min: 0, tier: 'dong' },
+  private static tierThresholds: Array<{ min: number; tier: UserTier }> = [
+    { min: 1000000, tier: UserTier.LEGENDARY_TRAVELER },
+    { min: 300000, tier: UserTier.ELITE_VOYAGER },
+    { min: 150000, tier: UserTier.TRAVEL_EXPERT },
+    { min: 50000, tier: UserTier.JOURNEY_MASTER },
+    { min: 20000, tier: UserTier.TRAVEL_ENTHUSIAST },
+    { min: 5000, tier: UserTier.ACTIVE_TRAVELER },
+    { min: 0, tier: UserTier.EXPLORER },
   ];
 
-  static resolveTier(exp: number): string {
+  static resolveTier(exp: number): UserTier {
     for (const entry of UsersService.tierThresholds) {
       if (exp >= entry.min) {
         return entry.tier;
       }
     }
-    return 'dong';
+    return UserTier.EXPLORER;
   }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -109,6 +113,80 @@ export class UsersService {
     const user = await this.findOne(id);
     await this.usersRepository.remove(user);
     return { id, message: 'User deleted' };
+  }
+
+  async markCitizenIdVerified(userId: number): Promise<void> {
+    await this.usersRepository.update(
+      { id: userId },
+      { isCitizenIdVerified: true },
+    );
+  }
+
+  async updateInitialProfile(
+    userId: number,
+    data: {
+      fullName?: string;
+      gender?: string;
+      address?: string;
+      nationality?: string;
+      dateOfBirth?: string | Date | null;
+    },
+  ): Promise<User> {
+    const user = await this.findOne(userId);
+    if (data.dateOfBirth !== undefined) {
+      user.dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
+    }
+    assignDefined(user, {
+      fullName: data.fullName,
+      gender: data.gender,
+      address: data.address,
+      nationality: data.nationality,
+    });
+    return this.usersRepository.save(user);
+  }
+
+  async updateVerificationInfo(
+    userId: number,
+    data: {
+      email?: string;
+      phone?: string;
+      citizenId?: string;
+    },
+  ): Promise<User> {
+    const user = await this.findOne(userId);
+
+    if (data.email && data.email !== user.email) {
+      user.email = data.email;
+      user.isEmailVerified = false;
+    }
+    if (data.phone && data.phone !== user.phone) {
+      user.phone = data.phone;
+      user.isPhoneVerified = false;
+    }
+    if (data.citizenId && data.citizenId !== user.citizenId) {
+      user.citizenId = data.citizenId;
+      user.isCitizenIdVerified = false;
+    }
+
+    return this.usersRepository.save(user);
+  }
+
+  async updateHobbies(userId: number, hobbies: string[]): Promise<User> {
+    const user = await this.findOne(userId);
+    user.hobbies = hobbies;
+    return this.usersRepository.save(user);
+  }
+
+  async updateAvatarUrl(userId: number, avatarUrl: string): Promise<User> {
+    const user = await this.findOne(userId);
+    user.avatarUrl = avatarUrl;
+    return this.usersRepository.save(user);
+  }
+
+  async deleteAvatarUrl(userId: number): Promise<User> {
+    const user = await this.findOne(userId);
+    user.avatarUrl = null;
+    return this.usersRepository.save(user);
   }
 
   async updateProfile(userId: number, data: ProfileUpdateInput): Promise<User> {
@@ -202,7 +280,7 @@ export class UsersService {
   }
 
   private prepareUserPayload(
-    dto: CreateUserDto | UpdateUserDto,
+    dto: any,
   ): Partial<User> {
     const { dateOfBirth, ...rest } = dto;
     const payload: Partial<User> = {};
@@ -217,7 +295,6 @@ export class UsersService {
       'travelExp',
       'travelTrip',
       'feedbackTimes',
-      'dayParticipation',
     ]);
 
     Object.entries(rest).forEach(([key, value]) => {

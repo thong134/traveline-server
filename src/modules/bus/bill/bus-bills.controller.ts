@@ -25,6 +25,7 @@ import { BusBillStatus } from './entities/bus-bill.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../../auth/decorators/current-user.decorator';
+import { RequireVerification } from '../../auth/decorators/require-verification.decorator';
 
 @ApiTags('bus-bills')
 @ApiBearerAuth()
@@ -33,6 +34,7 @@ import type { RequestUser } from '../../auth/decorators/current-user.decorator';
 export class BusBillsController {
   constructor(private readonly service: BusBillsService) {}
 
+  @RequireVerification()
   @Post()
   @ApiOperation({ summary: 'Tạo hóa đơn xe buýt' })
   @ApiCreatedResponse({ description: 'Bus bill created' })

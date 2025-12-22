@@ -94,11 +94,12 @@ export class AuthController {
     return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 
+  @RequireAuth()
   @Post('email/start')
   @ApiOperation({ summary: 'Gửi mã xác thực email' })
   @ApiOkResponse({ description: 'Mã xác thực đã gửi' })
-  async emailStart(@Body() dto: EmailStartDto) {
-    return this.authService.startEmailVerification(dto.email);
+  async emailStart(@CurrentUser() user: RequestUser) {
+    return this.authService.startEmailVerification(user.userId);
   }
 
   @Post('email/verify')
@@ -108,12 +109,16 @@ export class AuthController {
     return this.authService.verifyEmailCode(dto);
   }
 
+  @RequireAuth()
   @Post('phone/start')
   @ApiOperation({ summary: 'Bắt đầu xác thực số điện thoại' })
   @ApiOkResponse({ description: 'OTP sent or logged for development' })
-  async phoneStart(@Body() dto: PhoneStartDto) {
+  async phoneStart(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: PhoneStartDto,
+  ) {
     return this.authService.startPhoneVerification(
-      dto.phone,
+      user.userId,
       dto.recaptchaToken,
     );
   }
@@ -129,22 +134,24 @@ export class AuthController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequireAuth()
   @Get('profile')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Lấy thông tin người dùng hiện tại' })
   @ApiOkResponse({ description: 'Authenticated user payload' })
-  profile(@Request() req: AuthenticatedRequest) {
-    return req.user;
+  async profile(@CurrentUser() user: RequestUser) {
+    const detail = await this.authService['usersService'].findOne(user.userId);
+    const { password: _password, ...rest } = detail;
+    return rest;
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequireAuth()
   @Post('logout')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Thu hồi refresh token của người dùng hiện tại' })
   @ApiOkResponse({ description: 'Logout confirmation' })
-  async logout(@Request() req: AuthenticatedRequest) {
-    return this.authService.logout(req.user.userId);
+  async logout(@CurrentUser() user: RequestUser) {
+    return this.authService.logout(user.userId);
   }
 
   @Patch('password')
@@ -158,35 +165,14 @@ export class AuthController {
     return this.authService.changePassword(user.userId, dto);
   }
 
-  @Patch('profile')
-  @RequireAuth()
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'avatar', maxCount: 1 },
-        { name: 'idCardImage', maxCount: 1 },
-      ],
-      imageMulterOptions,
-    ),
-  )
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Cập nhật thông tin người dùng' })
-  @ApiOkResponse({ description: 'Thông tin người dùng đã được cập nhật' })
-  updateProfile(
-    @CurrentUser() user: RequestUser,
-    @Body() dto: UpdateProfileDto,
-    @UploadedFiles()
-    files?: {
-      avatar?: Express.Multer.File[];
-      idCardImage?: Express.Multer.File[];
-    },
-  ) {
-    const avatar = files?.avatar?.[0];
-    const idCardImage = files?.idCardImage?.[0];
 
-    return this.authService.updateProfile(user.userId, dto, {
-      avatar,
-      idCardImage,
-    });
+  @Post('citizen-id/verify')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Xác thực căn cước công dân (Placeholder)' })
+  @ApiOkResponse({ description: 'Xác thực thành công' })
+  async verifyCitizenId(@CurrentUser() user: RequestUser) {
+    // In production, this would involve OCR/AI scanning of the ID card image
+    await this.authService['usersService'].markCitizenIdVerified(user.userId);
+    return { ok: true, message: 'Căn cước công dân đã được xác thực' };
   }
 }

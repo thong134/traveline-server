@@ -35,6 +35,7 @@ import {
 } from './dto/manage-rental-contract.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { imageMulterOptions } from '../../common/upload/image-upload.config';
+import { RequireVerification } from '../auth/decorators/require-verification.decorator';
 
 @ApiTags('rental-contracts')
 @RequireAuth()
@@ -42,6 +43,7 @@ import { imageMulterOptions } from '../../common/upload/image-upload.config';
 export class RentalContractsController {
   constructor(private readonly service: RentalContractsService) {}
 
+  @RequireVerification()
   @Post()
   @UseInterceptors(
     FileFieldsInterceptor(
