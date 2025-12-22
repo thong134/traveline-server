@@ -36,6 +36,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { RouteStopDto } from './dto/route-stop.dto';
 import { DeleteStopMediaDto } from './dto/delete-stop-media.dto';
+import { SuggestTravelRouteDto } from './dto/suggest-travel-route.dto';
 
 type RouteStopMediaFiles = {
   images?: Express.Multer.File[];
@@ -195,6 +196,17 @@ export class TravelRoutesController {
       dto.longitude,
       dto.toleranceMeters,
     );
+  }
+
+  @Post('suggest')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Đề xuất lộ trình du lịch dựa trên AI' })
+  @ApiOkResponse({ description: 'Lộ trình đề xuất' })
+  suggestRoute(
+    @Body() dto: SuggestTravelRouteDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.travelRoutesService.suggestRoute(user.userId, dto);
   }
 
   @Get('me')

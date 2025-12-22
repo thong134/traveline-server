@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TravelRoutesService } from './travel-route.service';
 import { TravelRoutesController } from './travel-route.controller';
@@ -13,6 +15,15 @@ import { TravelRouteCronService } from './travel-route.cron';
   imports: [
     TypeOrmModule.forFeature([TravelRoute, RouteStop, Destination, User]),
     CloudinaryModule,
+    HttpModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        baseURL: configService.get<string>('AI_MODEL_SERVICE_URL') ?? 'http://localhost:8000',
+        timeout: 10_000,
+        maxRedirects: 2,
+      }),
+    }),
   ],
   controllers: [TravelRoutesController],
   providers: [TravelRoutesService, TravelRouteCronService],

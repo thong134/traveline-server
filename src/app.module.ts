@@ -26,7 +26,6 @@ import { VnAdministrativeModule } from './modules/vn-administrative/vn-administr
 import { CategoriesModule } from './modules/category/category.module';
 import { EateriesModule } from './modules/eatery/eatery.module';
 import { WalletModule } from './modules/wallet/wallet.module';
-import { AdminModule } from './modules/admin/admin.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationModule } from './modules/notification/notification.module';
 
@@ -73,7 +72,6 @@ import { NotificationModule } from './modules/notification/notification.module';
     CategoriesModule,
     EateriesModule,
     WalletModule,
-    AdminModule,
     ScheduleModule.forRoot(),
     NotificationModule,
   ],

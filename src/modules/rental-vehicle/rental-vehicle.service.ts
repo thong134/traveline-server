@@ -100,6 +100,12 @@ export class RentalVehiclesService {
     dto: CreateRentalVehicleDto,
     files: VehicleImageFiles = {},
   ): Promise<RentalVehicle> {
+    if (!files.vehicleRegistrationFront || !files.vehicleRegistrationBack) {
+      throw new BadRequestException(
+        'Cần upload đủ ảnh đăng ký xe mặt trước và mặt sau',
+      );
+    }
+
     const contract = await this.contractRepo.findOne({
       where: { id: dto.contractId },
       relations: { user: true },

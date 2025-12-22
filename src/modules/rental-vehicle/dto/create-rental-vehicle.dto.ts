@@ -107,19 +107,19 @@ export class CreateRentalVehicleDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({
-    description: 'Vehicle registration front photo',
+  @ApiPropertyOptional({
+    description: 'Vehicle registration front photo (file upload field)',
     type: 'string',
     format: 'binary',
   })
-  @IsNotEmpty()
-  vehicleRegistrationFront: string;
+  @IsOptional()
+  vehicleRegistrationFront?: string;
 
-  @ApiProperty({
-    description: 'Vehicle registration back photo',
+  @ApiPropertyOptional({
+    description: 'Vehicle registration back photo (file upload field)',
     type: 'string',
     format: 'binary',
   })
-  @IsNotEmpty()
-  vehicleRegistrationBack: string;
+  @IsOptional()
+  vehicleRegistrationBack?: string;
 }

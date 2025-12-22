@@ -4,9 +4,12 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { AxiosError } from 'axios';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { TravelRoute, TravelRouteStatus } from './entities/travel-route.entity';
 import { RouteStop, RouteStopStatus } from './entities/route-stop.entity';
 import { CreateTravelRouteDto } from './dto/create-travel-route.dto';
@@ -18,6 +21,8 @@ import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import { assertImageFile, assertVideoFile } from '../../common/upload/image-upload.utils';
 import { randomUUID } from 'crypto';
 import type { Express } from 'express';
+import { firstValueFrom } from 'rxjs';
+import { SuggestTravelRouteDto } from './dto/suggest-travel-route.dto';
 
 interface TravelRouteQueryOptions {
   q?: string;
@@ -37,6 +42,7 @@ export class TravelRoutesService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly httpService: HttpService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -890,8 +896,8 @@ export class TravelRoutesService {
       return a.dayOrder - b.dayOrder;
     });
 
-    const lastEndByDay = new Map<number, number>();
     const incompleteStopsByDay = new Map<number, RouteStopDto>();
+    const dayIntervals = new Map<number, Array<{ start: number; end: number; sequence: number }>>();
     const now = new Date();
 
     for (const dto of sortedDtos) {
@@ -926,7 +932,6 @@ export class TravelRoutesService {
         );
       }
 
-      const previousEnd = lastEndByDay.get(dto.dayOrder);
       const currentStartMinutes = this.parseTimeToMinutes(dto.startTime);
       const currentEndMinutes = dto.endTime
         ? this.parseTimeToMinutes(dto.endTime)
@@ -936,14 +941,6 @@ export class TravelRoutesService {
         throw new BadRequestException(
           `Invalid startTime for stop on day ${dto.dayOrder} (sequence ${dto.sequence})`,
         );
-      }
-
-      if (previousEnd !== undefined) {
-        if (currentStartMinutes < previousEnd) {
-          throw new BadRequestException(
-            `startTime of stop on day ${dto.dayOrder} (sequence ${dto.sequence}) must be after or equal to endTime of the previous stop`,
-          );
-        }
       }
 
       if (
@@ -1006,6 +1003,20 @@ export class TravelRoutesService {
 
       this.validateStopTimeWindow(destination, dto.startTime, dto.endTime);
 
+      const startMinutes = currentStartMinutes;
+      const endMinutes = currentEndMinutes ?? currentStartMinutes;
+      const intervals = dayIntervals.get(dto.dayOrder) ?? [];
+      for (const interval of intervals) {
+        const overlap = startMinutes < interval.end && endMinutes > interval.start;
+        if (overlap) {
+          throw new BadRequestException(
+            `Thời gian điểm dừng (sequence ${dto.sequence}) trùng với điểm sequence ${interval.sequence} trên cùng ngày`,
+          );
+        }
+      }
+      intervals.push({ start: startMinutes, end: endMinutes, sequence: dto.sequence });
+      dayIntervals.set(dto.dayOrder, intervals);
+
       const status = this.determineStopStatus(
         routeStartDate,
         dto.dayOrder,
@@ -1016,13 +1027,10 @@ export class TravelRoutesService {
       stop.travelPoints = 0;
 
       stops.push(stop);
-
-      if (currentEndMinutes !== undefined) {
-        lastEndByDay.set(dto.dayOrder, currentEndMinutes);
-        incompleteStopsByDay.delete(dto.dayOrder);
-      } else {
+      if (currentEndMinutes === undefined) {
         incompleteStopsByDay.set(dto.dayOrder, dto);
-        lastEndByDay.delete(dto.dayOrder);
+      } else {
+        incompleteStopsByDay.delete(dto.dayOrder);
       }
     }
 
@@ -1082,6 +1090,106 @@ export class TravelRoutesService {
     const hours = Number(match[1]);
     const minutes = Number(match[2]);
     return hours * 60 + minutes;
+  }
+
+  async suggestRoute(userId: number, dto: SuggestTravelRouteDto): Promise<unknown> {
+    const startPayload = await this.buildStartPayload(dto);
+
+    const destinationIds = dto.destinationIds?.length
+      ? await this.ensureDestinationsExist(dto.destinationIds)
+      : undefined;
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post('/route', {
+          userId: String(userId),
+          destinationIds: destinationIds?.map(String),
+          province: dto.province,
+          startDestinationId: startPayload.startDestinationId,
+          startCoordinates: startPayload.startCoordinates,
+          startLabel: startPayload.startLabel,
+          maxTime: dto.maxTime,
+          topN: dto.topN,
+          includeRated: dto.includeRated,
+          randomSeed: dto.randomSeed,
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ detail?: string }>; // eslint-disable-line @typescript-eslint/no-explicit-any
+      if (axiosError.response) {
+        const status = axiosError.response.status;
+        const detail = axiosError.response.data?.detail ?? axiosError.message;
+        if (status >= 400 && status < 500) {
+          throw new BadRequestException(detail);
+        }
+        throw new ServiceUnavailableException(detail);
+      }
+      throw new ServiceUnavailableException('Không thể kết nối tới AI route service');
+    }
+  }
+
+  private async buildStartPayload(dto: SuggestTravelRouteDto): Promise<{
+    startDestinationId?: string;
+    startCoordinates?: { latitude: number; longitude: number };
+    startLabel?: string;
+  }> {
+    if (dto.startDestinationId) {
+      await this.ensureDestinationsExist([dto.startDestinationId]);
+      return { startDestinationId: String(dto.startDestinationId), startLabel: dto.startLabel };
+    }
+
+    if (dto.startCoordinates) {
+      return {
+        startCoordinates: {
+          latitude: dto.startCoordinates.latitude,
+          longitude: dto.startCoordinates.longitude,
+        },
+        startLabel: dto.startLabel,
+      };
+    }
+
+    const fallback = await this.findFallbackStart(dto.province);
+    if (fallback) {
+      return {
+        startDestinationId: String(fallback.id),
+        startLabel: dto.startLabel ?? fallback.name,
+      };
+    }
+
+    throw new BadRequestException(
+      'Cần cung cấp startDestinationId hoặc startCoordinates, hoặc hệ thống phải tìm được điểm xuất phát trong tỉnh',
+    );
+  }
+
+  private async ensureDestinationsExist(ids: number[]): Promise<number[]> {
+    const uniqueIds = Array.from(new Set(ids));
+    const found = await this.destinationRepo.find({
+      where: { id: In(uniqueIds) },
+      select: { id: true },
+    });
+
+    const foundIds = found.map((d) => d.id);
+    const missing = uniqueIds.filter((id) => !foundIds.includes(id));
+    if (missing.length) {
+      throw new NotFoundException(`Không tìm thấy địa điểm: ${missing.join(', ')}`);
+    }
+    return foundIds;
+  }
+
+  private async findFallbackStart(province?: string): Promise<Destination | null> {
+    const qb = this.destinationRepo.createQueryBuilder('dest');
+    if (province) {
+      qb.where('LOWER(dest.province) = LOWER(:province)', { province });
+    }
+
+    qb.orderBy('dest.rating', 'DESC', 'NULLS LAST')
+      .addOrderBy('dest.favouriteTimes', 'DESC')
+      .addOrderBy('dest.id', 'ASC')
+      .limit(1);
+
+    const found = await qb.getOne();
+    return found ?? null;
   }
 
   private buildDateWithTime(
@@ -1239,34 +1347,33 @@ export class TravelRoutesService {
     const hasStops = stops.length > 0;
     const hasMissed = stops.some((stop) => stop.status === RouteStopStatus.MISSED);
     const allCompleted = hasStops && totalCompleted === stops.length;
+    const today = this.normalizeDate(now);
+    const endDatePassed = route.endDate
+      ? today > this.normalizeDate(route.endDate)
+      : false;
 
     let nextRouteStatus = route.status;
 
     // Priority:
-    // 1. Draft (if new/cloned and no dates - handled by creation logic mostly, but here we check dates)
-    // 2. Missed (if any stop missed)
-    // 3. Completed (if all stops completed)
+    // 1. Draft (if cloned and not set up)
+    // 2. Completed (all stops done)
+    // 3. Missed if endDate has passed or any stop missed
     // 4. Upcoming/InProgress (based on date)
 
-
     if (route.clonedFromRoute && !route.startDate) {
-       // Keep as draft if cloned and not set up
-       nextRouteStatus = TravelRouteStatus.DRAFT;
-    } else if (hasMissed) {
-      nextRouteStatus = TravelRouteStatus.MISSED;
+      nextRouteStatus = TravelRouteStatus.DRAFT;
     } else if (allCompleted) {
       nextRouteStatus = TravelRouteStatus.COMPLETED;
+    } else if (endDatePassed || hasMissed) {
+      nextRouteStatus = TravelRouteStatus.MISSED;
     } else if (route.startDate) {
       const routeStart = this.normalizeDate(route.startDate);
-      const today = this.normalizeDate(now);
       if (today < routeStart) {
         nextRouteStatus = TravelRouteStatus.UPCOMING;
       } else {
-        // today >= routeStart
         nextRouteStatus = TravelRouteStatus.IN_PROGRESS;
       }
     } else if (nextRouteStatus !== TravelRouteStatus.DRAFT) {
-      // Fallback if no start date but not draft? Should be draft.
       nextRouteStatus = TravelRouteStatus.DRAFT;
     }
 
@@ -1318,27 +1425,33 @@ export class TravelRoutesService {
         continue;
       }
 
-      dayStops.sort((a, b) => a.sequence - b.sequence);
-      for (let idx = 0; idx < dayStops.length - 1; idx += 1) {
-        const current = dayStops[idx];
-        const next = dayStops[idx + 1];
+      const sortable = dayStops
+        .map((stop) => ({
+          stop,
+          start: stop.startTime ? this.parseTimeToMinutes(stop.startTime) : null,
+          end: stop.endTime ? this.parseTimeToMinutes(stop.endTime) : null,
+        }))
+        .sort((a, b) => {
+          if (a.start === null && b.start === null) return 0;
+          if (a.start === null) return 1;
+          if (b.start === null) return -1;
+          return a.start - b.start;
+        });
 
-        if (!current.endTime) {
-          throw new BadRequestException(
-            `Stop on day ${current.dayOrder} (sequence ${current.sequence}) needs endTime to allow space for the next stop`,
-          );
-        }
-        if (!next.startTime) {
-          throw new BadRequestException(
-            `Stop on day ${next.dayOrder} (sequence ${next.sequence}) needs startTime to determine chronological order`,
-          );
+      for (let idx = 0; idx < sortable.length - 1; idx += 1) {
+        const current = sortable[idx];
+        const next = sortable[idx + 1];
+
+        if (current.start === null || next.start === null) {
+          continue; // cannot validate without start times
         }
 
-        const currentEnd = this.parseTimeToMinutes(current.endTime);
-        const nextStart = this.parseTimeToMinutes(next.startTime);
+        const currentEnd = current.end ?? current.start;
+        const nextStart = next.start;
+
         if (currentEnd > nextStart) {
           throw new BadRequestException(
-            `endTime of stop on day ${current.dayOrder} (sequence ${current.sequence}) must be less than or equal to startTime of stop sequence ${next.sequence}`,
+            `Thời gian điểm dừng (sequence ${current.stop.sequence}) bị chồng với sequence ${next.stop.sequence} trên cùng ngày`,
           );
         }
       }
