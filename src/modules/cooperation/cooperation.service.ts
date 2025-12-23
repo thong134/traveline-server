@@ -46,7 +46,7 @@ export class CooperationsService {
       photo: dto.photo,
       extension: dto.extension,
       introduction: dto.introduction,
-      contractDate: dto.contractDate ? new Date(dto.contractDate) : undefined,
+      contractDate: dto.contractDate,
       contractTerm: dto.contractTerm,
       bankAccountNumber: dto.bankAccountNumber,
       bankAccountName: dto.bankAccountName,
@@ -140,9 +140,7 @@ export class CooperationsService {
     });
 
     if (dto.contractDate !== undefined) {
-      cooperation.contractDate = dto.contractDate
-        ? new Date(dto.contractDate)
-        : undefined;
+      cooperation.contractDate = dto.contractDate;
     }
 
     if (dto.userId !== undefined) {

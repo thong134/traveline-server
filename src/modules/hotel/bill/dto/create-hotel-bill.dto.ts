@@ -3,27 +3,24 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
-  IsDateString,
-  IsEmail,
-  IsEnum,
   IsInt,
-  IsNumber,
+  IsNotEmpty,
   IsOptional,
+  IsPositive,
   IsString,
-  MaxLength,
-  Min,
   ValidateNested,
 } from 'class-validator';
-import { HotelBillStatus } from '../entities/hotel-bill.entity';
 import { HotelBillRoomDto } from './hotel-bill-room.dto';
 
 export class CreateHotelBillDto {
-  @ApiProperty({ description: 'Check-in date (ISO string)' })
-  @IsDateString()
+  @ApiProperty({ description: 'Check-in date (ISO or dd:MM:yyyy HH:mm)', example: '25:12:2024 14:00' })
+  @IsString()
+  @IsNotEmpty()
   checkInDate: string;
 
-  @ApiProperty({ description: 'Check-out date (ISO string)' })
-  @IsDateString()
+  @ApiProperty({ description: 'Check-out date (ISO or dd:MM:yyyy HH:mm)', example: '27:12:2024 12:00' })
+  @IsString()
+  @IsNotEmpty()
   checkOutDate: string;
 
   @ApiProperty({ description: 'Rooms to reserve', type: [HotelBillRoomDto] })
@@ -32,33 +29,6 @@ export class CreateHotelBillDto {
   @ValidateNested({ each: true })
   @Type(() => HotelBillRoomDto)
   rooms: HotelBillRoomDto[];
-
-  @ApiPropertyOptional({ description: 'Preferred payment method' })
-  @IsOptional()
-  @IsString()
-  paymentMethod?: string;
-
-  @ApiPropertyOptional({ description: 'Contact name' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  contactName?: string;
-
-  @ApiPropertyOptional({ description: 'Contact phone' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(60)
-  contactPhone?: string;
-
-  @ApiPropertyOptional({ description: 'Contact email' })
-  @IsOptional()
-  @IsEmail()
-  contactEmail?: string;
-
-  @ApiPropertyOptional({ description: 'Additional notes' })
-  @IsOptional()
-  @IsString()
-  notes?: string;
 
   @ApiPropertyOptional({ description: 'Voucher code to apply' })
   @IsOptional()
@@ -72,26 +42,5 @@ export class CreateHotelBillDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(0)
   travelPointsUsed?: number;
-
-  @ApiPropertyOptional({
-    enum: HotelBillStatus,
-    description: 'Initial status override',
-  })
-  @IsOptional()
-  @IsEnum(HotelBillStatus)
-  status?: HotelBillStatus;
-
-  @ApiPropertyOptional({ description: 'Reason for manual status override' })
-  @IsOptional()
-  @IsString()
-  statusReason?: string;
-
-  @ApiPropertyOptional({ description: 'Override total amount' })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  totalOverride?: number;
 }

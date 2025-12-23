@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsDateString, IsIn } from 'class-validator';
+import { IsOptional, IsString, IsIn, IsDate } from 'class-validator';
+import { TransformDDMMYYYY } from '../../../common/utils/date.util';
 
 export const GENDER_VALUES = ['male', 'female', 'other'] as const;
 export type Gender = (typeof GENDER_VALUES)[number];
@@ -25,8 +26,9 @@ export class UpdateInitialProfileDto {
   @IsOptional()
   nationality?: string;
 
-  @ApiPropertyOptional({ description: 'Date of birth in ISO 8601 format' })
+  @ApiPropertyOptional({ description: 'Date of birth in dd/MM/yyyy format', example: '13/04/2004' })
   @IsOptional()
-  @IsDateString()
-  dateOfBirth?: string;
+  @TransformDDMMYYYY()
+  @IsDate()
+  dateOfBirth?: Date;
 }

@@ -13,13 +13,11 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { compare, hash } from 'bcrypt';
-import { randomBytes } from 'crypto';
 import { addDays, addMinutes } from 'date-fns';
 import { Repository } from 'typeorm';
 import { sendEmailVerificationEmail, sendResetEmail } from './utils/mail.util';
 import { UsersService } from '../user/user.service';
 import { RefreshToken } from './entities/refresh-token.entity';
-import { PasswordReset } from './entities/password-reset.entity';
 import { PhoneOtp } from './entities/phone-otp.entity';
 import { SignupDto } from './dto/signup.dto';
 import { User } from '../user/entities/user.entity';
@@ -65,8 +63,6 @@ export class AuthService implements OnModuleInit {
 
   constructor(
     private readonly usersService: UsersService,
-    @InjectRepository(PasswordReset)
-    private readonly passwordResetRepo: Repository<PasswordReset>,
     private readonly jwtService: JwtService,
     @InjectRepository(PhoneOtp)
     private phoneOtpRepo: Repository<PhoneOtp>,
@@ -158,6 +154,10 @@ export class AuthService implements OnModuleInit {
 
   private getEmailVerifyExpiresMinutes(): number {
     return this.getNumberConfig('EMAIL_VERIFY_EXPIRES_MIN', 10);
+  }
+
+  private getPasswordResetExpiresMinutes(): number {
+    return this.getNumberConfig('PASSWORD_RESET_TOKEN_EXPIRES_MIN', 10);
   }
 
   async signup(
@@ -319,62 +319,70 @@ export class AuthService implements OnModuleInit {
     return { ok: true };
   }
 
-  async requestPasswordReset(email: string): Promise<void> {
+  async requestPasswordReset(
+    email: string,
+  ): Promise<{ ok: boolean; token?: string; expiresAt?: Date }> {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      return;
+      return { ok: true };
     }
 
-    const token = randomBytes(32).toString('hex');
-    const tokenHash = await hash(token, 10);
+    this.checkRate(`password:reset:start:${email}`, 5, 60 * 60 * 1000);
 
-    const expiresMinutes = Number(
-      process.env.PASSWORD_RESET_TOKEN_EXPIRES_MIN || 60,
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresMin = this.getPasswordResetExpiresMinutes();
+    const expiresAt = addMinutes(new Date(), expiresMin);
+
+    const token = this.jwtService.sign(
+      { email, code, kind: 'reset' },
+      {
+        secret: this.getEmailVerifySecret(),
+        expiresIn: `${expiresMin}m`,
+      },
     );
-    const expiresAt = addMinutes(new Date(), expiresMinutes);
 
-    const entity = this.passwordResetRepo.create({
-      tokenHash,
-      userId: user.id,
-      expiresAt,
-      used: false,
-    });
-    await this.passwordResetRepo.save(entity);
-
-    const link = `${process.env.FRONTEND_URL}/reset-password?token=${token}&uid=${user.id}`;
-    await sendResetEmail(user.email, link);
+    await sendResetEmail(user.email, code);
+    return { ok: true, token, expiresAt };
   }
 
   async resetPassword(
     token: string,
     newPassword: string,
+    email: string,
+    code: string,
   ): Promise<{ ok: boolean }> {
-    const now = new Date();
-    const rows = await this.passwordResetRepo.find({
-      where: { used: false },
-    });
-
-    for (const row of rows) {
-      const ok = await compare(token, row.tokenHash);
-      if (!ok) continue;
-      if (row.expiresAt < now) continue;
-
-      const hashed = await hash(newPassword, 10);
-      await this.usersService.updatePassword(row.userId, hashed);
-
-      row.used = true;
-      await this.passwordResetRepo.save(row);
-
-      try {
-        await this.refreshTokenRepository.delete({ userId: row.userId });
-      } catch {
-        // ignore
-      }
-
-      return { ok: true };
+    this.checkRate(`password:reset:verify:${email}`, 10, 60 * 60 * 1000);
+    let payload: { email: string; code: string; kind?: string };
+    try {
+      payload = this.jwtService.verify<{ email: string; code: string; kind?: string }>(
+        token,
+        {
+          secret: this.getEmailVerifySecret(),
+        },
+      );
+    } catch {
+      throw new UnauthorizedException('Mã xác thực không hợp lệ hoặc đã hết hạn');
     }
 
-    throw new UnauthorizedException('Invalid or expired token');
+    if (payload.kind !== 'reset' || payload.email !== email || payload.code !== code) {
+      throw new UnauthorizedException('Mã xác thực không hợp lệ');
+    }
+
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException('Tài khoản không tồn tại');
+    }
+
+    const hashed = await hash(newPassword, 10);
+    await this.usersService.updatePassword(user.id, hashed);
+
+    try {
+      await this.refreshTokenRepository.delete({ userId: user.id });
+    } catch {
+      // ignore
+    }
+
+    return { ok: true };
   }
 
   async startPhoneVerification(
@@ -648,5 +656,42 @@ export class AuthService implements OnModuleInit {
 
   unfavoriteCooperation(userId: number, cooperationId: number) {
     return this.cooperationsService.unfavorite(userId, cooperationId);
+  }
+
+  async verifyCitizenIdWithImages(
+    userId: number,
+    files: {
+      citizenFrontPhoto?: Express.Multer.File[];
+      citizenBackPhoto?: Express.Multer.File[];
+    },
+  ): Promise<{ ok: boolean; message: string }> {
+    const front = files.citizenFrontPhoto?.[0];
+    const back = files.citizenBackPhoto?.[0];
+
+    if (!front || !back) {
+      throw new BadRequestException('Vui lòng gửi đủ ảnh mặt trước và mặt sau CCCD');
+    }
+
+    assertImageFile(front, { fieldName: 'citizenFrontPhoto' });
+    assertImageFile(back, { fieldName: 'citizenBackPhoto' });
+
+    const [frontUpload, backUpload] = await Promise.all([
+      this.cloudinaryService.uploadImage(front, {
+        folder: `traveline/users/${userId}/citizen-id`,
+        publicId: 'front',
+      }),
+      this.cloudinaryService.uploadImage(back, {
+        folder: `traveline/users/${userId}/citizen-id`,
+        publicId: 'back',
+      }),
+    ]);
+
+    await this.usersService.verifyCitizenIdWithImages(
+      userId,
+      frontUpload.url,
+      backUpload.url,
+    );
+
+    return { ok: true, message: 'Căn cước công dân đã được xác thực' };
   }
 }

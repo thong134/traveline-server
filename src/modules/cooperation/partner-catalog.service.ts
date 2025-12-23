@@ -41,8 +41,8 @@ export interface HotelAvailabilityResponse {
 }
 
 interface HotelAvailabilityParams {
-  checkIn: string;
-  checkOut: string;
+  checkIn: Date;
+  checkOut: Date;
   rooms?: number;
   guests?: number;
 }
@@ -70,11 +70,8 @@ export class PartnerCatalogService {
       );
     }
 
-    const checkIn = parseISO(query.checkIn);
-    const checkOut = parseISO(query.checkOut);
-    if (!isValid(checkIn) || !isValid(checkOut)) {
-      throw new BadRequestException('checkIn and checkOut must be ISO dates');
-    }
+    const checkIn = query.checkIn;
+    const checkOut = query.checkOut;
     if (!isBefore(checkIn, checkOut)) {
       throw new BadRequestException('checkIn must be before checkOut');
     }
@@ -127,8 +124,8 @@ export class PartnerCatalogService {
         code: cooperation.code,
         partnerName: partnerData.partnerName,
       },
-      checkIn: query.checkIn,
-      checkOut: query.checkOut,
+      checkIn: query.checkIn.toISOString(),
+      checkOut: query.checkOut.toISOString(),
       nights,
       roomsRequested,
       availability: filteredAvailability,

@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -36,40 +35,23 @@ export class HotelBillsController {
 
   @RequireVerification()
   @Post()
-  @ApiOperation({ summary: 'Tạo hóa đơn đặt phòng khách sạn' })
-  @ApiCreatedResponse({ description: 'Hotel bill created' })
+  @ApiOperation({ summary: 'Tạo hóa đơn đặt phòng khách sạn (pending)' })
   create(@Body() dto: CreateHotelBillDto, @CurrentUser() user: RequestUser) {
     return this.hotelBillsService.create(user.userId, dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Danh sách hóa đơn khách sạn' })
-  @ApiQuery({ name: 'cooperationId', required: false, type: Number })
+  @ApiOperation({ summary: 'Danh sách hóa đơn của tôi' })
   @ApiQuery({ name: 'status', required: false, enum: HotelBillStatus })
-  @ApiQuery({ name: 'voucherId', required: false, type: Number })
-  @ApiQuery({ name: 'fromDate', required: false })
-  @ApiQuery({ name: 'toDate', required: false })
-  @ApiOkResponse({ description: 'Hotel bill list' })
   findAll(
     @CurrentUser() user: RequestUser,
-    @Query('cooperationId') cooperationId?: string,
     @Query('status') status?: HotelBillStatus,
-    @Query('voucherId') voucherId?: string,
-    @Query('fromDate') fromDate?: string,
-    @Query('toDate') toDate?: string,
   ) {
-    return this.hotelBillsService.findAll(user.userId, {
-      cooperationId: cooperationId ? Number(cooperationId) : undefined,
-      status,
-      voucherId: voucherId ? Number(voucherId) : undefined,
-      fromDate,
-      toDate,
-    });
+    return this.hotelBillsService.findAll(user.userId, { status });
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Chi tiết hóa đơn khách sạn' })
-  @ApiOkResponse({ description: 'Hotel bill detail' })
   findOne(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
@@ -78,8 +60,7 @@ export class HotelBillsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Cập nhật hóa đơn khách sạn' })
-  @ApiOkResponse({ description: 'Hotel bill updated' })
+  @ApiOperation({ summary: 'Cập nhật thông tin liên hệ cho hóa đơn' })
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateHotelBillDto,
@@ -88,13 +69,41 @@ export class HotelBillsController {
     return this.hotelBillsService.update(id, user.userId, dto);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Xóa hóa đơn khách sạn' })
-  @ApiOkResponse({ description: 'Hotel bill removed' })
-  remove(
+  @Patch(':id/confirm')
+  @ApiOperation({ summary: 'Xác nhận hóa đơn và chọn phương thức thanh toán' })
+  @ApiQuery({ name: 'paymentMethod', required: true })
+  confirm(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+    @Query('paymentMethod') paymentMethod: string,
+  ) {
+    return this.hotelBillsService.confirm(id, user.userId, paymentMethod);
+  }
+
+  @Patch(':id/pay')
+  @ApiOperation({ summary: 'Thanh toán hóa đơn' })
+  pay(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.hotelBillsService.remove(id, user.userId);
+    return this.hotelBillsService.pay(id, user.userId);
+  }
+
+  @Patch(':id/complete')
+  @ApiOperation({ summary: 'Hoàn thành hóa đơn' })
+  complete(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.hotelBillsService.complete(id, user.userId);
+  }
+
+  @Patch(':id/cancel')
+  @ApiOperation({ summary: 'Hủy hóa đơn' })
+  cancel(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.hotelBillsService.cancel(id, user.userId);
   }
 }

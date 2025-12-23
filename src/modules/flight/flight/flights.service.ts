@@ -53,8 +53,8 @@ export class FlightsService {
     if (dto.durationMinutes !== undefined && dto.durationMinutes < 0) {
       throw new BadRequestException('durationMinutes must be non-negative');
     }
-    const departureTime = this.parseDate(dto.departureTime, 'departureTime');
-    const arrivalTime = this.parseDate(dto.arrivalTime, 'arrivalTime');
+    const departureTime = dto.departureTime;
+    const arrivalTime = dto.arrivalTime;
     if (arrivalTime <= departureTime) {
       throw new BadRequestException('arrivalTime must be after departureTime');
     }
@@ -131,11 +131,11 @@ export class FlightsService {
 
     let departureTime = flight.departureTime;
     if (dto.departureTime !== undefined) {
-      departureTime = this.parseDate(dto.departureTime, 'departureTime');
+      departureTime = dto.departureTime;
     }
     let arrivalTime = flight.arrivalTime;
     if (dto.arrivalTime !== undefined) {
-      arrivalTime = this.parseDate(dto.arrivalTime, 'arrivalTime');
+      arrivalTime = dto.arrivalTime;
     }
     if (arrivalTime <= departureTime) {
       throw new BadRequestException('arrivalTime must be after departureTime');

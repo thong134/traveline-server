@@ -1,9 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { TransformDDMMYYYY } from '../../../../common/utils/date.util';
 import {
   ArrayMinSize,
   IsArray,
-  IsDateString,
+  IsDate,
   IsEmail,
   IsEnum,
   IsInt,
@@ -24,9 +25,10 @@ export class CreateTrainBillDto {
   @Min(1)
   routeId: number;
 
-  @ApiProperty({ description: 'Travel date' })
-  @IsDateString()
-  travelDate: string;
+  @ApiProperty({ description: 'Travel date (dd/MM/yyyy)', example: '13/04/2004' })
+  @TransformDDMMYYYY()
+  @IsDate()
+  travelDate: Date;
 
   @ApiPropertyOptional({ description: 'Carriage identifier' })
   @IsOptional()

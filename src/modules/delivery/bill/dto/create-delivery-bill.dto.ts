@@ -1,17 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsDateString,
-  IsEmail,
-  IsEnum,
   IsInt,
   IsNumber,
   IsOptional,
   IsString,
   MaxLength,
   Min,
+  IsNotEmpty,
 } from 'class-validator';
-import { DeliveryBillStatus } from '../entities/delivery-bill.entity';
 
 export class CreateDeliveryBillDto {
   @ApiProperty({ description: 'Selected delivery vehicle id' })
@@ -20,8 +17,9 @@ export class CreateDeliveryBillDto {
   @Min(1)
   vehicleId: number;
 
-  @ApiProperty({ description: 'Scheduled delivery date' })
-  @IsDateString()
+  @ApiProperty({ description: 'Scheduled delivery date (ISO or dd:MM:yyyy HH:mm)', example: '25:12:2024 10:00' })
+  @IsString()
+  @IsNotEmpty()
   deliveryDate: string;
 
   @ApiProperty({ description: 'Pick-up address for the delivery' })
@@ -55,7 +53,7 @@ export class CreateDeliveryBillDto {
   @ApiPropertyOptional({ description: 'Estimated distance in kilometers' })
   @IsOptional()
   @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsNumber()
   @Min(0)
   distanceKm?: number;
 
@@ -70,48 +68,4 @@ export class CreateDeliveryBillDto {
   @IsInt()
   @Min(0)
   travelPointsUsed?: number;
-
-  @ApiPropertyOptional({ enum: DeliveryBillStatus })
-  @IsOptional()
-  @IsEnum(DeliveryBillStatus)
-  status?: DeliveryBillStatus;
-
-  @ApiPropertyOptional({ description: 'Reason for manual status change' })
-  @IsOptional()
-  @IsString()
-  statusReason?: string;
-
-  @ApiPropertyOptional({ description: 'Contact name' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  contactName?: string;
-
-  @ApiPropertyOptional({ description: 'Contact phone' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(60)
-  contactPhone?: string;
-
-  @ApiPropertyOptional({ description: 'Contact email' })
-  @IsOptional()
-  @IsEmail()
-  contactEmail?: string;
-
-  @ApiPropertyOptional({ description: 'Preferred payment method' })
-  @IsOptional()
-  @IsString()
-  paymentMethod?: string;
-
-  @ApiPropertyOptional({ description: 'Notes for the driver' })
-  @IsOptional()
-  @IsString()
-  notes?: string;
-
-  @ApiPropertyOptional({ description: 'Override total cost' })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  totalOverride?: number;
 }

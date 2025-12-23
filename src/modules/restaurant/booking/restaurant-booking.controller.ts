@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -11,7 +10,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
@@ -36,8 +34,7 @@ export class RestaurantBookingsController {
 
   @RequireVerification()
   @Post()
-  @ApiOperation({ summary: 'Tạo đặt bàn nhà hàng' })
-  @ApiCreatedResponse({ description: 'Restaurant booking created' })
+  @ApiOperation({ summary: 'Tạo đặt bàn nhà hàng (pending)' })
   create(
     @Body() dto: CreateRestaurantBookingDto,
     @CurrentUser() user: RequestUser,
@@ -46,27 +43,17 @@ export class RestaurantBookingsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Danh sách đặt bàn nhà hàng' })
-  @ApiQuery({ name: 'tableId', required: false, type: Number })
-  @ApiQuery({ name: 'cooperationId', required: false, type: Number })
+  @ApiOperation({ summary: 'Danh sách đặt bàn nhà hàng của tôi' })
   @ApiQuery({ name: 'status', required: false, enum: RestaurantBookingStatus })
-  @ApiOkResponse({ description: 'Restaurant booking list' })
   findAll(
     @CurrentUser() user: RequestUser,
-    @Query('tableId') tableId?: string,
-    @Query('cooperationId') cooperationId?: string,
     @Query('status') status?: RestaurantBookingStatus,
   ) {
-    return this.service.findAll(user.userId, {
-      tableId: tableId ? Number(tableId) : undefined,
-      cooperationId: cooperationId ? Number(cooperationId) : undefined,
-      status,
-    });
+    return this.service.findAll(user.userId, { status });
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Chi tiết đặt bàn nhà hàng' })
-  @ApiOkResponse({ description: 'Restaurant booking detail' })
   findOne(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
@@ -75,8 +62,7 @@ export class RestaurantBookingsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Cập nhật đặt bàn nhà hàng' })
-  @ApiOkResponse({ description: 'Restaurant booking updated' })
+  @ApiOperation({ summary: 'Cập nhật thông tin liên hệ cho đặt bàn' })
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRestaurantBookingDto,
@@ -85,13 +71,21 @@ export class RestaurantBookingsController {
     return this.service.update(id, user.userId, dto);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Xóa đặt bàn nhà hàng' })
-  @ApiOkResponse({ description: 'Restaurant booking removed' })
-  remove(
+  @Patch(':id/confirm')
+  @ApiOperation({ summary: 'Xác nhận đặt bàn' })
+  confirm(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.service.remove(id, user.userId);
+    return this.service.confirm(id, user.userId);
+  }
+
+  @Patch(':id/cancel')
+  @ApiOperation({ summary: 'Hủy đặt bàn' })
+  cancel(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.service.cancel(id, user.userId);
   }
 }

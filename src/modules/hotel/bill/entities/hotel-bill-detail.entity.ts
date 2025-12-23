@@ -31,9 +31,6 @@ export class HotelBillDetail {
   roomName: string;
 
   @Column({ type: 'int', default: 1 })
-  quantity: number;
-
-  @Column({ type: 'int', default: 1 })
   nights: number;
 
   @Column({ type: 'decimal', precision: 12, scale: 2 })

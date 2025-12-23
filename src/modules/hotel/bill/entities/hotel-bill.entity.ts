@@ -51,6 +51,9 @@ export class HotelBill {
   @JoinColumn({ name: 'voucher_id' })
   voucher?: Voucher;
 
+  @Column({ name: 'voucher_id', nullable: true })
+  voucherId?: number;
+
   @Column({ type: 'timestamptz' })
   checkInDate: Date;
 
@@ -80,9 +83,6 @@ export class HotelBill {
   status: HotelBillStatus;
 
   @Column({ nullable: true })
-  statusReason?: string;
-
-  @Column({ nullable: true })
   paymentMethod?: string;
 
   @Column({ nullable: true })
@@ -90,9 +90,6 @@ export class HotelBill {
 
   @Column({ nullable: true })
   contactPhone?: string;
-
-  @Column({ nullable: true })
-  contactEmail?: string;
 
   @Column({ type: 'text', nullable: true })
   notes?: string;

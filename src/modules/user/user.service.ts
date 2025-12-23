@@ -122,6 +122,18 @@ export class UsersService {
     );
   }
 
+  async verifyCitizenIdWithImages(
+    userId: number,
+    frontUrl: string,
+    backUrl: string,
+  ): Promise<User> {
+    const user = await this.findOne(userId);
+    user.citizenFrontImageUrl = frontUrl;
+    user.citizenBackImageUrl = backUrl;
+    user.isCitizenIdVerified = true;
+    return this.usersRepository.save(user);
+  }
+
   async updateInitialProfile(
     userId: number,
     data: {
@@ -134,7 +146,7 @@ export class UsersService {
   ): Promise<User> {
     const user = await this.findOne(userId);
     if (data.dateOfBirth !== undefined) {
-      user.dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
+      user.dateOfBirth = data.dateOfBirth instanceof Date ? data.dateOfBirth : (data.dateOfBirth ? new Date(data.dateOfBirth) : null);
     }
     assignDefined(user, {
       fullName: data.fullName,
@@ -193,7 +205,7 @@ export class UsersService {
     const user = await this.findOne(userId);
 
     if (data.dateOfBirth !== undefined) {
-      user.dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
+      user.dateOfBirth = data.dateOfBirth instanceof Date ? data.dateOfBirth : (data.dateOfBirth ? new Date(data.dateOfBirth) : null);
     }
 
     assignDefined(user, {
@@ -319,7 +331,7 @@ export class UsersService {
     });
 
     if (dateOfBirth !== undefined) {
-      payload.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
+      payload.dateOfBirth = dateOfBirth instanceof Date ? dateOfBirth : (dateOfBirth ? new Date(dateOfBirth) : null);
     }
 
     if (payload.travelExp !== undefined) {

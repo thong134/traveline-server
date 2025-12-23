@@ -254,8 +254,8 @@ export class RentalVehiclesService {
     rentalType?: 'hourly' | 'daily';
     minPrice?: number;
     maxPrice?: number;
-    startDate?: string;
-    endDate?: string;
+    startDate?: Date;
+    endDate?: Date;
     province?: string;
   }): Promise<RentalVehicle[]> {
     const { rentalType, minPrice, maxPrice, startDate, endDate, province } = params;
@@ -324,8 +324,8 @@ export class RentalVehiclesService {
 
     // Date availability filter - exclude vehicles that are booked during the requested period
     if (startDate && endDate) {
-      const requestedStart = new Date(startDate);
-      const requestedEnd = new Date(endDate);
+      const requestedStart = startDate;
+      const requestedEnd = endDate;
 
       // Find all license plates that are booked during the requested period
       const bookedVehiclesSubQuery = this.billDetailRepo

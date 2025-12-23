@@ -1,7 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { TransformDDMMYYYY } from '../../../common/utils/date.util';
 import {
-  IsDateString,
+  IsDate,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -42,20 +43,22 @@ export class SearchRentalVehicleDto {
   maxPrice?: number;
 
   @ApiPropertyOptional({
-    description: 'Ngày bắt đầu thuê (ISO 8601 format)',
-    example: '2024-12-25T08:00:00Z',
+    description: 'Ngày bắt đầu thuê (dd/MM/yyyy)',
+    example: '25/12/2024',
   })
   @IsOptional()
-  @IsDateString()
-  startDate?: string;
+  @TransformDDMMYYYY()
+  @IsDate()
+  startDate?: Date;
 
   @ApiPropertyOptional({
-    description: 'Ngày kết thúc thuê (ISO 8601 format)',
-    example: '2024-12-27T18:00:00Z',
+    description: 'Ngày kết thúc thuê (dd/MM/yyyy)',
+    example: '27/12/2024',
   })
   @IsOptional()
-  @IsDateString()
-  endDate?: string;
+  @TransformDDMMYYYY()
+  @IsDate()
+  endDate?: Date;
 
   @ApiPropertyOptional({
     description: 'Tỉnh/thành phố để lọc xe theo địa điểm kinh doanh của chủ xe',

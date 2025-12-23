@@ -10,6 +10,8 @@ import {
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
+  ApiConsumes,
+  ApiBody,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -78,6 +80,19 @@ export class UsersController {
 
   @Patch('profile/avatar')
   @ApiOperation({ summary: 'Cập nhật avatar người dùng' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        avatar: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+      required: ['avatar'],
+    },
+  })
   @UseInterceptors(FileInterceptor('avatar', imageMulterOptions))
   @ApiOkResponse({ description: 'Avatar updated' })
   async updateAvatar(

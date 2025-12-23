@@ -67,10 +67,7 @@ export class TrainBillsService {
       throw new BadRequestException('At least one passenger is required');
     }
 
-    const travelDate = new Date(dto.travelDate);
-    if (Number.isNaN(travelDate.getTime())) {
-      throw new BadRequestException('travelDate is invalid');
-    }
+    const travelDate = dto.travelDate;
 
     const subtotal = dto.passengers.reduce((sum, passenger) => {
       return sum + passenger.total;
@@ -218,11 +215,7 @@ export class TrainBillsService {
     }
 
     if (dto.travelDate !== undefined) {
-      const travelDate = new Date(dto.travelDate);
-      if (Number.isNaN(travelDate.getTime())) {
-        throw new BadRequestException('travelDate is invalid');
-      }
-      bill.travelDate = travelDate;
+      bill.travelDate = dto.travelDate;
     }
 
     if (dto.carriage !== undefined) {

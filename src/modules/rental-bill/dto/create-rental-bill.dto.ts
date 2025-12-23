@@ -1,8 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { TransformDDMMYYYY } from '../../../common/utils/date.util';
 import {
   IsArray,
-  IsDateString,
+  IsDate,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -18,15 +19,17 @@ export class CreateRentalBillDto {
   @IsNotEmpty()
   rentalType: RentalBillType;
 
-  @ApiProperty({ description: 'Ngày bắt đầu (ISO 8601)', example: '2024-12-25T08:00:00Z' })
-  @IsDateString()
+  @ApiProperty({ description: 'Ngày bắt đầu (dd/MM/yyyy)', example: '25/12/2024' })
+  @TransformDDMMYYYY()
+  @IsDate()
   @IsNotEmpty()
-  startDate: string;
+  startDate: Date;
 
-  @ApiProperty({ description: 'Ngày kết thúc (ISO 8601)', example: '2024-12-27T18:00:00Z' })
-  @IsDateString()
+  @ApiProperty({ description: 'Ngày kết thúc (dd/MM/yyyy)', example: '27/12/2024' })
+  @TransformDDMMYYYY()
+  @IsDate()
   @IsNotEmpty()
-  endDate: string;
+  endDate: Date;
 
   @ApiPropertyOptional({ description: 'Địa chỉ nhận xe' })
   @IsOptional()

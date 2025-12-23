@@ -1,21 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDateString, IsInt, IsOptional, Min } from 'class-validator';
+import { IsDate, IsInt, IsOptional, Min } from 'class-validator';
+import { TransformDDMMYYYY } from '../../../common/utils/date.util';
 
 export class HotelAvailabilityQueryDto {
   @ApiProperty({
-    example: '2025-12-01',
-    description: 'Ngày check-in (ISO 8601)',
+    example: '25/12/2025',
+    description: 'Ngày check-in (dd/MM/yyyy)',
   })
-  @IsDateString()
-  checkIn: string;
+  @TransformDDMMYYYY()
+  @IsDate()
+  checkIn: Date;
 
   @ApiProperty({
-    example: '2025-12-05',
-    description: 'Ngày check-out (ISO 8601)',
+    example: '30/12/2025',
+    description: 'Ngày check-out (dd/MM/yyyy)',
   })
-  @IsDateString()
-  checkOut: string;
+  @TransformDDMMYYYY()
+  @IsDate()
+  checkOut: Date;
 
   @ApiProperty({ required: false, minimum: 1, example: 2 })
   @IsOptional()

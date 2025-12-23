@@ -2,10 +2,12 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Repository, DataSource, LessThan } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { HotelBill, HotelBillStatus } from './entities/hotel-bill.entity';
 import { HotelBillDetail } from './entities/hotel-bill-detail.entity';
 import { CreateHotelBillDto } from './dto/create-hotel-bill.dto';
@@ -17,9 +19,12 @@ import { Voucher } from '../../voucher/entities/voucher.entity';
 import { HotelRoomsService } from '../room/hotel-room.service';
 import { CooperationsService } from '../../cooperation/cooperation.service';
 import { VouchersService } from '../../voucher/voucher.service';
-import { HotelBillRoomDto } from './dto/hotel-bill-room.dto';
 import { assignDefined } from '../../../common/utils/object.util';
-import { UsersService } from '../../user/user.service';
+import { WalletService } from '../../wallet/wallet.service';
+import { BlockchainService } from '../../blockchain/blockchain.service';
+import { parse, isValid } from 'date-fns';
+
+const VND_TO_ETH_RATE = 80_000_000;
 
 interface BillQueryParams {
   cooperationId?: number;
@@ -29,15 +34,10 @@ interface BillQueryParams {
   toDate?: string;
 }
 
-interface RoomBookingContext {
-  room: HotelRoom;
-  quantity: number;
-  pricePerNight: number;
-  lineTotal: number;
-}
-
 @Injectable()
 export class HotelBillsService {
+  private readonly logger = new Logger(HotelBillsService.name);
+
   constructor(
     @InjectRepository(HotelBill)
     private readonly billRepo: Repository<HotelBill>,
@@ -54,163 +54,134 @@ export class HotelBillsService {
     private readonly hotelRoomsService: HotelRoomsService,
     private readonly cooperationsService: CooperationsService,
     private readonly vouchersService: VouchersService,
+    private readonly walletService: WalletService,
+    private readonly blockchainService: BlockchainService,
+    private readonly dataSource: DataSource,
   ) {}
 
-  private formatMoney(value: number | string): string {
-    const numeric = typeof value === 'string' ? Number(value) : value;
-    if (Number.isNaN(numeric)) {
-      return '0.00';
-    }
-    return numeric.toFixed(2);
+  private formatMoney(value: number | string | undefined): string {
+    if (value === undefined || value === null) return '0.00';
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    return (num || 0).toFixed(2);
   }
 
-  private ensureValidDateRange(checkIn: Date, checkOut: Date): void {
-    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
-      throw new BadRequestException('Invalid check-in or check-out date');
-    }
-    if (checkOut <= checkIn) {
-      throw new BadRequestException('checkOutDate must be after checkInDate');
-    }
+  private parseCustomDate(dateStr: string): Date {
+    let date = parse(dateStr, 'dd:MM:yyyy HH:mm', new Date());
+    if (isValid(date)) return date;
+    date = new Date(dateStr);
+    if (isValid(date)) return date;
+    throw new BadRequestException(`Invalid date format: ${dateStr}. Expected ISO 8601 or dd:MM:yyyy HH:mm`);
   }
 
-  private calculateNights(checkIn: Date, checkOut: Date): number {
-    const diff = checkOut.getTime() - checkIn.getTime();
-    const nights = Math.ceil(diff / (1000 * 60 * 60 * 24));
-    return nights > 0 ? nights : 1;
-  }
+  @Cron(CronExpression.EVERY_MINUTE)
+  async checkTimeouts() {
+    const now = new Date();
+    
+    // 30 min timeout for PENDING
+    const pendingThreshold = new Date(now.getTime() - 30 * 60 * 1000);
+    const pendingBills = await this.billRepo.find({
+      where: {
+        status: HotelBillStatus.PENDING,
+        createdAt: LessThan(pendingThreshold),
+      },
+    });
 
-  private isRevenueStatus(status: HotelBillStatus): boolean {
-    return (
-      status === HotelBillStatus.PAID || status === HotelBillStatus.COMPLETED
-    );
+    for (const bill of pendingBills) {
+      bill.status = HotelBillStatus.CANCELLED;
+      await this.billRepo.save(bill);
+      this.logger.log(`Hotel Bill ${bill.id} (PENDING) cancelled due to 30min timeout`);
+    }
+
+    // 10 min timeout for CONFIRMED
+    const confirmedThreshold = new Date(now.getTime() - 10 * 60 * 1000);
+    const confirmedBills = await this.billRepo.find({
+      where: {
+        status: HotelBillStatus.CONFIRMED,
+        updatedAt: LessThan(confirmedThreshold),
+      },
+    });
+
+    for (const bill of confirmedBills) {
+      bill.status = HotelBillStatus.CANCELLED;
+      await this.billRepo.save(bill);
+      this.logger.log(`Hotel Bill ${bill.id} (CONFIRMED) cancelled due to 10min timeout`);
+    }
   }
 
   async create(userId: number, dto: CreateHotelBillDto): Promise<HotelBill> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException(`User ${userId} not found`);
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+
+    const checkInDate = this.parseCustomDate(dto.checkInDate);
+    const checkOutDate = this.parseCustomDate(dto.checkOutDate);
+
+    if (checkOutDate <= checkInDate) {
+      throw new BadRequestException('checkOutDate must be after checkInDate');
     }
 
-    const checkInDate = new Date(dto.checkInDate);
-    const checkOutDate = new Date(dto.checkOutDate);
-    this.ensureValidDateRange(checkInDate, checkOutDate);
-    const nights = this.calculateNights(checkInDate, checkOutDate);
+    const diff = checkOutDate.getTime() - checkInDate.getTime();
+    const nights = Math.ceil(diff / (1000 * 60 * 60 * 24));
 
-    const roomIds = dto.rooms.map((item) => item.roomId);
+    const roomIds = dto.rooms.map(r => r.roomId);
     const rooms = await this.roomRepo.find({
       where: { id: In(roomIds) },
-      relations: { cooperation: true },
+      relations: ['cooperation'],
     });
-    if (rooms.length !== roomIds.length) {
-      const foundIds = new Set(rooms.map((room) => room.id));
-      const missing = roomIds.filter((id) => !foundIds.has(id));
-      throw new NotFoundException(`Rooms not found: ${missing.join(', ')}`);
+
+    if (rooms.length !== new Set(roomIds).size) {
+      throw new NotFoundException('Some rooms were not found');
     }
 
-    const roomsById = new Map(rooms.map((room) => [room.id, room] as const));
-    const cooperationId = rooms[0].cooperation?.id;
-
-    if (rooms.some((room) => room.cooperation?.id !== cooperationId)) {
-      throw new BadRequestException(
-        'All rooms in a booking must belong to the same cooperation',
-      );
+    const cooperationId = rooms[0].cooperation.id;
+    if (rooms.some(r => r.cooperation.id !== cooperationId)) {
+      throw new BadRequestException('All rooms must belong to the same cooperation');
     }
 
-    const cooperation = await this.cooperationRepo.findOne({
-      where: { id: cooperationId },
-    });
-    if (!cooperation) {
-      throw new NotFoundException(`Cooperation ${cooperationId} not found`);
-    }
-
-    if (cooperation.type !== 'hotel') {
-      throw new BadRequestException(
-        'Selected cooperation does not allow hotel bookings',
-      );
-    }
-
-    const contexts = await this.buildRoomContexts(
-      dto.rooms,
-      roomsById,
+    const bill = this.billRepo.create({
+      code: this.generateBillCode(),
+      user,
+      cooperation: rooms[0].cooperation,
       checkInDate,
       checkOutDate,
       nights,
-    );
-
-    const subtotal = contexts.reduce((sum, ctx) => sum + ctx.lineTotal, 0);
-    const totalRooms = contexts.reduce((sum, ctx) => sum + ctx.quantity, 0);
-
-    let voucher: Voucher | null = null;
-    let voucherDiscount = 0;
-    if (dto.voucherCode) {
-      voucher = await this.vouchersService.findByCode(dto.voucherCode);
-      if (!voucher) {
-        throw new NotFoundException(`Voucher ${dto.voucherCode} not found`);
-      }
-      this.vouchersService.validateVoucherForBooking(voucher, subtotal);
-      voucherDiscount = this.vouchersService.calculateDiscountAmount(
-        voucher,
-        subtotal,
-      );
-    }
-
-    const travelPointsUsed = dto.travelPointsUsed ?? 0;
-    if (travelPointsUsed > 0) {
-      if (user.travelPoint < travelPointsUsed) {
-        throw new BadRequestException('Not enough travel points');
-      }
-      user.travelPoint -= travelPointsUsed;
-      await this.userRepo.save(user);
-    }
-
-    const totalAfterDiscount = Math.max(
-      subtotal - voucherDiscount - travelPointsUsed,
-      0,
-    );
-    const finalTotal =
-      dto.totalOverride !== undefined ? dto.totalOverride : totalAfterDiscount;
-    if (finalTotal < 0) {
-      throw new BadRequestException('Total amount cannot be negative');
-    }
-
-    const status = dto.status ?? HotelBillStatus.PENDING;
-
-    const bill = new HotelBill();
-    bill.code = this.generateBillCode();
-    bill.user = user;
-    bill.cooperation = cooperation;
-    bill.checkInDate = checkInDate;
-    bill.checkOutDate = checkOutDate;
-    bill.numberOfRooms = totalRooms;
-    bill.nights = nights;
-    bill.total = this.formatMoney(finalTotal);
-    bill.travelPointsUsed = travelPointsUsed;
-    bill.travelPointsRefunded = false;
-    bill.status = status;
-    bill.statusReason = dto.statusReason;
-    bill.paymentMethod = dto.paymentMethod;
-    bill.contactName = dto.contactName;
-    bill.contactPhone = dto.contactPhone;
-    bill.contactEmail = dto.contactEmail;
-    bill.notes = dto.notes;
-    bill.details = contexts.map((ctx) =>
-      this.buildDetail({
-        bill,
-        room: ctx.room,
-        roomName: ctx.room.name,
-        quantity: ctx.quantity,
-        nights,
-        pricePerNight: this.formatMoney(ctx.pricePerNight),
-        total: this.formatMoney(ctx.lineTotal),
-      }),
-    );
+      status: HotelBillStatus.PENDING,
+      travelPointsUsed: dto.travelPointsUsed || 0,
+    });
 
     const saved = await this.billRepo.save(bill);
-    const persisted = await this.findOne(saved.id, userId);
 
-    await this.applyStatusTransition(null, status, persisted, contexts);
+    // Create details
+    let totalRooms = 0;
+    for (const roomDto of dto.rooms) {
+      const room = rooms.find(r => r.id === roomDto.roomId);
+      if (!room) continue;
+      for (let i = 0; i < roomDto.quantity; i++) {
+        const detail = this.detailRepo.create({
+          bill: saved,
+          room,
+          roomName: room.name,
+          nights,
+          pricePerNight: this.formatMoney(room.price),
+          total: this.formatMoney(parseFloat(room.price) * nights),
+        });
+        await this.detailRepo.save(detail);
+        totalRooms++;
+      }
+    }
 
-    return persisted;
+    saved.numberOfRooms = totalRooms;
+    if (dto.voucherCode) {
+      const voucher = await this.vouchersService.findByCode(dto.voucherCode);
+      if (voucher) {
+        saved.voucher = voucher;
+        saved.voucherId = voucher.id;
+      }
+    }
+    
+    await this.calculateTotal(saved);
+    await this.billRepo.save(saved);
+
+    return this.findOne(saved.id, userId);
   }
 
   private generateBillCode(): string {
@@ -219,368 +190,172 @@ export class HotelBillsService {
     return `HB${timestamp}${random}`;
   }
 
-  async findAll(
-    userId: number,
-    params: BillQueryParams = {},
-  ): Promise<HotelBill[]> {
-    const qb = this.billRepo
-      .createQueryBuilder('bill')
-      .leftJoinAndSelect('bill.details', 'details')
-      .leftJoinAndSelect('bill.user', 'user')
-      .leftJoinAndSelect('bill.cooperation', 'cooperation')
-      .leftJoinAndSelect('bill.voucher', 'voucher')
-      .leftJoinAndSelect('details.room', 'room');
-
-    qb.andWhere('bill.user_id = :userId', { userId });
-
-    if (params.cooperationId) {
-      qb.andWhere('bill.cooperation_id = :cooperationId', {
-        cooperationId: params.cooperationId,
-      });
-    }
-
-    if (params.status) {
-      qb.andWhere('bill.status = :status', { status: params.status });
-    }
-
-    if (params.voucherId) {
-      qb.andWhere('bill.voucher_id = :voucherId', {
-        voucherId: params.voucherId,
-      });
-    }
-
-    if (params.fromDate) {
-      qb.andWhere('bill.checkInDate >= :fromDate', {
-        fromDate: params.fromDate,
-      });
-    }
-
-    if (params.toDate) {
-      qb.andWhere('bill.checkOutDate <= :toDate', {
-        toDate: params.toDate,
-      });
-    }
-
-    return qb
-      .orderBy('bill.createdAt', 'DESC')
-      .addOrderBy('details.id', 'ASC')
-      .getMany();
-  }
-
   async findOne(id: number, userId: number): Promise<HotelBill> {
     const bill = await this.billRepo.findOne({
       where: { id },
-      relations: {
-        details: true,
-        user: true,
-        cooperation: true,
-        voucher: true,
-      },
-      order: { details: { id: 'ASC' } },
+      relations: ['details', 'details.room', 'user', 'cooperation', 'voucher'],
     });
-    if (!bill) {
-      throw new NotFoundException(`Hotel bill ${id} not found`);
-    }
-    if (bill.user?.id !== userId) {
-      throw new ForbiddenException('You do not have access to this hotel bill');
-    }
+    if (!bill) throw new NotFoundException(`Hotel bill ${id} not found`);
+    if (bill.user?.id !== userId) throw new ForbiddenException('Forbidden');
     return bill;
   }
 
-  async update(
-    id: number,
-    userId: number,
-    dto: UpdateHotelBillDto,
-  ): Promise<HotelBill> {
+  async update(id: number, userId: number, dto: UpdateHotelBillDto): Promise<HotelBill> {
     const bill = await this.findOne(id, userId);
-    const previousStatus = bill.status;
-
-    if (dto.checkInDate || dto.checkOutDate) {
-      const newCheckIn = dto.checkInDate
-        ? new Date(dto.checkInDate)
-        : bill.checkInDate;
-      const newCheckOut = dto.checkOutDate
-        ? new Date(dto.checkOutDate)
-        : bill.checkOutDate;
-      this.ensureValidDateRange(newCheckIn, newCheckOut);
-      bill.checkInDate = newCheckIn;
-      bill.checkOutDate = newCheckOut;
-      bill.nights = this.calculateNights(newCheckIn, newCheckOut);
-    }
-
-    let contexts: RoomBookingContext[] | null = null;
-    if (dto.rooms) {
-      const roomIds = dto.rooms.map((item) => item.roomId);
-      const rooms = await this.roomRepo.find({
-        where: { id: In(roomIds) },
-        relations: { cooperation: true },
-      });
-      if (rooms.length !== roomIds.length) {
-        const existingIds = new Set(rooms.map((room) => room.id));
-        const missing = roomIds.filter((val) => !existingIds.has(val));
-        throw new NotFoundException(`Rooms not found: ${missing.join(', ')}`);
-      }
-      if (rooms.some((room) => room.cooperation?.id !== bill.cooperation?.id)) {
-        throw new BadRequestException(
-          'All rooms must belong to the same cooperation',
-        );
-      }
-      const roomsById = new Map(rooms.map((room) => [room.id, room] as const));
-      contexts = await this.buildRoomContexts(
-        dto.rooms,
-        roomsById,
-        bill.checkInDate,
-        bill.checkOutDate,
-        bill.nights,
-        bill.id,
-      );
-      bill.numberOfRooms = contexts.reduce((sum, ctx) => sum + ctx.quantity, 0);
-      let subtotal = contexts.reduce((sum, ctx) => sum + ctx.lineTotal, 0);
-      const voucherId = bill.voucher?.id;
-      if (voucherId) {
-        const voucher =
-          bill.voucher ??
-          (await this.voucherRepo.findOne({
-            where: { id: voucherId },
-          }));
-        if (voucher) {
-          this.vouchersService.validateVoucherForBooking(voucher, subtotal);
-          const discount = this.vouchersService.calculateDiscountAmount(
-            voucher,
-            subtotal,
-          );
-          subtotal -= discount;
-        }
-      }
-      subtotal -= bill.travelPointsUsed;
-      if (subtotal < 0) {
-        subtotal = 0;
-      }
-      bill.total = this.formatMoney(subtotal);
-      await this.detailRepo
-        .createQueryBuilder()
-        .delete()
-        .where('bill_id = :billId', { billId: bill.id })
-        .execute();
-      bill.details = contexts.map((ctx: RoomBookingContext) =>
-        this.buildDetail({
-          bill,
-          room: ctx.room,
-          roomName: ctx.room.name,
-          quantity: ctx.quantity,
-          nights: bill.nights,
-          pricePerNight: this.formatMoney(ctx.pricePerNight),
-          total: this.formatMoney(ctx.lineTotal),
-        }),
-      );
+    if (bill.status !== HotelBillStatus.PENDING && bill.status !== HotelBillStatus.CONFIRMED) {
+      throw new BadRequestException(`Cannot update bill in ${bill.status} status`);
     }
 
     assignDefined(bill, {
-      paymentMethod: dto.paymentMethod,
       contactName: dto.contactName,
       contactPhone: dto.contactPhone,
-      contactEmail: dto.contactEmail,
       notes: dto.notes,
-      statusReason: dto.statusReason,
     });
 
     if (dto.voucherCode !== undefined) {
       if (!dto.voucherCode) {
         bill.voucher = undefined;
+        bill.voucherId = undefined;
       } else {
         const voucher = await this.vouchersService.findByCode(dto.voucherCode);
-        if (!voucher) {
-          throw new NotFoundException(`Voucher ${dto.voucherCode} not found`);
-        }
-        this.vouchersService.validateVoucherForBooking(
-          voucher,
-          Number(bill.total),
-        );
+        if (!voucher) throw new NotFoundException('Voucher not found');
         bill.voucher = voucher;
+        bill.voucherId = voucher.id;
       }
     }
 
-    if (
-      dto.travelPointsUsed !== undefined &&
-      dto.travelPointsUsed !== bill.travelPointsUsed
-    ) {
-      const user =
-        bill.user ?? (await this.userRepo.findOne({ where: { id: userId } }));
-      if (!user) {
-        throw new NotFoundException(`User ${userId} not found`);
-      }
-
-      if (dto.travelPointsUsed > bill.travelPointsUsed) {
-        const additionalPoints = dto.travelPointsUsed - bill.travelPointsUsed;
-        if (user.travelPoint < additionalPoints) {
-          throw new BadRequestException('Not enough travel points');
-        }
-        user.travelPoint -= additionalPoints;
-      } else {
-        const refundPoints = bill.travelPointsUsed - dto.travelPointsUsed;
-        user.travelPoint += refundPoints;
-        user.travelExp += refundPoints;
-        user.userTier = UsersService.resolveTier(user.travelExp);
-      }
+    if (dto.travelPointsUsed !== undefined) {
       bill.travelPointsUsed = dto.travelPointsUsed;
-      bill.travelPointsRefunded = false;
-      await this.userRepo.save(user);
     }
 
-    if (dto.totalOverride !== undefined) {
-      bill.total = this.formatMoney(dto.totalOverride);
-    }
-
-    if (dto.status) {
-      bill.status = dto.status;
-    }
-
-    const saved = await this.billRepo.save(bill);
-
-    const updated = await this.findOne(saved.id, userId);
-    const appliedContexts =
-      contexts ??
-      updated.details.map((detail) => {
-        const room = roomStub(detail.room?.id);
-        return {
-          room,
-          quantity: detail.quantity,
-          pricePerNight: Number(detail.pricePerNight),
-          lineTotal: Number(detail.total),
-        };
-      });
-
-    await this.applyStatusTransition(
-      previousStatus,
-      updated.status,
-      updated,
-      appliedContexts,
-      updated.voucher ?? undefined,
-    );
-
-    return updated;
+    await this.calculateTotal(bill);
+    return this.billRepo.save(bill);
   }
 
-  async remove(
-    id: number,
-    userId: number,
-  ): Promise<{ id: number; message: string }> {
+  async confirm(id: number, userId: number, paymentMethod: string): Promise<HotelBill> {
     const bill = await this.findOne(id, userId);
-    await this.applyStatusTransition(
-      bill.status,
-      HotelBillStatus.CANCELLED,
-      bill,
-      bill.details.map((detail) => ({
-        room: roomStub(detail.room?.id),
-        quantity: detail.quantity,
-        pricePerNight: Number(detail.pricePerNight),
-        lineTotal: Number(detail.total),
-      })),
-      bill.voucher ?? undefined,
-      true,
-    );
-    await this.billRepo.remove(bill);
-    return { id, message: 'Hotel bill removed' };
-  }
+    if (bill.status !== HotelBillStatus.PENDING) throw new BadRequestException('Not pending');
 
-  private buildDetail(input: {
-    bill: HotelBill;
-    room: HotelRoom;
-    roomName: string;
-    quantity: number;
-    nights: number;
-    pricePerNight: string;
-    total: string;
-  }): HotelBillDetail {
-    const detail = new HotelBillDetail();
-    detail.bill = input.bill;
-    detail.room = input.room;
-    detail.roomName = input.roomName;
-    detail.quantity = input.quantity;
-    detail.nights = input.nights;
-    detail.pricePerNight = input.pricePerNight;
-    detail.total = input.total;
-    return detail;
-  }
-
-  private async buildRoomContexts(
-    inputs: HotelBillRoomDto[],
-    roomsById: Map<number, HotelRoom>,
-    checkIn: Date,
-    checkOut: Date,
-    nights: number,
-    excludeBillId?: number,
-  ): Promise<RoomBookingContext[]> {
-    const contexts: RoomBookingContext[] = [];
-    for (const input of inputs) {
-      const room = roomsById.get(input.roomId);
-      if (!room) {
-        throw new NotFoundException(`Room ${input.roomId} not found`);
-      }
-      await this.hotelRoomsService.ensureRoomAvailability(
-        room,
-        checkIn,
-        checkOut,
-        input.quantity,
-        excludeBillId,
-      );
-      const pricePerNight = Number(room.price) || 0;
-      const lineTotal = pricePerNight * nights * input.quantity;
-      contexts.push({
-        room,
-        quantity: input.quantity,
-        pricePerNight,
-        lineTotal,
-      });
+    if (!bill.contactName || !bill.contactPhone) {
+      throw new BadRequestException('Contact info required');
     }
-    return contexts;
+
+    bill.status = HotelBillStatus.CONFIRMED;
+    bill.paymentMethod = paymentMethod;
+    return this.billRepo.save(bill);
   }
 
-  private async applyStatusTransition(
-    previousStatus: HotelBillStatus | null,
-    nextStatus: HotelBillStatus,
-    bill: HotelBill,
-    contexts: RoomBookingContext[],
-    voucher?: Voucher,
-    removeVoucherUsage = false,
-  ): Promise<void> {
-    const prevRevenue = previousStatus
-      ? this.isRevenueStatus(previousStatus)
-      : false;
-    const nextRevenue = this.isRevenueStatus(nextStatus);
+  async pay(id: number, userId: number): Promise<HotelBill> {
+    const bill = await this.findOne(id, userId);
+    if (bill.status !== HotelBillStatus.CONFIRMED) throw new BadRequestException('Not confirmed');
 
-    if (!prevRevenue && nextRevenue) {
-      if (bill.cooperation?.id) {
-        await this.cooperationsService.adjustBookingMetrics(
-          bill.cooperation.id,
-          1,
-        );
-      }
-      await this.hotelRoomsService.reserveRooms(contexts);
-      if (voucher) {
-        await this.vouchersService.incrementUsage(voucher.id);
+    if (bill.paymentMethod === 'wallet') {
+      const ownerWalletAddress = bill.cooperation?.manager?.bankAccountNumber;
+      await this.processWalletPayment(bill, ownerWalletAddress);
+    }
+
+    bill.status = HotelBillStatus.PAID;
+    
+    // Ensure room availability (reservation)
+    for (const detail of bill.details) {
+      await this.hotelRoomsService.ensureRoomAvailability(detail.room, bill.checkInDate, bill.checkOutDate, 1, bill.id);
+    }
+
+    return this.billRepo.save(bill);
+  }
+
+  async complete(id: number, userId: number): Promise<HotelBill> {
+    const bill = await this.findOne(id, userId);
+    if (bill.status !== HotelBillStatus.PAID) throw new BadRequestException('Not paid');
+
+    bill.status = HotelBillStatus.COMPLETED;
+    const ownerUserId = bill.cooperation?.manager?.id;
+    await this.processRefundOrRelease(bill, 'release', ownerUserId);
+
+    for (const detail of bill.details) {
+      detail.room.totalBookings += 1;
+      await this.roomRepo.save(detail.room);
+    }
+
+    return this.billRepo.save(bill);
+  }
+
+  async cancel(id: number, userId: number): Promise<HotelBill> {
+    const bill = await this.findOne(id, userId);
+    if ([HotelBillStatus.COMPLETED, HotelBillStatus.CANCELLED].includes(bill.status)) {
+      throw new BadRequestException('Finished');
+    }
+
+    if (bill.status === HotelBillStatus.PAID) {
+      await this.processRefundOrRelease(bill, 'refund');
+    }
+
+    bill.status = HotelBillStatus.CANCELLED;
+    return this.billRepo.save(bill);
+  }
+
+  private async calculateTotal(bill: HotelBill): Promise<void> {
+    const details = await this.detailRepo.find({ where: { bill: { id: bill.id } } });
+    let total = details.reduce((sum, d) => sum + parseFloat(d.total), 0);
+
+    // 1. Voucher (%)
+    if (bill.voucher && bill.voucher.value) {
+      const val = parseFloat(bill.voucher.value);
+      if (bill.voucher.discountType === 'percentage') {
+        let discountAmount = total * (val / 100);
+        if (bill.voucher.maxDiscountValue) {
+          const max = parseFloat(bill.voucher.maxDiscountValue);
+          if (discountAmount > max) discountAmount = max;
+        }
+        total = Math.max(0, total - discountAmount);
+      } else {
+        total = Math.max(0, total - val);
       }
     }
 
-    if (prevRevenue && !nextRevenue) {
-      if (bill.cooperation?.id) {
-        await this.cooperationsService.adjustBookingMetrics(
-          bill.cooperation.id,
-          -1,
-        );
-      }
-      await this.hotelRoomsService.releaseRooms(contexts);
-      if (voucher && removeVoucherUsage) {
-        await this.vouchersService.decrementUsage(voucher.id);
-      }
+    // 2. Points (1:1)
+    if (bill.travelPointsUsed > 0) {
+      total = Math.max(0, total - bill.travelPointsUsed);
+    }
+
+    bill.total = this.formatMoney(total);
+  }
+
+  private async processWalletPayment(bill: HotelBill, ownerWalletAddress?: string) {
+    const amount = parseFloat(bill.total);
+    if (amount <= 0) return;
+    await this.walletService.lockFunds(bill.user.id, amount, `hotel:${bill.id}`);
+    if (ownerWalletAddress) {
+      const eth = (amount / VND_TO_ETH_RATE).toFixed(8);
+      await this.blockchainService.adminDepositForRental(bill.id, ownerWalletAddress, eth);
     }
   }
-}
 
-function roomStub(roomId?: number): HotelRoom {
-  const stub = new HotelRoom();
-  if (roomId !== undefined) {
-    stub.id = roomId;
+  private async processRefundOrRelease(bill: HotelBill, action: 'release' | 'refund', ownerUserId?: number) {
+    const amount = parseFloat(bill.total);
+    if (amount <= 0) return;
+    await this.walletService.releaseFunds(bill.user.id, amount, `hotel:${bill.id}`, action === 'release' ? ownerUserId : undefined);
+
+    if (action === 'release') {
+      await this.blockchainService.adminReleaseFundsForRental(bill.id);
+      // 1000 VND = 10 pts => amount / 100
+      const points = Math.floor(amount / 100);
+      if (points > 0) {
+        await this.userRepo.increment({ id: bill.user.id }, 'travelPoint', points);
+      }
+    } else {
+      await this.blockchainService.adminRefundForRental(bill.id);
+    }
   }
-  return stub;
+
+  async findAll(userId: number, params: BillQueryParams = {}): Promise<HotelBill[]> {
+    const qb = this.billRepo.createQueryBuilder('bill');
+    qb.where('bill.user_id = :userId', { userId });
+    if (params.status) qb.andWhere('bill.status = :status', { status: params.status });
+    if (params.cooperationId) qb.andWhere('bill.cooperation_id = :cid', { cid: params.cooperationId });
+    return qb.leftJoinAndSelect('bill.details', 'details')
+             .leftJoinAndSelect('details.room', 'room')
+             .orderBy('bill.createdAt', 'DESC')
+             .getMany();
+  }
 }

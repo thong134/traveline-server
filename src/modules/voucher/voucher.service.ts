@@ -44,8 +44,8 @@ export class VouchersService {
       minOrderValue: this.formatMoney(dto.minOrderValue),
       maxUsage: dto.maxUsage ?? 0,
       usedCount: 0,
-      startsAt: dto.startsAt ? new Date(dto.startsAt) : undefined,
-      expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
+      startsAt: dto.startsAt,
+      expiresAt: dto.expiresAt,
       active: dto.active ?? true,
     });
     return this.voucherRepo.save(voucher);
@@ -115,11 +115,11 @@ export class VouchersService {
     }
 
     if (dto.startsAt !== undefined) {
-      voucher.startsAt = dto.startsAt ? new Date(dto.startsAt) : undefined;
+      voucher.startsAt = dto.startsAt;
     }
 
     if (dto.expiresAt !== undefined) {
-      voucher.expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : undefined;
+      voucher.expiresAt = dto.expiresAt;
     }
 
     return this.voucherRepo.save(voucher);

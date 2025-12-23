@@ -96,17 +96,11 @@ export class DeliveryBill {
   })
   status: DeliveryBillStatus;
 
-  @Column({ type: 'text', nullable: true })
-  statusReason?: string;
-
   @Column({ nullable: true })
   contactName?: string;
 
   @Column({ nullable: true })
   contactPhone?: string;
-
-  @Column({ nullable: true })
-  contactEmail?: string;
 
   @Column({ nullable: true })
   paymentMethod?: string;

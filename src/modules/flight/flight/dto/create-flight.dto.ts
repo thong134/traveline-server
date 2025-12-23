@@ -1,7 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { TransformDDMMYYYY } from '../../../../common/utils/date.util';
 import {
-  IsDateString,
+  IsDate,
   IsInt,
   IsNumber,
   IsOptional,
@@ -37,13 +38,15 @@ export class CreateFlightDto {
   @MaxLength(255)
   arrivalAirport: string;
 
-  @ApiProperty({ description: 'Departure time (ISO 8601 datetime string)' })
-  @IsDateString()
-  departureTime: string;
+  @ApiProperty({ description: 'Departure time (dd/MM/yyyy)', example: '13/04/2004' })
+  @TransformDDMMYYYY()
+  @IsDate()
+  departureTime: Date;
 
-  @ApiProperty({ description: 'Arrival time (ISO 8601 datetime string)' })
-  @IsDateString()
-  arrivalTime: string;
+  @ApiProperty({ description: 'Arrival time (dd/MM/yyyy)', example: '13/04/2004' })
+  @TransformDDMMYYYY()
+  @IsDate()
+  arrivalTime: Date;
 
   @ApiPropertyOptional({ description: 'Duration in minutes' })
   @IsOptional()

@@ -67,9 +67,6 @@ export class RestaurantBooking {
   @Column({ nullable: true })
   contactPhone?: string;
 
-  @Column({ nullable: true })
-  contactEmail?: string;
-
   @Column({ type: 'text', nullable: true })
   notes?: string;
 
@@ -79,9 +76,6 @@ export class RestaurantBooking {
     default: RestaurantBookingStatus.PENDING,
   })
   status: RestaurantBookingStatus;
-
-  @Column({ type: 'text', nullable: true })
-  statusReason?: string;
 
   @CreateDateColumn()
   createdAt: Date;

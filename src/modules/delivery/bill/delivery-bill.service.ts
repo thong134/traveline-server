@@ -2,10 +2,12 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThan } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   DeliveryBill,
   DeliveryBillStatus,
@@ -17,10 +19,17 @@ import { User } from '../../user/entities/user.entity';
 import { VouchersService } from '../../voucher/voucher.service';
 import { Voucher } from '../../voucher/entities/voucher.entity';
 import { CooperationsService } from '../../cooperation/cooperation.service';
-import { UsersService } from '../../user/user.service';
+import { WalletService } from '../../wallet/wallet.service';
+import { BlockchainService } from '../../blockchain/blockchain.service';
+import { assignDefined } from '../../../common/utils/object.util';
+import { parse, isValid } from 'date-fns';
+
+const VND_TO_ETH_RATE = 80_000_000;
 
 @Injectable()
 export class DeliveryBillsService {
+  private readonly logger = new Logger(DeliveryBillsService.name);
+
   constructor(
     @InjectRepository(DeliveryBill)
     private readonly billRepo: Repository<DeliveryBill>,
@@ -30,28 +39,250 @@ export class DeliveryBillsService {
     private readonly userRepo: Repository<User>,
     private readonly vouchersService: VouchersService,
     private readonly cooperationsService: CooperationsService,
+    private readonly walletService: WalletService,
+    private readonly blockchainService: BlockchainService,
   ) {}
 
   private formatMoney(value: number | string | undefined): string {
-    if (value === undefined || value === null) {
-      return '0.00';
-    }
-    const num = typeof value === 'string' ? Number(value) : value;
-    if (Number.isNaN(num)) {
-      return '0.00';
-    }
-    return num.toFixed(2);
+    if (value === undefined || value === null) return '0.00';
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    return (num || 0).toFixed(2);
   }
 
-  private formatDistance(value: number | string | undefined): string {
-    if (value === undefined || value === null) {
-      return '0.00';
+  private parseCustomDate(dateStr: string): Date {
+    let date = parse(dateStr, 'dd:MM:yyyy HH:mm', new Date());
+    if (isValid(date)) return date;
+    date = new Date(dateStr);
+    if (isValid(date)) return date;
+    throw new BadRequestException(`Invalid date format: ${dateStr}. Expected ISO 8601 or dd:MM:yyyy HH:mm`);
+  }
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async checkTimeouts() {
+    const now = new Date();
+    
+    // 30 min timeout for PENDING
+    const pendingThreshold = new Date(now.getTime() - 30 * 60 * 1000);
+    const pendingBills = await this.billRepo.find({
+      where: {
+        status: DeliveryBillStatus.PENDING,
+        createdAt: LessThan(pendingThreshold),
+      },
+    });
+
+    for (const bill of pendingBills) {
+      bill.status = DeliveryBillStatus.CANCELLED;
+      await this.billRepo.save(bill);
+      this.logger.log(`Delivery Bill ${bill.id} (PENDING) cancelled due to 30min timeout`);
     }
-    const num = typeof value === 'string' ? Number(value) : value;
-    if (Number.isNaN(num)) {
-      return '0.00';
+
+    // 10 min timeout for CONFIRMED
+    const confirmedThreshold = new Date(now.getTime() - 10 * 60 * 1000);
+    const confirmedBills = await this.billRepo.find({
+      where: {
+        status: DeliveryBillStatus.CONFIRMED,
+        updatedAt: LessThan(confirmedThreshold),
+      },
+    });
+
+    for (const bill of confirmedBills) {
+      bill.status = DeliveryBillStatus.CANCELLED;
+      await this.billRepo.save(bill);
+      this.logger.log(`Delivery Bill ${bill.id} (CONFIRMED) cancelled due to 10min timeout`);
     }
-    return num.toFixed(2);
+  }
+
+  private calculateSubtotal(distanceKm: number, vehicle: DeliveryVehicle): number {
+    const base = Number(vehicle.priceLessThan10Km ?? 0);
+    const extra = Number(vehicle.priceMoreThan10Km ?? 0);
+    if (distanceKm <= 10) return base;
+    return base + (distanceKm - 10) * extra;
+  }
+
+  async create(userId: number, dto: CreateDeliveryBillDto): Promise<DeliveryBill> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+
+    const vehicle = await this.vehicleRepo.findOne({
+      where: { id: dto.vehicleId },
+      relations: ['cooperation'],
+    });
+    if (!vehicle) throw new NotFoundException('Delivery vehicle not found');
+
+    const distanceKm = dto.distanceKm || 0;
+    const subtotal = this.calculateSubtotal(distanceKm, vehicle);
+
+    const bill = this.billRepo.create({
+      code: this.generateBillCode(),
+      user,
+      vehicle,
+      cooperation: vehicle.cooperation,
+      deliveryDate: this.parseCustomDate(dto.deliveryDate),
+      deliveryAddress: dto.deliveryAddress,
+      receiveAddress: dto.receiveAddress,
+      description: dto.description,
+      receiverName: dto.receiverName,
+      receiverPhone: dto.receiverPhone,
+      distanceKm: distanceKm.toFixed(2),
+      subtotal: this.formatMoney(subtotal),
+      status: DeliveryBillStatus.PENDING,
+      travelPointsUsed: dto.travelPointsUsed || 0,
+    });
+
+    if (dto.voucherCode) {
+      const voucher = await this.vouchersService.findByCode(dto.voucherCode);
+      if (voucher) bill.voucher = voucher;
+    }
+
+    await this.calculateTotal(bill);
+    return this.billRepo.save(bill);
+  }
+
+  async findOne(id: number, userId: number): Promise<DeliveryBill> {
+    const bill = await this.billRepo.findOne({
+      where: { id },
+      relations: ['vehicle', 'user', 'voucher', 'cooperation'],
+    });
+    if (!bill) throw new NotFoundException(`Delivery bill ${id} not found`);
+    if (bill.user?.id !== userId) throw new ForbiddenException('Forbidden');
+    return bill;
+  }
+
+  async update(id: number, userId: number, dto: UpdateDeliveryBillDto): Promise<DeliveryBill> {
+    const bill = await this.findOne(id, userId);
+    if (bill.status !== DeliveryBillStatus.PENDING && bill.status !== DeliveryBillStatus.CONFIRMED) {
+      throw new BadRequestException(`Cannot update bill in ${bill.status} status`);
+    }
+
+    assignDefined(bill, {
+      contactName: dto.contactName,
+      contactPhone: dto.contactPhone,
+      deliveryAddress: dto.deliveryAddress,
+      receiveAddress: dto.receiveAddress,
+      receiverName: dto.receiverName,
+      receiverPhone: dto.receiverPhone,
+      notes: dto.notes,
+    });
+
+    if (dto.voucherCode !== undefined) {
+      if (!dto.voucherCode) {
+        bill.voucher = undefined;
+      } else {
+        const voucher = await this.vouchersService.findByCode(dto.voucherCode);
+        if (!voucher) throw new NotFoundException('Voucher not found');
+        bill.voucher = voucher;
+      }
+    }
+
+    if (dto.travelPointsUsed !== undefined) {
+      bill.travelPointsUsed = dto.travelPointsUsed;
+    }
+
+    await this.calculateTotal(bill);
+    return this.billRepo.save(bill);
+  }
+
+  async confirm(id: number, userId: number, paymentMethod: string): Promise<DeliveryBill> {
+    const bill = await this.findOne(id, userId);
+    if (bill.status !== DeliveryBillStatus.PENDING) throw new BadRequestException('Not pending');
+
+    if (!bill.contactName || !bill.contactPhone) {
+      throw new BadRequestException('Contact info required');
+    }
+
+    bill.status = DeliveryBillStatus.CONFIRMED;
+    bill.paymentMethod = paymentMethod;
+    return this.billRepo.save(bill);
+  }
+
+  async pay(id: number, userId: number): Promise<DeliveryBill> {
+    const bill = await this.findOne(id, userId);
+    if (bill.status !== DeliveryBillStatus.CONFIRMED) throw new BadRequestException('Not confirmed');
+
+    if (bill.paymentMethod === 'wallet') {
+      const ownerWalletAddress = bill.cooperation?.manager?.bankAccountNumber || (bill.vehicle?.cooperation as any)?.manager?.bankAccountNumber;
+      await this.processWalletPayment(bill, ownerWalletAddress);
+    }
+
+    bill.status = DeliveryBillStatus.IN_TRANSIT;
+    return this.billRepo.save(bill);
+  }
+
+  async complete(id: number, userId: number): Promise<DeliveryBill> {
+    const bill = await this.findOne(id, userId);
+    if (bill.status !== DeliveryBillStatus.IN_TRANSIT) throw new BadRequestException('Not in transit');
+
+    bill.status = DeliveryBillStatus.COMPLETED;
+    const ownerUserId = bill.cooperation?.manager?.id || (bill.vehicle?.cooperation as any)?.manager?.id;
+    await this.processRefundOrRelease(bill, 'release', ownerUserId);
+
+    return this.billRepo.save(bill);
+  }
+
+  async cancel(id: number, userId: number): Promise<DeliveryBill> {
+    const bill = await this.findOne(id, userId);
+    if ([DeliveryBillStatus.COMPLETED, DeliveryBillStatus.CANCELLED].includes(bill.status)) {
+      throw new BadRequestException('Finished');
+    }
+
+    if ([DeliveryBillStatus.IN_TRANSIT].includes(bill.status)) {
+       await this.processRefundOrRelease(bill, 'refund');
+    }
+
+    bill.status = DeliveryBillStatus.CANCELLED;
+    return this.billRepo.save(bill);
+  }
+
+  private async calculateTotal(bill: DeliveryBill): Promise<void> {
+    let total = parseFloat(bill.subtotal);
+
+    // 1. Voucher (%)
+    if (bill.voucher && bill.voucher.value) {
+      const val = parseFloat(bill.voucher.value);
+      if (bill.voucher.discountType === 'percentage') {
+        let discountAmount = total * (val / 100);
+        if (bill.voucher.maxDiscountValue) {
+          const max = parseFloat(bill.voucher.maxDiscountValue);
+          if (discountAmount > max) discountAmount = max;
+        }
+        total = Math.max(0, total - discountAmount);
+      } else {
+        total = Math.max(0, total - val);
+      }
+    }
+
+    // 2. Points (1:1)
+    if (bill.travelPointsUsed > 0) {
+      total = Math.max(0, total - bill.travelPointsUsed);
+    }
+
+    bill.total = this.formatMoney(total);
+  }
+
+  private async processWalletPayment(bill: DeliveryBill, ownerWalletAddress?: string) {
+    const amount = parseFloat(bill.total);
+    if (amount <= 0) return;
+    await this.walletService.lockFunds(bill.user.id, amount, `delivery:${bill.id}`);
+    if (ownerWalletAddress) {
+      const eth = (amount / VND_TO_ETH_RATE).toFixed(8);
+      await this.blockchainService.adminDepositForRental(bill.id, ownerWalletAddress, eth);
+    }
+  }
+
+  private async processRefundOrRelease(bill: DeliveryBill, action: 'release' | 'refund', ownerUserId?: number) {
+    const amount = parseFloat(bill.total);
+    if (amount <= 0) return;
+    await this.walletService.releaseFunds(bill.user.id, amount, `delivery:${bill.id}`, action === 'release' ? ownerUserId : undefined);
+
+    if (action === 'release') {
+      await this.blockchainService.adminReleaseFundsForRental(bill.id);
+      const points = Math.floor(amount / 100);
+      if (points > 0) {
+        await this.userRepo.increment({ id: bill.user.id }, 'travelPoint', points);
+      }
+    } else {
+      await this.blockchainService.adminRefundForRental(bill.id);
+    }
   }
 
   private generateBillCode(): string {
@@ -60,414 +291,12 @@ export class DeliveryBillsService {
     return `DB${timestamp}${random}`;
   }
 
-  private calculateSubtotal(
-    distanceKm: number,
-    vehicle: DeliveryVehicle,
-  ): number {
-    const base = Number(vehicle.priceLessThan10Km ?? 0);
-    const extra = Number(vehicle.priceMoreThan10Km ?? 0);
-    if (distanceKm <= 10) {
-      return base;
-    }
-    const additionalDistance = distanceKm - 10;
-    return base + additionalDistance * extra;
-  }
-
-  private isRevenueStatus(status: DeliveryBillStatus): boolean {
-    return status === DeliveryBillStatus.COMPLETED;
-  }
-
-  async create(
-    userId: number,
-    dto: CreateDeliveryBillDto,
-  ): Promise<DeliveryBill> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException(`User ${userId} not found`);
-    }
-
-    const vehicle = await this.vehicleRepo.findOne({
-      where: { id: dto.vehicleId },
-      relations: { cooperation: true },
-    });
-    if (!vehicle) {
-      throw new NotFoundException(
-        `Delivery vehicle ${dto.vehicleId} not found`,
-      );
-    }
-
-    const distanceKm = dto.distanceKm ?? 0;
-    if (distanceKm < 0) {
-      throw new BadRequestException('distanceKm must be positive');
-    }
-    const subtotal = this.calculateSubtotal(distanceKm, vehicle);
-
-    let voucher: Voucher | null = null;
-    let voucherDiscount = 0;
-    if (dto.voucherCode) {
-      voucher = await this.vouchersService.findByCode(dto.voucherCode);
-      if (!voucher) {
-        throw new NotFoundException(`Voucher ${dto.voucherCode} not found`);
-      }
-      this.vouchersService.validateVoucherForBooking(voucher, subtotal);
-      voucherDiscount = this.vouchersService.calculateDiscountAmount(
-        voucher,
-        subtotal,
-      );
-    }
-
-    const travelPointsUsed = dto.travelPointsUsed ?? 0;
-    if (travelPointsUsed > 0) {
-      if (user.travelPoint < travelPointsUsed) {
-        throw new BadRequestException('Not enough travel points');
-      }
-      user.travelPoint -= travelPointsUsed;
-      await this.userRepo.save(user);
-    }
-
-    const totalAfterDiscount = Math.max(
-      subtotal - voucherDiscount - travelPointsUsed,
-      0,
-    );
-    const finalTotal =
-      dto.totalOverride !== undefined ? dto.totalOverride : totalAfterDiscount;
-    if (finalTotal < 0) {
-      throw new BadRequestException('Total amount cannot be negative');
-    }
-
-    const status = dto.status ?? DeliveryBillStatus.PENDING;
-
-    const bill = this.billRepo.create({
-      code: this.generateBillCode(),
-      user,
-      vehicle,
-      cooperation: vehicle.cooperation,
-      deliveryDate: new Date(dto.deliveryDate),
-      deliveryAddress: dto.deliveryAddress,
-      receiveAddress: dto.receiveAddress,
-      description: dto.description,
-      receiverName: dto.receiverName,
-      receiverPhone: dto.receiverPhone,
-      distanceKm: this.formatDistance(distanceKm),
-      subtotal: this.formatMoney(subtotal),
-      total: this.formatMoney(finalTotal),
-      travelPointsUsed,
-      travelPointsRefunded: false,
-      status,
-      statusReason: dto.statusReason,
-      contactName: dto.contactName,
-      contactPhone: dto.contactPhone,
-      contactEmail: dto.contactEmail,
-      paymentMethod: dto.paymentMethod,
-      notes: dto.notes,
-      voucher: voucher ?? undefined,
-    });
-
-    const saved = await this.billRepo.save(bill);
-    const persisted = await this.findOne(saved.id, userId);
-
-    await this.applyStatusTransition(null, status, persisted);
-
-    return persisted;
-  }
-
-  async findAll(
-    userId: number,
-    params: {
-      status?: DeliveryBillStatus;
-      vehicleId?: number;
-      cooperationId?: number;
-    } = {},
-  ): Promise<DeliveryBill[]> {
-    const qb = this.billRepo
-      .createQueryBuilder('bill')
-      .leftJoinAndSelect('bill.vehicle', 'vehicle')
-      .leftJoinAndSelect('bill.user', 'user')
-      .leftJoinAndSelect('bill.voucher', 'voucher');
-
-    qb.andWhere('bill.user_id = :userId', { userId });
-
-    if (params.vehicleId) {
-      qb.andWhere('bill.vehicle_id = :vehicleId', {
-        vehicleId: params.vehicleId,
-      });
-    }
-
-    if (params.cooperationId) {
-      qb.andWhere('bill.cooperation_id = :cooperationId', {
-        cooperationId: params.cooperationId,
-      });
-    }
-
-    if (params.status) {
-      qb.andWhere('bill.status = :status', { status: params.status });
-    }
-
-    return qb.orderBy('bill.createdAt', 'DESC').getMany();
-  }
-
-  async findOne(id: number, userId: number): Promise<DeliveryBill> {
-    const bill = await this.billRepo.findOne({
-      where: { id },
-      relations: {
-        vehicle: true,
-        user: true,
-        voucher: true,
-        cooperation: true,
-      },
-    });
-    if (!bill) {
-      throw new NotFoundException(`Delivery bill ${id} not found`);
-    }
-    if (bill.user?.id !== userId) {
-      throw new ForbiddenException(
-        'You do not have access to this delivery bill',
-      );
-    }
-    return bill;
-  }
-
-  async update(
-    id: number,
-    userId: number,
-    dto: UpdateDeliveryBillDto,
-  ): Promise<DeliveryBill> {
-    const bill = await this.findOne(id, userId);
-    const previousStatus = bill.status;
-
-    if (dto.deliveryDate !== undefined) {
-      bill.deliveryDate = new Date(dto.deliveryDate);
-    }
-
-    if (dto.vehicleId !== undefined && dto.vehicleId !== bill.vehicle?.id) {
-      const vehicle = await this.vehicleRepo.findOne({
-        where: { id: dto.vehicleId },
-        relations: { cooperation: true },
-      });
-      if (!vehicle) {
-        throw new NotFoundException(
-          `Delivery vehicle ${dto.vehicleId} not found`,
-        );
-      }
-      bill.vehicle = vehicle;
-      bill.cooperation = vehicle.cooperation;
-    }
-
-    if (dto.deliveryAddress !== undefined) {
-      bill.deliveryAddress = dto.deliveryAddress;
-    }
-    if (dto.receiveAddress !== undefined) {
-      bill.receiveAddress = dto.receiveAddress;
-    }
-    if (dto.description !== undefined) {
-      bill.description = dto.description;
-    }
-    if (dto.receiverName !== undefined) {
-      bill.receiverName = dto.receiverName;
-    }
-    if (dto.receiverPhone !== undefined) {
-      bill.receiverPhone = dto.receiverPhone;
-    }
-
-    let distanceKm = Number(bill.distanceKm);
-    if (dto.distanceKm !== undefined) {
-      if (dto.distanceKm < 0) {
-        throw new BadRequestException('distanceKm must be positive');
-      }
-      distanceKm = dto.distanceKm;
-      bill.distanceKm = this.formatDistance(distanceKm);
-    }
-
-    let subtotal = Number(bill.subtotal);
-    if (dto.distanceKm !== undefined || dto.vehicleId !== undefined) {
-      const vehicle = await this.vehicleRepo.findOne({
-        where: { id: bill.vehicle?.id },
-      });
-      if (!vehicle) {
-        throw new NotFoundException(
-          `Delivery vehicle ${bill.vehicle?.id} not found`,
-        );
-      }
-      subtotal = this.calculateSubtotal(distanceKm, vehicle);
-      bill.subtotal = this.formatMoney(subtotal);
-    }
-
-    assignOptional(bill, dto);
-
-    let voucher: Voucher | null = bill.voucher ?? null;
-    if (dto.voucherCode !== undefined) {
-      if (!dto.voucherCode) {
-        voucher = null;
-        bill.voucher = undefined;
-      } else {
-        voucher = await this.vouchersService.findByCode(dto.voucherCode);
-        if (!voucher) {
-          throw new NotFoundException(`Voucher ${dto.voucherCode} not found`);
-        }
-        this.vouchersService.validateVoucherForBooking(voucher, subtotal);
-        bill.voucher = voucher;
-      }
-    } else if (voucher) {
-      this.vouchersService.validateVoucherForBooking(voucher, subtotal);
-    }
-
-    let travelPointsUsed = bill.travelPointsUsed;
-    if (
-      dto.travelPointsUsed !== undefined &&
-      dto.travelPointsUsed !== bill.travelPointsUsed
-    ) {
-      const user =
-        bill.user ?? (await this.userRepo.findOne({ where: { id: userId } }));
-      if (!user) {
-        throw new NotFoundException(`User ${userId} not found`);
-      }
-      if (dto.travelPointsUsed > bill.travelPointsUsed) {
-        const additional = dto.travelPointsUsed - bill.travelPointsUsed;
-        if (user.travelPoint < additional) {
-          throw new BadRequestException('Not enough travel points');
-        }
-        user.travelPoint -= additional;
-        bill.travelPointsRefunded = false;
-      } else {
-        const refund = bill.travelPointsUsed - dto.travelPointsUsed;
-        user.travelPoint += refund;
-        user.travelExp += refund;
-        user.userTier = UsersService.resolveTier(user.travelExp);
-      }
-      travelPointsUsed = dto.travelPointsUsed;
-      bill.travelPointsUsed = dto.travelPointsUsed;
-      await this.userRepo.save(user);
-    }
-
-    const voucherDiscount = voucher
-      ? this.vouchersService.calculateDiscountAmount(voucher, subtotal)
-      : 0;
-    const totalAfterDiscount = Math.max(
-      subtotal - voucherDiscount - travelPointsUsed,
-      0,
-    );
-    const finalTotal =
-      dto.totalOverride !== undefined ? dto.totalOverride : totalAfterDiscount;
-    if (finalTotal < 0) {
-      throw new BadRequestException('Total amount cannot be negative');
-    }
-    bill.total = this.formatMoney(finalTotal);
-
-    if (dto.status !== undefined) {
-      bill.status = dto.status;
-    }
-    if (dto.statusReason !== undefined) {
-      bill.statusReason = dto.statusReason;
-    }
-
-    const saved = await this.billRepo.save(bill);
-    const updated = await this.findOne(saved.id, userId);
-    await this.applyStatusTransition(previousStatus, updated.status, updated);
-    return updated;
-  }
-
-  async remove(
-    id: number,
-    userId: number,
-  ): Promise<{ id: number; message: string }> {
-    const bill = await this.findOne(id, userId);
-    await this.applyStatusTransition(
-      bill.status,
-      DeliveryBillStatus.CANCELLED,
-      bill,
-      true,
-    );
-    await this.billRepo.remove(bill);
-    return { id, message: 'Delivery bill removed' };
-  }
-
-  private async applyStatusTransition(
-    previousStatus: DeliveryBillStatus | null,
-    nextStatus: DeliveryBillStatus,
-    bill: DeliveryBill,
-    forceCancellation = false,
-  ): Promise<void> {
-    const prevRevenue = previousStatus
-      ? this.isRevenueStatus(previousStatus)
-      : false;
-    const nextRevenue = this.isRevenueStatus(nextStatus);
-
-    if (!prevRevenue && nextRevenue) {
-      const cooperationId =
-        bill.vehicle?.cooperation?.id ?? bill.cooperation?.id;
-      if (cooperationId) {
-        await this.cooperationsService.adjustBookingMetrics(
-          cooperationId,
-          1,
-          Number(bill.total),
-        );
-      }
-      if (bill.voucher?.id) {
-        await this.vouchersService.incrementUsage(bill.voucher.id);
-      }
-      if (bill.travelPointsUsed > 0 && bill.travelPointsRefunded) {
-        const user = await this.userRepo.findOne({
-          where: { id: bill.user?.id },
-        });
-        if (user) {
-          user.travelPoint = Math.max(
-            0,
-            user.travelPoint - bill.travelPointsUsed,
-          );
-          await this.userRepo.save(user);
-        }
-        bill.travelPointsRefunded = false;
-        await this.billRepo.update(bill.id, { travelPointsRefunded: false });
-      }
-    }
-
-    if (prevRevenue && !nextRevenue) {
-      const cooperationId =
-        bill.vehicle?.cooperation?.id ?? bill.cooperation?.id;
-      if (cooperationId) {
-        await this.cooperationsService.adjustBookingMetrics(
-          cooperationId,
-          -1,
-          -Number(bill.total),
-        );
-      }
-    }
-
-    const shouldRefund =
-      (forceCancellation || nextStatus === DeliveryBillStatus.CANCELLED) &&
-      bill.travelPointsUsed > 0 &&
-      !bill.travelPointsRefunded;
-
-    if (shouldRefund) {
-      const user = await this.userRepo.findOne({
-        where: { id: bill.user?.id },
-      });
-      if (user) {
-        user.travelPoint += bill.travelPointsUsed;
-        user.travelExp += bill.travelPointsUsed;
-        user.userTier = UsersService.resolveTier(user.travelExp);
-        await this.userRepo.save(user);
-      }
-      bill.travelPointsRefunded = true;
-      await this.billRepo.update(bill.id, { travelPointsRefunded: true });
-    }
-  }
-}
-
-function assignOptional(bill: DeliveryBill, dto: UpdateDeliveryBillDto): void {
-  if (dto.contactName !== undefined) {
-    bill.contactName = dto.contactName;
-  }
-  if (dto.contactPhone !== undefined) {
-    bill.contactPhone = dto.contactPhone;
-  }
-  if (dto.contactEmail !== undefined) {
-    bill.contactEmail = dto.contactEmail;
-  }
-  if (dto.paymentMethod !== undefined) {
-    bill.paymentMethod = dto.paymentMethod;
-  }
-  if (dto.notes !== undefined) {
-    bill.notes = dto.notes;
+  async findAll(userId: number, params: { status?: DeliveryBillStatus } = {}): Promise<DeliveryBill[]> {
+    const qb = this.billRepo.createQueryBuilder('bill');
+    qb.where('bill.user_id = :userId', { userId });
+    if (params.status) qb.andWhere('bill.status = :status', { status: params.status });
+    return qb.leftJoinAndSelect('bill.vehicle', 'vehicle')
+             .orderBy('bill.createdAt', 'DESC')
+             .getMany();
   }
 }

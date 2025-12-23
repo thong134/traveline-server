@@ -14,6 +14,7 @@ import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiConsumes,
+  ApiBody,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -80,18 +81,32 @@ export class AuthController {
   }
 
   @Post('request-reset')
-  @ApiOperation({ summary: 'Yêu cầu email đặt lại mật khẩu' })
-  @ApiOkResponse({ description: 'Reset email sent when account exists' })
+  @ApiOperation({
+    summary: 'Gửi OTP đặt lại mật khẩu qua email',
+    description:
+      'Gửi mã 6 số vào email đã đăng ký. Swagger chỉ trả về token + expiresAt; mã OTP nằm trong email.',
+  })
+  @ApiOkResponse({
+    description: 'OTP sent when account exists (always returns ok to tránh dò email)',
+  })
   async requestReset(@Body() dto: RequestResetDto) {
-    await this.authService.requestPasswordReset(dto.email);
-    return { ok: true };
+    return this.authService.requestPasswordReset(dto.email);
   }
 
   @Post('reset-password')
-  @ApiOperation({ summary: 'Đặt lại mật khẩu bằng mã trong email' })
+  @ApiOperation({
+    summary: 'Xác thực OTP và đặt lại mật khẩu',
+    description:
+      'Truyền email, code OTP từ email, token nhận từ bước request-reset, và mật khẩu mới.',
+  })
   @ApiOkResponse({ description: 'Password reset success' })
   async resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.authService.resetPassword(dto.token, dto.newPassword);
+    return this.authService.resetPassword(
+      dto.token,
+      dto.newPassword,
+      dto.email,
+      dto.code,
+    );
   }
 
   @RequireAuth()
@@ -111,8 +126,15 @@ export class AuthController {
 
   @RequireAuth()
   @Post('phone/start')
-  @ApiOperation({ summary: 'Bắt đầu xác thực số điện thoại' })
-  @ApiOkResponse({ description: 'OTP sent or logged for development' })
+  @ApiOperation({
+    summary: 'Bắt đầu xác thực số điện thoại',
+    description:
+      'Cần recaptchaToken từ Firebase client SDK (render reCAPTCHA trên web/app). Swagger không tự tạo token này.',
+  })
+  @ApiOkResponse({
+    description:
+      'Trả về sessionInfo; copy sessionInfo này sang bước /auth/phone/verify cùng với mã OTP SMS.',
+  })
   async phoneStart(
     @CurrentUser() user: RequestUser,
     @Body() dto: PhoneStartDto,
@@ -124,7 +146,11 @@ export class AuthController {
   }
 
   @Post('phone/verify')
-  @ApiOperation({ summary: 'Xác thực số điện thoại bằng OTP' })
+  @ApiOperation({
+    summary: 'Xác thực số điện thoại bằng OTP',
+    description:
+      'Dùng code OTP từ SMS và sessionInfo nhận từ bước /auth/phone/start.',
+  })
   @ApiOkResponse({ description: 'Phone verified' })
   async phoneVerify(@Body() dto: PhoneVerifyDto) {
     return this.authService.verifyPhoneCode(
@@ -168,11 +194,39 @@ export class AuthController {
 
   @Post('citizen-id/verify')
   @RequireAuth()
-  @ApiOperation({ summary: 'Xác thực căn cước công dân (Placeholder)' })
+  @ApiOperation({
+    summary: 'Xác thực căn cước công dân',
+    description: 'Upload mặt trước/mặt sau CCCD qua form-data, lưu Cloudinary và đánh dấu đã xác thực.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        citizenFrontPhoto: { type: 'string', format: 'binary' },
+        citizenBackPhoto: { type: 'string', format: 'binary' },
+      },
+      required: ['citizenFrontPhoto', 'citizenBackPhoto'],
+    },
+  })
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'citizenFrontPhoto', maxCount: 1 },
+        { name: 'citizenBackPhoto', maxCount: 1 },
+      ],
+      imageMulterOptions,
+    ),
+  )
   @ApiOkResponse({ description: 'Xác thực thành công' })
-  async verifyCitizenId(@CurrentUser() user: RequestUser) {
-    // In production, this would involve OCR/AI scanning of the ID card image
-    await this.authService['usersService'].markCitizenIdVerified(user.userId);
-    return { ok: true, message: 'Căn cước công dân đã được xác thực' };
+  async verifyCitizenId(
+    @CurrentUser() user: RequestUser,
+    @UploadedFiles()
+    files: {
+      citizenFrontPhoto?: Express.Multer.File[];
+      citizenBackPhoto?: Express.Multer.File[];
+    },
+  ) {
+    return this.authService.verifyCitizenIdWithImages(user.userId, files);
   }
 }

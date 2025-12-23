@@ -123,8 +123,8 @@ export class RentalBillsService {
       throw new NotFoundException(`User ${userId} not found`);
     }
 
-    const startDate = this.parseCustomDate(dto.startDate);
-    const endDate = this.parseCustomDate(dto.endDate);
+    const startDate = dto.startDate;
+    const endDate = dto.endDate;
 
     if (endDate <= startDate) {
       throw new BadRequestException('endDate must be greater than startDate');

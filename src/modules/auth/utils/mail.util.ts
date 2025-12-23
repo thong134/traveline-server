@@ -1,7 +1,7 @@
 import { createTransport, getTestMessageUrl } from 'nodemailer';
 import type { SentMessageInfo, Transporter } from 'nodemailer';
 
-export async function sendResetEmail(to: string, link: string) {
+export async function sendResetEmail(to: string, code: string) {
   const transporter: Transporter<SentMessageInfo> = createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT || 587),
@@ -15,10 +15,14 @@ export async function sendResetEmail(to: string, link: string) {
   const info: SentMessageInfo = await transporter.sendMail({
     from: `"No Reply" <${process.env.SMTP_USER}>`,
     to,
-    subject: 'Password reset',
-    html: `<p>We received a request to reset your password. Click link below to reset:</p>
-           <p><a href="${link}">Reset password</a></p>
-           <p>If you didn't request this, ignore this email.</p>`,
+    subject: 'Mã đặt lại mật khẩu',
+    html: `
+      <p>Xin chào,</p>
+      <p>Mã đặt lại mật khẩu của bạn là: <strong style="font-size:18px;">${code}</strong></p>
+      <p>Mã có hiệu lực trong 10 phút. Vui lòng nhập mã này vào màn hình đặt lại mật khẩu và không chia sẻ cho bất kỳ ai.</p>
+      <p>Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>
+      <p>Trân trọng,<br/>Đội ngũ Traveline</p>
+    `,
   });
 
   const preview = getTestMessageUrl(info);

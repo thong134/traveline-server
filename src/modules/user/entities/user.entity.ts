@@ -119,6 +119,12 @@ export class User {
   idCardImageUrl?: string;
 
   @Column({ nullable: true })
+  citizenFrontImageUrl?: string;
+
+  @Column({ nullable: true })
+  citizenBackImageUrl?: string;
+
+  @Column({ nullable: true })
   bankName?: string;
 
   @Column({ nullable: true })

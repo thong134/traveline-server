@@ -1,8 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { TransformDDMMYYYY } from '../../../common/utils/date.util';
 import {
   IsBoolean,
-  IsDateString,
+  IsDate,
   IsEnum,
   IsInt,
   IsNumber,
@@ -28,14 +28,12 @@ export class CreateVoucherDto {
   discountType: 'percentage' | 'fixed';
 
   @ApiProperty({ description: 'Discount value' })
-  @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   value: number;
 
   @ApiPropertyOptional({ description: 'Maximum discount amount' })
   @IsOptional()
-  @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   maxDiscountValue?: number;
 
@@ -43,7 +41,6 @@ export class CreateVoucherDto {
     description: 'Minimum order value to apply this voucher',
   })
   @IsOptional()
-  @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   minOrderValue?: number;
 
@@ -52,20 +49,21 @@ export class CreateVoucherDto {
     default: 0,
   })
   @IsOptional()
-  @Type(() => Number)
   @IsInt()
   @Min(0)
   maxUsage?: number;
 
-  @ApiPropertyOptional({ description: 'Voucher start datetime (ISO)' })
+  @ApiPropertyOptional({ description: 'Voucher start datetime (dd/MM/yyyy)', example: '01/01/2024' })
   @IsOptional()
-  @IsDateString()
-  startsAt?: string;
+  @TransformDDMMYYYY()
+  @IsDate()
+  startsAt?: Date;
 
-  @ApiPropertyOptional({ description: 'Voucher expiry datetime (ISO)' })
+  @ApiPropertyOptional({ description: 'Voucher expiry datetime (dd/MM/yyyy)', example: '31/12/2024' })
   @IsOptional()
-  @IsDateString()
-  expiresAt?: string;
+  @TransformDDMMYYYY()
+  @IsDate()
+  expiresAt?: Date;
 
   @ApiPropertyOptional({
     description: 'Whether voucher is active',

@@ -1,8 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { TransformDDMMYYYY } from '../../../common/utils/date.util';
 import {
   IsBoolean,
-  IsDateString,
+  IsDate,
   IsEmail,
   IsInt,
   IsOptional,
@@ -104,10 +105,11 @@ export class CreateCooperationDto {
   @IsString()
   introduction?: string;
 
-  @ApiPropertyOptional({ description: 'Contract effective date' })
+  @ApiPropertyOptional({ description: 'Contract effective date (dd/MM/yyyy)', example: '13/04/2004' })
   @IsOptional()
-  @IsDateString()
-  contractDate?: string;
+  @TransformDDMMYYYY()
+  @IsDate()
+  contractDate?: Date;
 
   @ApiPropertyOptional({ description: 'Contract term description' })
   @IsOptional()
