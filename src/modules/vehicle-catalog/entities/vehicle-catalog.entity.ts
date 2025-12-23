@@ -40,9 +40,9 @@ export class VehicleCatalog {
 
   // Relation defined on RentalVehicle side; omit inverse to keep import scripts lightweight.
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

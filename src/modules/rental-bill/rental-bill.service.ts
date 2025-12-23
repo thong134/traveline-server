@@ -126,8 +126,13 @@ export class RentalBillsService {
     const startDate = dto.startDate;
     const endDate = dto.endDate;
 
-    if (endDate <= startDate) {
+    const sameOrBefore = endDate <= startDate;
+    const isHourly = dto.rentalType === RentalBillType.HOURLY;
+    if (!isHourly && sameOrBefore) {
       throw new BadRequestException('endDate must be greater than startDate');
+    }
+    if (isHourly && endDate < startDate) {
+      throw new BadRequestException('endDate must be on or after startDate for hourly rentals');
     }
 
     const bill = this.billRepo.create({
@@ -138,7 +143,7 @@ export class RentalBillsService {
       endDate,
       location: dto.location,
       status: RentalBillStatus.PENDING,
-      travelPointsUsed: dto.travelPointsUsed || 0,
+      travelPointsUsed: 0,
     });
 
     const saved = await this.billRepo.save(bill);
@@ -191,7 +196,11 @@ export class RentalBillsService {
     }
 
     if (dto.travelPointsUsed !== undefined) {
-      bill.travelPointsUsed = parseInt(dto.travelPointsUsed.toString(), 10);
+      const points = Number(dto.travelPointsUsed);
+      if (Number.isNaN(points) || points < 0) {
+        throw new BadRequestException('travelPointsUsed must be a non-negative number');
+      }
+      bill.travelPointsUsed = Math.floor(points);
     }
 
     // Recalculate total if something changed

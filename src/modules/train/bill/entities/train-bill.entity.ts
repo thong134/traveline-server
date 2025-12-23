@@ -107,9 +107,9 @@ export class TrainBill {
   @OneToMany(() => TrainBillDetail, (detail) => detail.bill, { cascade: true })
   details: TrainBillDetail[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

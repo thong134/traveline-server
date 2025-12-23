@@ -7,6 +7,12 @@ import 'dotenv/config';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Allow local frontend (3001) to call the API during dev
+  app.enableCors({
+    origin: ['http://localhost:3001'],
+    credentials: true,
+  });
+
   // Bật validation cho DTO
   app.useGlobalPipes(
     new ValidationPipe({

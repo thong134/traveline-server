@@ -19,6 +19,7 @@ import {
 } from './entities/rental-transaction.entity';
 
 const RENTAL_ESCROW_ABI = [
+  'constructor(address _owner)',
   'function deposit(uint256 rentalId, address owner) payable',
   'function releaseFunds(uint256 rentalId)',
   'function refund(uint256 rentalId)',
@@ -82,6 +83,29 @@ export class BlockchainService {
     }
 
     const wallet = new Wallet(adminPrivateKey, this.provider);
+    
+    // Check balance before deployment
+    const balance = await this.provider.getBalance(wallet.address);
+    const balanceEth = formatEther(balance);
+    const feeData = await this.provider.getFeeData();
+    
+    this.logger.log(`Admin wallet: ${wallet.address}`);
+    this.logger.log(`Balance: ${balanceEth} ETH`);
+    this.logger.log(`Current Gas Price: ${formatEther(feeData.gasPrice ?? 0n)} ETH`);
+
+    if (balance === 0n) {
+      throw new Error(
+        `Admin wallet ${wallet.address} has 0 ETH. Please get some Sepolia ETH from a faucet first.`,
+      );
+    }
+
+    // Protection: don't deploy if already configured (unless forced or for debugging)
+    if (this.rentalEscrowAddress) {
+      throw new Error(
+        `Contract is already deployed at ${this.rentalEscrowAddress}. To redeploy, please clear RENTAL_ESCROW_ADDRESS in .env or restart the server.`,
+      );
+    }
+
     const ownerOverride = this.configService.get<string>(
       'RENTAL_ESCROW_OWNER_ADDRESS',
     );
@@ -91,31 +115,41 @@ export class BlockchainService {
       wallet,
     );
 
-    this.logger.log(`Deploying RentalEscrow contract from ${wallet.address}`);
+    this.logger.log(`Deploying RentalEscrow contract from ${wallet.address}...`);
 
-    const contract = await contractFactory.deploy(
-      ownerOverride ?? wallet.address,
-    );
-    const deploymentTx = contract.deploymentTransaction();
-    if (!deploymentTx) {
-      throw new Error('Failed to obtain deployment transaction.');
+    try {
+      // The RentalEscrow contract expects an owner address in the constructor.
+      const contract = await contractFactory.deploy(wallet.address);
+      const deploymentTx = contract.deploymentTransaction();
+      if (!deploymentTx) {
+        throw new Error('Failed to obtain deployment transaction.');
+      }
+
+      this.logger.log(`Waiting for deployment transaction: ${deploymentTx.hash}`);
+      const receipt = await deploymentTx.wait();
+      if (!receipt) {
+        throw new Error('Deployment transaction receipt not found.');
+      }
+
+      const deployedAddress = contract.target as string;
+      this.rentalEscrowAddress = deployedAddress;
+
+      this.logger.log(
+        `RentalEscrow deployed at ${deployedAddress} (tx: ${deploymentTx.hash})`,
+      );
+
+      return {
+        contractAddress: deployedAddress,
+        transactionHash: receipt.hash,
+      };
+    } catch (error) {
+      if (error.code === 'CALL_EXCEPTION' || error.code === 'INSUFFICIENT_FUNDS') {
+        this.logger.error(
+          `Deployment failed: ${error.reason || 'Insufficient funds or execution reverted'}. Check if wallet ${wallet.address} has enough ETH.`,
+        );
+      }
+      throw error;
     }
-
-    const receipt = await deploymentTx.wait();
-    if (!receipt) {
-      throw new Error('Deployment transaction receipt not found.');
-    }
-    const deployedAddress = contract.target as string;
-    this.rentalEscrowAddress = deployedAddress;
-
-    this.logger.log(
-      `RentalEscrow deployed at ${deployedAddress} (tx: ${deploymentTx.hash})`,
-    );
-
-    return {
-      contractAddress: deployedAddress,
-      transactionHash: receipt.hash,
-    };
   }
 
   /**

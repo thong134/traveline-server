@@ -58,9 +58,9 @@ export class DeliveryVehicle {
   @OneToMany(() => DeliveryBill, (bill) => bill.vehicle)
   bills: DeliveryBill[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

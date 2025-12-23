@@ -35,9 +35,9 @@ export class TrainBillDetail {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: '0.00' })
   total: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

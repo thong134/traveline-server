@@ -64,9 +64,9 @@ export class Flight {
   @OneToMany(() => FlightBill, (bill) => bill.flight)
   bills: FlightBill[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

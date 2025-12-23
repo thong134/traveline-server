@@ -77,10 +77,10 @@ export class Destination {
   @Column({ default: true })
   available: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 
   @OneToMany(() => RouteStop, (stop: RouteStop) => stop.destination)

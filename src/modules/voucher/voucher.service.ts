@@ -28,7 +28,20 @@ export class VouchersService {
     return num.toFixed(2);
   }
 
+  private computeActive(voucher: Voucher, now = new Date()): boolean {
+    const expired = voucher.expiresAt ? now > voucher.expiresAt : false;
+    const usageExhausted =
+      voucher.maxUsage > 0 && voucher.usedCount >= voucher.maxUsage;
+    return !expired && !usageExhausted;
+  }
+
+  private refreshActive(voucher: Voucher, now = new Date()): void {
+    const computedActive = this.computeActive(voucher, now);
+    voucher.active = computedActive;
+  }
+
   async create(dto: CreateVoucherDto): Promise<Voucher> {
+    const now = new Date();
     const existing = await this.voucherRepo.findOne({
       where: { code: dto.code },
     });
@@ -46,14 +59,15 @@ export class VouchersService {
       usedCount: 0,
       startsAt: dto.startsAt,
       expiresAt: dto.expiresAt,
-      active: dto.active ?? true,
     });
+    this.refreshActive(voucher, now);
     return this.voucherRepo.save(voucher);
   }
 
   async findAll(
     params: { active?: boolean; code?: string } = {},
   ): Promise<Voucher[]> {
+    const now = new Date();
     const qb = this.voucherRepo.createQueryBuilder('voucher');
 
     if (params.active !== undefined) {
@@ -64,13 +78,39 @@ export class VouchersService {
       qb.andWhere('voucher.code = :code', { code: params.code.toUpperCase() });
     }
 
-    return qb.orderBy('voucher.createdAt', 'DESC').getMany();
+    const vouchers = await qb.orderBy('voucher.createdAt', 'DESC').getMany();
+
+    const needUpdate: Voucher[] = [];
+    const filtered: Voucher[] = [];
+
+    vouchers.forEach((voucher) => {
+      const previousActive = voucher.active;
+      this.refreshActive(voucher, now);
+      if (voucher.active !== previousActive) {
+        needUpdate.push(voucher);
+      }
+      if (params.active === undefined || voucher.active === params.active) {
+        filtered.push(voucher);
+      }
+    });
+
+    if (needUpdate.length) {
+      await this.voucherRepo.save(needUpdate);
+    }
+
+    return filtered;
   }
 
   async findOne(id: number): Promise<Voucher> {
+    const now = new Date();
     const voucher = await this.voucherRepo.findOne({ where: { id } });
     if (!voucher) {
       throw new NotFoundException(`Voucher ${id} not found`);
+    }
+    const previousActive = voucher.active;
+    this.refreshActive(voucher, now);
+    if (voucher.active !== previousActive) {
+      await this.voucherRepo.save(voucher);
     }
     return voucher;
   }
@@ -83,6 +123,7 @@ export class VouchersService {
   }
 
   async update(id: number, dto: UpdateVoucherDto): Promise<Voucher> {
+    const now = new Date();
     const voucher = await this.findOne(id);
 
     if (dto.code && dto.code.toUpperCase() !== voucher.code) {
@@ -99,7 +140,6 @@ export class VouchersService {
       description: dto.description,
       discountType: dto.discountType,
       maxUsage: dto.maxUsage,
-      active: dto.active,
     });
 
     if (dto.value !== undefined) {
@@ -122,36 +162,25 @@ export class VouchersService {
       voucher.expiresAt = dto.expiresAt;
     }
 
+    this.refreshActive(voucher, now);
     return this.voucherRepo.save(voucher);
   }
 
-  async remove(id: number): Promise<{ id: number; message: string }> {
-    const voucher = await this.findOne(id);
-    await this.voucherRepo.remove(voucher);
-    return { id, message: 'Voucher removed' };
-  }
-
   async incrementUsage(id: number): Promise<void> {
+    const now = new Date();
     const voucher = await this.findOne(id);
     voucher.usedCount += 1;
-    if (voucher.maxUsage > 0 && voucher.usedCount >= voucher.maxUsage) {
-      voucher.active = false;
-    }
+    this.refreshActive(voucher, now);
     await this.voucherRepo.save(voucher);
   }
 
   async decrementUsage(id: number): Promise<void> {
+    const now = new Date();
     const voucher = await this.findOne(id);
     if (voucher.usedCount > 0) {
       voucher.usedCount -= 1;
     }
-
-    if (voucher.maxUsage === 0) {
-      voucher.active = true;
-    } else if (voucher.usedCount < voucher.maxUsage) {
-      voucher.active = true;
-    }
-
+    this.refreshActive(voucher, now);
     await this.voucherRepo.save(voucher);
   }
 
@@ -160,6 +189,7 @@ export class VouchersService {
     totalAmount: number,
     bookingDate = new Date(),
   ): void {
+    this.refreshActive(voucher, bookingDate);
     if (!voucher.active) {
       throw new BadRequestException('Voucher is inactive');
     }

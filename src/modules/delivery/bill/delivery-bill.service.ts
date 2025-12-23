@@ -175,7 +175,11 @@ export class DeliveryBillsService {
     }
 
     if (dto.travelPointsUsed !== undefined) {
-      bill.travelPointsUsed = dto.travelPointsUsed;
+      const points = Number(dto.travelPointsUsed);
+      if (Number.isNaN(points) || points < 0) {
+        throw new BadRequestException('travelPointsUsed must be a non-negative number');
+      }
+      bill.travelPointsUsed = Math.floor(points);
     }
 
     await this.calculateTotal(bill);

@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class UpdateRentalBillDto {
   @ApiPropertyOptional({ description: 'Tên người liên hệ' })
@@ -24,6 +25,7 @@ export class UpdateRentalBillDto {
 
   @ApiPropertyOptional({ description: 'Số điểm TravelPoint muốn sử dụng' })
   @IsOptional()
-  @IsString()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 0 })
   travelPointsUsed?: number;
 }

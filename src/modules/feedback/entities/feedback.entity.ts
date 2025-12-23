@@ -74,10 +74,10 @@ export class Feedback {
   @Column({ default: 'pending' })
   status: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 
   @OneToMany(() => FeedbackReply, (reply) => reply.feedback, { cascade: true })

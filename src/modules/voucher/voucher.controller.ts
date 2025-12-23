@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   ParseBoolPipe,
@@ -60,13 +59,5 @@ export class VouchersController {
   @ApiOkResponse({ description: 'Voucher updated' })
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateVoucherDto) {
     return this.vouchersService.update(id, dto);
-  }
-
-  @Delete(':id')
-  @RequireAuth()
-  @ApiOperation({ summary: 'Xóa voucher' })
-  @ApiOkResponse({ description: 'Voucher removed' })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.vouchersService.remove(id);
   }
 }

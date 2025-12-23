@@ -61,9 +61,9 @@ export class TrainRoute {
   @OneToMany(() => TrainBill, (bill) => bill.route)
   bills: TrainBill[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

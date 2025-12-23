@@ -106,9 +106,9 @@ export class RentalContract {
   @OneToMany(() => RentalVehicle, (vehicle: RentalVehicle) => vehicle.contract)
   vehicles: RentalVehicle[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

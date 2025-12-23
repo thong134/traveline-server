@@ -41,14 +41,4 @@ export class CreateRentalBillDto {
   @ValidateNested({ each: true })
   @Type(() => RentalBillDetailDto)
   details: RentalBillDetailDto[];
-
-  @ApiPropertyOptional({ description: 'Mã giảm giá' })
-  @IsOptional()
-  @IsString()
-  voucherCode?: string;
-
-  @ApiPropertyOptional({ description: 'Số điểm TravelPoint muốn sử dụng' })
-  @IsOptional()
-  @Type(() => Number)
-  travelPointsUsed?: number;
 }

@@ -43,9 +43,9 @@ export class BusType {
   @OneToMany(() => BusBill, (bill) => bill.busType)
   bills: BusBill[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

@@ -64,9 +64,9 @@ export class RouteStop {
   @Column('text', { array: true, default: '{}' })
   videos: string[] = [];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }
