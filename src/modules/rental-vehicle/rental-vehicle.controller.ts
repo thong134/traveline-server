@@ -35,6 +35,7 @@ import { RejectRentalVehicleDto } from './dto/manage-rental-vehicle.dto';
 import type { Express } from 'express';
 import { imageMulterOptions } from '../../common/upload/image-upload.config';
 import { SearchRentalVehicleDto } from './dto/search-rental-vehicle.dto';
+import { AddMaintenanceDto } from './dto/add-maintenance.dto';
 
 type RentalVehicleUploadFiles = {
   vehicleRegistrationFront?: Express.Multer.File;
@@ -191,6 +192,17 @@ export class RentalVehiclesController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.service.enable(user.userId, licensePlate);
+  }
+
+  @Post('maintenance')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Chủ xe: Thêm lịch bảo trì xe' })
+  @ApiCreatedResponse({ description: 'Đã thêm lịch bảo trì' })
+  addMaintenance(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: AddMaintenanceDto,
+  ) {
+    return this.service.addMaintenance(user.userId, dto);
   }
 
   @Delete(':licensePlate')

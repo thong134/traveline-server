@@ -18,7 +18,14 @@ import { RentalBillsService } from './rental-bill.service';
 import { CreateRentalBillDto } from './dto/create-rental-bill.dto';
 import { UpdateRentalBillDto } from './dto/update-rental-bill.dto';
 import { ManageRentalBillVehicleDto } from './dto/manage-rental-bill-vehicle.dto';
-import { RentalBillStatus } from './entities/rental-bill.entity';
+import { RentalOwnerCancelDto } from './dto/owner-cancel-bill.dto';
+import { PaymentMethod, RentalBillStatus, RentalProgressStatus } from './entities/rental-bill.entity';
+import {
+  DeliveryActionDto,
+  PickupActionDto,
+  ReturnRequestDto,
+  ConfirmReturnDto,
+} from './dto/rental-workflow.dto';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
@@ -72,11 +79,11 @@ export class RentalBillsController {
   @RequireVerification()
   @Patch(':id/confirm')
   @ApiOperation({ summary: 'Xác nhận thông tin và chọn phương thức thanh toán' })
-  @ApiQuery({ name: 'paymentMethod', required: true, example: 'wallet' })
+  @ApiQuery({ name: 'paymentMethod', required: true, enum: PaymentMethod })
   confirm(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
-    @Query('paymentMethod') paymentMethod: string,
+    @Query('paymentMethod') paymentMethod: PaymentMethod,
   ) {
     return this.service.confirm(id, user.userId, paymentMethod);
   }
@@ -101,12 +108,22 @@ export class RentalBillsController {
   }
 
   @Patch(':id/cancel')
-  @ApiOperation({ summary: 'Hủy hóa đơn' })
+  @ApiOperation({ summary: 'Người dùng: Hủy hóa đơn' })
   cancel(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
   ) {
     return this.service.cancel(id, user.userId);
+  }
+
+  @Patch(':id/owner-cancel')
+  @ApiOperation({ summary: 'Chủ xe: Hủy hóa đơn đã thanh toán (Hoàn tiền)' })
+  ownerCancel(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+    @Body() dto: RentalOwnerCancelDto,
+  ) {
+    return this.service.ownerCancel(id, user.userId, dto.reason);
   }
 
   @Patch(':id/vehicles/add')
@@ -128,6 +145,60 @@ export class RentalBillsController {
     @Query('licensePlate') licensePlate: string,
   ) {
     return this.service.removeVehicleFromBill(id, user.userId, licensePlate);
+  }
+
+  // --- WORKFLOW ENDPOINTS ---
+
+  @Patch(':id/delivering')
+  @ApiOperation({ summary: 'Chủ xe: Xác nhận đang vận chuyển xe đến' })
+  ownerDelivering(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    // In a production app, we would verify if user is the owner
+    return this.service.ownerDelivering(id, user.userId);
+  }
+
+  @Patch(':id/delivered')
+  @ApiOperation({ summary: 'Chủ xe: Xác nhận đã giao xe đến nơi' })
+  ownerDelivered(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+    @Body() dto: DeliveryActionDto,
+  ) {
+    return this.service.ownerDelivered(id, user.userId, dto);
+  }
+
+  @RequireVerification()
+  @Patch(':id/pickup')
+  @ApiOperation({ summary: 'Người dùng: Xác thực selfie và nhận xe' })
+  userPickup(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+    @Body() dto: PickupActionDto,
+  ) {
+    return this.service.userPickup(id, user.userId, dto);
+  }
+
+  @RequireVerification()
+  @Patch(':id/return-request')
+  @ApiOperation({ summary: 'Người dùng: Yêu cầu trả xe (Gửi GPS + Ảnh)' })
+  userReturnRequest(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+    @Body() dto: ReturnRequestDto,
+  ) {
+    return this.service.userReturnRequest(id, user.userId, dto);
+  }
+
+  @Patch(':id/confirm-return')
+  @ApiOperation({ summary: 'Chủ xe: Xác nhận đã nhận xe (Validate GPS < 50m)' })
+  ownerConfirmReturn(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+    @Body() dto: ConfirmReturnDto,
+  ) {
+    return this.service.ownerConfirmReturn(id, user.userId, dto);
   }
 
   @Get(':id/payment-qr')

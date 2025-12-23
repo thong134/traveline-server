@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { TransformDDMMYYYY } from '../../../common/utils/date.util';
+import { TransformDDMMYYYYHHmm } from '../../../common/utils/date.util';
+import { RentalVehicleType } from '../entities/rental-vehicle.entity';
 import {
   IsDate,
   IsEnum,
@@ -25,6 +26,14 @@ export class SearchRentalVehicleDto {
   rentalType?: RentalType;
 
   @ApiPropertyOptional({
+    enum: RentalVehicleType,
+    description: 'Loại xe: bike hoặc car',
+  })
+  @IsOptional()
+  @IsEnum(RentalVehicleType)
+  vehicleType?: RentalVehicleType;
+
+  @ApiPropertyOptional({
     description: 'Giá tối thiểu (so với pricePerHour nếu hourly, pricePerDay nếu daily)',
   })
   @Type(() => Number)
@@ -43,20 +52,20 @@ export class SearchRentalVehicleDto {
   maxPrice?: number;
 
   @ApiPropertyOptional({
-    description: 'Ngày bắt đầu thuê (dd/MM/yyyy)',
-    example: '25/12/2024',
+    description: 'Ngày bắt đầu thuê (dd/MM/yyyy HH:mm)',
+    example: '25/12/2024 08:00',
   })
   @IsOptional()
-  @TransformDDMMYYYY()
+  @TransformDDMMYYYYHHmm()
   @IsDate()
   startDate?: Date;
 
   @ApiPropertyOptional({
-    description: 'Ngày kết thúc thuê (dd/MM/yyyy)',
-    example: '27/12/2024',
+    description: 'Ngày kết thúc thuê (dd/MM/yyyy HH:mm)',
+    example: '27/12/2024 17:00',
   })
   @IsOptional()
-  @TransformDDMMYYYY()
+  @TransformDDMMYYYYHHmm()
   @IsDate()
   endDate?: Date;
 

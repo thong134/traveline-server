@@ -11,6 +11,12 @@ import {
 import { User } from '../../user/entities/user.entity';
 import { RentalBillDetail } from './rental-bill-detail.entity';
 import { Voucher } from '../../voucher/entities/voucher.entity';
+import { RentalVehicleType } from '../../rental-vehicle/entities/rental-vehicle.entity';
+
+export enum RentalBillCancelledBy {
+  USER = 'user',
+  OWNER = 'owner',
+}
 
 export enum RentalBillType {
   HOURLY = 'hourly',
@@ -23,6 +29,23 @@ export enum RentalBillStatus {
   PAID = 'paid',
   CANCELLED = 'cancelled',
   COMPLETED = 'completed',
+}
+
+export enum RentalProgressStatus {
+  PENDING = 'pending',
+  BOOKED = 'booked',
+  DELIVERING = 'delivering',
+  DELIVERED = 'delivered',
+  IN_PROGRESS = 'in_progress',
+  RETURN_REQUESTED = 'return_requested',
+  RETURN_CONFIRMED = 'return_confirmed',
+  CANCELLED = 'cancelled',
+}
+
+export enum PaymentMethod {
+  WALLET = 'wallet',
+  MOMO = 'momo',
+  QR_CODE = 'qr_code',
 }
 
 @Entity('rental_bills')
@@ -55,8 +78,22 @@ export class RentalBill {
   @Column({ nullable: true })
   location?: string;
 
-  @Column({ nullable: true })
-  paymentMethod?: string;
+  @Column({
+    type: 'enum',
+    enum: RentalVehicleType,
+    default: RentalVehicleType.BIKE,
+  })
+  vehicleType: RentalVehicleType;
+
+  @Column({ length: 32, default: '1d' })
+  durationPackage: string;
+
+  @Column({
+    type: 'enum',
+    enum: PaymentMethod,
+    nullable: true,
+  })
+  paymentMethod?: PaymentMethod;
 
   @Column({ nullable: true })
   contactName?: string;
@@ -92,6 +129,53 @@ export class RentalBill {
 
   @Column({ nullable: true })
   notes?: string;
+
+  @Column({ type: 'text', nullable: true })
+  cancelReason?: string;
+
+  @Column({
+    type: 'enum',
+    enum: RentalBillCancelledBy,
+    nullable: true,
+  })
+  cancelledBy?: RentalBillCancelledBy;
+
+  @Column({
+    type: 'enum',
+    enum: RentalProgressStatus,
+    default: RentalProgressStatus.PENDING,
+  })
+  rentalStatus: RentalProgressStatus;
+
+  @Column('text', { array: true, default: '{}' })
+  deliveryPhotos: string[];
+
+  @Column({ nullable: true })
+  pickupSelfiePhoto?: string;
+
+  @Column('text', { array: true, default: '{}' })
+  returnPhotosUser: string[];
+
+  @Column('text', { array: true, default: '{}' })
+  returnPhotosOwner: string[];
+
+  @Column({ type: 'timestamptz', nullable: true })
+  returnTimestampUser?: Date;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  returnLatitudeUser?: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  returnLongitudeUser?: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  returnLatitudeOwner?: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  returnLongitudeOwner?: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  overtimeFee: string;
 
   @OneToMany(
     () => RentalBillDetail,

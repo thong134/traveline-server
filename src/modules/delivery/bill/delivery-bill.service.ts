@@ -23,6 +23,7 @@ import { WalletService } from '../../wallet/wallet.service';
 import { BlockchainService } from '../../blockchain/blockchain.service';
 import { assignDefined } from '../../../common/utils/object.util';
 import { parse, isValid } from 'date-fns';
+import { DeliveryPaymentMethod } from './entities/delivery-bill.entity';
 
 const VND_TO_ETH_RATE = 80_000_000;
 
@@ -134,8 +135,9 @@ export class DeliveryBillsService {
       if (voucher) bill.voucher = voucher;
     }
 
-    await this.calculateTotal(bill);
-    return this.billRepo.save(bill);
+    const saved = await this.billRepo.save(bill);
+    await this.calculateTotal(saved.id);
+    return this.findOne(saved.id, userId);
   }
 
   async findOne(id: number, userId: number): Promise<DeliveryBill> {
@@ -182,11 +184,15 @@ export class DeliveryBillsService {
       bill.travelPointsUsed = Math.floor(points);
     }
 
-    await this.calculateTotal(bill);
+    await this.calculateTotal(bill.id);
     return this.billRepo.save(bill);
   }
 
-  async confirm(id: number, userId: number, paymentMethod: string): Promise<DeliveryBill> {
+  async confirm(
+    id: number,
+    userId: number,
+    paymentMethod: DeliveryPaymentMethod,
+  ): Promise<DeliveryBill> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== DeliveryBillStatus.PENDING) throw new BadRequestException('Not pending');
 
@@ -194,6 +200,7 @@ export class DeliveryBillsService {
       throw new BadRequestException('Contact info required');
     }
 
+    await this.calculateTotal(bill.id);
     bill.status = DeliveryBillStatus.CONFIRMED;
     bill.paymentMethod = paymentMethod;
     return this.billRepo.save(bill);
@@ -203,7 +210,7 @@ export class DeliveryBillsService {
     const bill = await this.findOne(id, userId);
     if (bill.status !== DeliveryBillStatus.CONFIRMED) throw new BadRequestException('Not confirmed');
 
-    if (bill.paymentMethod === 'wallet') {
+    if (bill.paymentMethod === DeliveryPaymentMethod.WALLET) {
       const ownerWalletAddress = bill.cooperation?.manager?.bankAccountNumber || (bill.vehicle?.cooperation as any)?.manager?.bankAccountNumber;
       await this.processWalletPayment(bill, ownerWalletAddress);
     }
@@ -237,7 +244,13 @@ export class DeliveryBillsService {
     return this.billRepo.save(bill);
   }
 
-  private async calculateTotal(bill: DeliveryBill): Promise<void> {
+  private async calculateTotal(billId: number): Promise<void> {
+    const bill = await this.billRepo.findOne({
+      where: { id: billId },
+      relations: ['voucher'],
+    });
+    if (!bill) return;
+
     let total = parseFloat(bill.subtotal);
 
     // 1. Voucher (%)
@@ -260,7 +273,9 @@ export class DeliveryBillsService {
       total = Math.max(0, total - bill.travelPointsUsed);
     }
 
-    bill.total = this.formatMoney(total);
+    const formattedTotal = this.formatMoney(total);
+    await this.billRepo.update(billId, { total: formattedTotal });
+    bill.total = formattedTotal;
   }
 
   private async processWalletPayment(bill: DeliveryBill, ownerWalletAddress?: string) {

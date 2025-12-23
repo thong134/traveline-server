@@ -20,7 +20,10 @@ import {
 import { HotelBillsService } from './hotel-bill.service';
 import { CreateHotelBillDto } from './dto/create-hotel-bill.dto';
 import { UpdateHotelBillDto } from './dto/update-hotel-bill.dto';
-import { HotelBillStatus } from './entities/hotel-bill.entity';
+import {
+  HotelBillStatus,
+  HotelPaymentMethod,
+} from './entities/hotel-bill.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../../auth/decorators/current-user.decorator';
@@ -71,11 +74,11 @@ export class HotelBillsController {
 
   @Patch(':id/confirm')
   @ApiOperation({ summary: 'Xác nhận hóa đơn và chọn phương thức thanh toán' })
-  @ApiQuery({ name: 'paymentMethod', required: true })
+  @ApiQuery({ name: 'paymentMethod', required: true, enum: HotelPaymentMethod })
   confirm(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
-    @Query('paymentMethod') paymentMethod: string,
+    @Query('paymentMethod') paymentMethod: HotelPaymentMethod,
   ) {
     return this.hotelBillsService.confirm(id, user.userId, paymentMethod);
   }

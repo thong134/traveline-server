@@ -25,6 +25,11 @@ export enum RentalVehicleAvailabilityStatus {
   MAINTENANCE = 'maintenance',
 }
 
+export enum RentalVehicleType {
+  BIKE = 'bike',
+  CAR = 'car',
+}
+
 @Entity('rental_vehicles')
 export class RentalVehicle {
   @PrimaryColumn({ length: 32 })
@@ -50,6 +55,13 @@ export class RentalVehicle {
 
   @Column({ nullable: true })
   vehicleCatalogId?: number;
+
+  @Column({
+    type: 'enum',
+    enum: RentalVehicleType,
+    default: RentalVehicleType.BIKE,
+  })
+  vehicleType: RentalVehicleType;
 
   // Base prices (required)
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })

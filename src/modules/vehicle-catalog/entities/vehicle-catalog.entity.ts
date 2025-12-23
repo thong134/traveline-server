@@ -5,6 +5,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { RentalVehicleType } from '../../rental-vehicle/entities/rental-vehicle.entity';
 
 @Entity('vehicle_catalog')
 export class VehicleCatalog {
@@ -13,6 +14,13 @@ export class VehicleCatalog {
 
   @Column()
   type: string;
+
+  @Column({
+    type: 'enum',
+    enum: RentalVehicleType,
+    default: RentalVehicleType.BIKE,
+  })
+  vehicleType: RentalVehicleType;
 
   @Column()
   brand: string;

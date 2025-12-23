@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { RentalVehiclesService } from './rental-vehicle.service';
 import { RentalVehiclesController } from './rental-vehicle.controller';
 import { RentalVehicle } from './entities/rental-vehicle.entity';
+import { RentalVehicleMaintenance } from './entities/rental-vehicle-maintenance.entity';
 import { RentalContract } from '../rental-contract/entities/rental-contract.entity';
 import { VehicleCatalog } from '../vehicle-catalog/entities/vehicle-catalog.entity';
 import { User } from '../user/entities/user.entity';
@@ -14,6 +15,7 @@ import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
   imports: [
     TypeOrmModule.forFeature([
       RentalVehicle,
+      RentalVehicleMaintenance,
       RentalContract,
       VehicleCatalog,
       User,

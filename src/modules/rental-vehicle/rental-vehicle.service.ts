@@ -5,14 +5,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThan, Not, In, Repository } from 'typeorm';
+import { MoreThan, Not, In, Repository, LessThan } from 'typeorm';
 import {
   RentalVehicle,
   RentalVehicleApprovalStatus,
   RentalVehicleAvailabilityStatus,
+  RentalVehicleType,
 } from './entities/rental-vehicle.entity';
+import { RentalVehicleMaintenance } from './entities/rental-vehicle-maintenance.entity';
 import { CreateRentalVehicleDto } from './dto/create-rental-vehicle.dto';
 import { UpdateRentalVehicleDto } from './dto/update-rental-vehicle.dto';
+import { SearchRentalVehicleDto } from './dto/search-rental-vehicle.dto';
+import { AddMaintenanceDto } from './dto/add-maintenance.dto';
 import {
   RentalContract,
   RentalContractStatus,
@@ -46,6 +50,8 @@ export class RentalVehiclesService {
     private readonly billRepo: Repository<RentalBill>,
     @InjectRepository(RentalBillDetail)
     private readonly billDetailRepo: Repository<RentalBillDetail>,
+    @InjectRepository(RentalVehicleMaintenance)
+    private readonly maintenanceRepo: Repository<RentalVehicleMaintenance>,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
@@ -250,15 +256,8 @@ export class RentalVehiclesService {
       .getMany();
   }
 
-  async search(params: {
-    rentalType?: 'hourly' | 'daily';
-    minPrice?: number;
-    maxPrice?: number;
-    startDate?: Date;
-    endDate?: Date;
-    province?: string;
-  }): Promise<RentalVehicle[]> {
-    const { rentalType, minPrice, maxPrice, startDate, endDate, province } = params;
+  async search(params: SearchRentalVehicleDto): Promise<RentalVehicle[]> {
+    const { rentalType, minPrice, maxPrice, startDate, endDate, province, vehicleType } = params;
 
     const qb = this.repo.createQueryBuilder('vehicle');
 
@@ -281,6 +280,10 @@ export class RentalVehiclesService {
       qb.andWhere('LOWER(contract.businessProvince) LIKE LOWER(:province)', {
         province: `%${province}%`,
       });
+    }
+
+    if (vehicleType) {
+      qb.andWhere('vehicle.vehicleType = :vehicleType', { vehicleType });
     }
 
     // Price filter based on rental type
@@ -349,6 +352,20 @@ export class RentalVehiclesService {
         `vehicle.licensePlate NOT IN (${bookedVehiclesSubQuery.getQuery()})`,
       );
       qb.setParameters(bookedVehiclesSubQuery.getParameters());
+
+      // Also exclude vehicles that are in maintenance during the requested period
+      const maintenanceSubQuery = this.maintenanceRepo
+        .createQueryBuilder('m')
+        .select('m.licensePlate')
+        .where('(m.startDate < :requestedEnd AND m.endDate > :requestedStart)', {
+          requestedStart,
+          requestedEnd,
+        });
+
+      qb.andWhere(
+        `vehicle.licensePlate NOT IN (${maintenanceSubQuery.getQuery()})`,
+      );
+      qb.setParameters({ ...qb.getParameters(), ...maintenanceSubQuery.getParameters() });
     }
 
     return qb
@@ -489,6 +506,49 @@ export class RentalVehiclesService {
     vehicle.availability = RentalVehicleAvailabilityStatus.AVAILABLE;
 
     return this.repo.save(vehicle);
+  }
+
+  async addMaintenance(userId: number, dto: AddMaintenanceDto): Promise<RentalVehicleMaintenance> {
+    const vehicle = await this.getVehicleWithOwnerCheck(userId, dto.licensePlate);
+
+    // Check for overlapping maintenance
+    const overlap = await this.maintenanceRepo.findOne({
+      where: [
+        {
+          licensePlate: dto.licensePlate,
+          startDate: LessThan(dto.endDate),
+          endDate: MoreThan(dto.startDate),
+        },
+      ],
+    });
+
+    if (overlap) {
+      throw new BadRequestException('Phương tiện đã có lịch bảo trì trùng với thời gian này');
+    }
+
+    // Check for overlapping bookings
+    const bookings = await this.billDetailRepo.createQueryBuilder('detail')
+      .innerJoin('detail.bill', 'bill')
+      .where('detail.licensePlate = :licensePlate', { licensePlate: dto.licensePlate })
+      .andWhere('bill.status NOT IN (:...excludedStatuses)', {
+        excludedStatuses: [RentalBillStatus.CANCELLED, RentalBillStatus.COMPLETED],
+      })
+      .andWhere('(bill.startDate < :endDate AND bill.endDate > :startDate)', {
+        startDate: dto.startDate,
+        endDate: dto.endDate,
+      })
+      .getOne();
+
+    if (bookings) {
+      throw new BadRequestException('Phương tiện đã có lịch khách đặt trong thời gian này');
+    }
+
+    const maintenance = this.maintenanceRepo.create({
+      ...dto,
+      licensePlate: dto.licensePlate,
+    });
+
+    return this.maintenanceRepo.save(maintenance);
   }
 
   private async hasFutureBookings(licensePlate: string): Promise<boolean> {

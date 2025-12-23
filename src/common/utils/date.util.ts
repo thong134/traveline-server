@@ -23,11 +23,31 @@ export function parseDDMMYYYY(value: string | any): Date | null {
 }
 
 /**
+ * Parses a date string in dd/MM/yyyy HH:mm format.
+ */
+export function parseDDMMYYYYHHmm(value: string | any): Date | null {
+  if (typeof value !== 'string') return null;
+  const cleanStr = value.trim();
+  if (!cleanStr) return null;
+
+  const parsed = parse(cleanStr, 'dd/MM/yyyy HH:mm', new Date());
+  if (isValid(parsed)) return parsed;
+  return null;
+}
+
+/**
  * Decorator helper for class-transformer's @Transform
  */
 export function TransformDDMMYYYY() {
   return Transform(({ value }) => {
     if (!value) return null;
     return parseDDMMYYYY(value);
+  });
+}
+
+export function TransformDDMMYYYYHHmm() {
+  return Transform(({ value }) => {
+    if (!value) return null;
+    return parseDDMMYYYYHHmm(value);
   });
 }

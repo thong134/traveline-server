@@ -19,7 +19,10 @@ import {
 import { DeliveryBillsService } from './delivery-bill.service';
 import { CreateDeliveryBillDto } from './dto/create-delivery-bill.dto';
 import { UpdateDeliveryBillDto } from './dto/update-delivery-bill.dto';
-import { DeliveryBillStatus } from './entities/delivery-bill.entity';
+import {
+  DeliveryBillStatus,
+  DeliveryPaymentMethod,
+} from './entities/delivery-bill.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../../auth/decorators/current-user.decorator';
@@ -70,11 +73,11 @@ export class DeliveryBillsController {
 
   @Patch(':id/confirm')
   @ApiOperation({ summary: 'Xác nhận thông tin và chọn phương thức thanh toán' })
-  @ApiQuery({ name: 'paymentMethod', required: true })
+  @ApiQuery({ name: 'paymentMethod', required: true, enum: DeliveryPaymentMethod })
   confirm(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
-    @Query('paymentMethod') paymentMethod: string,
+    @Query('paymentMethod') paymentMethod: DeliveryPaymentMethod,
   ) {
     return this.service.confirm(id, user.userId, paymentMethod);
   }

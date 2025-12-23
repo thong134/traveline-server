@@ -23,6 +23,7 @@ import { assignDefined } from '../../../common/utils/object.util';
 import { WalletService } from '../../wallet/wallet.service';
 import { BlockchainService } from '../../blockchain/blockchain.service';
 import { parse, isValid } from 'date-fns';
+import { HotelPaymentMethod } from './entities/hotel-bill.entity';
 
 const VND_TO_ETH_RATE = 80_000_000;
 
@@ -178,7 +179,7 @@ export class HotelBillsService {
       }
     }
     
-    await this.calculateTotal(saved);
+    await this.calculateTotal(saved.id);
     await this.billRepo.save(saved);
 
     return this.findOne(saved.id, userId);
@@ -232,11 +233,15 @@ export class HotelBillsService {
       bill.travelPointsUsed = Math.floor(points);
     }
 
-    await this.calculateTotal(bill);
+    await this.calculateTotal(bill.id);
     return this.billRepo.save(bill);
   }
 
-  async confirm(id: number, userId: number, paymentMethod: string): Promise<HotelBill> {
+  async confirm(
+    id: number,
+    userId: number,
+    paymentMethod: HotelPaymentMethod,
+  ): Promise<HotelBill> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== HotelBillStatus.PENDING) throw new BadRequestException('Not pending');
 
@@ -244,6 +249,7 @@ export class HotelBillsService {
       throw new BadRequestException('Contact info required');
     }
 
+    await this.calculateTotal(bill.id);
     bill.status = HotelBillStatus.CONFIRMED;
     bill.paymentMethod = paymentMethod;
     return this.billRepo.save(bill);
@@ -253,9 +259,9 @@ export class HotelBillsService {
     const bill = await this.findOne(id, userId);
     if (bill.status !== HotelBillStatus.CONFIRMED) throw new BadRequestException('Not confirmed');
 
-    if (bill.paymentMethod === 'wallet') {
+    if (bill.paymentMethod === HotelPaymentMethod.WALLET) {
       const ownerWalletAddress = bill.cooperation?.manager?.bankAccountNumber;
-      await this.processWalletPayment(bill, ownerWalletAddress);
+      await this.processWalletPayment(bill);
     }
 
     bill.status = HotelBillStatus.PAID;
@@ -286,8 +292,10 @@ export class HotelBillsService {
 
   async cancel(id: number, userId: number): Promise<HotelBill> {
     const bill = await this.findOne(id, userId);
-    if ([HotelBillStatus.COMPLETED, HotelBillStatus.CANCELLED].includes(bill.status)) {
-      throw new BadRequestException('Finished');
+    if (bill.status !== HotelBillStatus.PENDING && 
+        bill.status !== HotelBillStatus.CONFIRMED && 
+        bill.status !== HotelBillStatus.PAID) {
+      throw new BadRequestException('Cannot cancel');
     }
 
     if (bill.status === HotelBillStatus.PAID) {
@@ -298,37 +306,46 @@ export class HotelBillsService {
     return this.billRepo.save(bill);
   }
 
-  private async calculateTotal(bill: HotelBill): Promise<void> {
-    const details = await this.detailRepo.find({ where: { bill: { id: bill.id } } });
-    let total = details.reduce((sum, d) => sum + parseFloat(d.total), 0);
+  private async calculateTotal(billId: number): Promise<void> {
+    const bill = await this.billRepo.findOne({
+      where: { id: billId },
+      relations: ['details', 'voucher'],
+    });
+    if (!bill) return;
+
+    const totalFromDetails = bill.details.reduce((sum, d) => sum + parseFloat(d.total), 0);
+    let finalAmount = totalFromDetails;
 
     // 1. Voucher (%)
     if (bill.voucher && bill.voucher.value) {
       const val = parseFloat(bill.voucher.value);
       if (bill.voucher.discountType === 'percentage') {
-        let discountAmount = total * (val / 100);
+        let discountAmount = finalAmount * (val / 100);
         if (bill.voucher.maxDiscountValue) {
           const max = parseFloat(bill.voucher.maxDiscountValue);
           if (discountAmount > max) discountAmount = max;
         }
-        total = Math.max(0, total - discountAmount);
+        finalAmount = Math.max(0, finalAmount - discountAmount);
       } else {
-        total = Math.max(0, total - val);
+        finalAmount = Math.max(0, finalAmount - val);
       }
     }
 
     // 2. Points (1:1)
     if (bill.travelPointsUsed > 0) {
-      total = Math.max(0, total - bill.travelPointsUsed);
+      finalAmount = Math.max(0, finalAmount - bill.travelPointsUsed);
     }
 
-    bill.total = this.formatMoney(total);
+    const formattedTotal = this.formatMoney(finalAmount);
+    await this.billRepo.update(billId, { total: formattedTotal });
+    bill.total = formattedTotal;
   }
 
-  private async processWalletPayment(bill: HotelBill, ownerWalletAddress?: string) {
+  private async processWalletPayment(bill: HotelBill) {
     const amount = parseFloat(bill.total);
     if (amount <= 0) return;
     await this.walletService.lockFunds(bill.user.id, amount, `hotel:${bill.id}`);
+    const ownerWalletAddress = bill.cooperation?.manager?.bankAccountNumber;
     if (ownerWalletAddress) {
       const eth = (amount / VND_TO_ETH_RATE).toFixed(8);
       await this.blockchainService.adminDepositForRental(bill.id, ownerWalletAddress, eth);

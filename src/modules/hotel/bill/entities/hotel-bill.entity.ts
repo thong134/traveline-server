@@ -13,6 +13,12 @@ import { Cooperation } from '../../../cooperation/entities/cooperation.entity';
 import { HotelBillDetail } from './hotel-bill-detail.entity';
 import { Voucher } from '../../../voucher/entities/voucher.entity';
 
+export enum HotelPaymentMethod {
+  WALLET = 'wallet',
+  MOMO = 'momo',
+  QR_CODE = 'qr_code',
+}
+
 export enum HotelBillStatus {
   PENDING = 'pending',
   CONFIRMED = 'confirmed',
@@ -82,8 +88,12 @@ export class HotelBill {
   })
   status: HotelBillStatus;
 
-  @Column({ nullable: true })
-  paymentMethod?: string;
+  @Column({
+    type: 'enum',
+    enum: HotelPaymentMethod,
+    nullable: true,
+  })
+  paymentMethod?: HotelPaymentMethod;
 
   @Column({ nullable: true })
   contactName?: string;
