@@ -33,7 +33,7 @@ export class WalletTransaction {
   @Column({ type: 'decimal', precision: 18, scale: 2 })
   amount: string;
 
-  @Column({ type: 'enum', enum: WalletTransactionType })
+  @Column({ type: 'enum', enum: WalletTransactionType, nullable: true })
   type: WalletTransactionType;
 
   @Column({ name: 'reference_id', nullable: true })

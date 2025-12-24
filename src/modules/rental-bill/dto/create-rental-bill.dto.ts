@@ -12,7 +12,7 @@ import {
 } from 'class-validator';
 import { RentalBillType } from '../entities/rental-bill.entity';
 import { RentalBillDetailDto } from './rental-bill-detail.dto';
-import { RentalVehicleType } from '../../rental-vehicle/entities/rental-vehicle.entity';
+import { RentalVehicleType } from '../../rental-vehicle/enums/rental-vehicle.enum';
 
 export class CreateRentalBillDto {
   @ApiProperty({ enum: RentalBillType, example: RentalBillType.DAILY })

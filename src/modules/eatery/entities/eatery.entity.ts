@@ -11,13 +11,13 @@ export class Eatery {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ nullable: true })
   name: string;
 
-  @Column()
+  @Column({ nullable: true })
   province: string;
 
-  @Column()
+  @Column({ nullable: true })
   address: string;
 
   @Column({ nullable: true })

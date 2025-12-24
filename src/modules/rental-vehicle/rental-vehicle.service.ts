@@ -8,10 +8,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThan, Not, In, Repository, LessThan } from 'typeorm';
 import {
   RentalVehicle,
+} from './entities/rental-vehicle.entity';
+import {
   RentalVehicleApprovalStatus,
   RentalVehicleAvailabilityStatus,
   RentalVehicleType,
-} from './entities/rental-vehicle.entity';
+} from './enums/rental-vehicle.enum';
 import { RentalVehicleMaintenance } from './entities/rental-vehicle-maintenance.entity';
 import { CreateRentalVehicleDto } from './dto/create-rental-vehicle.dto';
 import { UpdateRentalVehicleDto } from './dto/update-rental-vehicle.dto';

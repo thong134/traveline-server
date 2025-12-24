@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   ConflictException,
   HttpException,
@@ -102,7 +102,7 @@ export class AuthService implements OnModuleInit {
     if (bucket.count + 1 > limit) {
       const waitSec = Math.ceil((bucket.resetAt - now) / 1000);
       throw new HttpException(
-        `Thao tác quá nhiều, thử lại sau ${waitSec}s`,
+        `Thao t�c qu� nhi?u, th? l?i sau ${waitSec}s`,
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
@@ -270,7 +270,7 @@ export class AuthService implements OnModuleInit {
     const user = await this.usersService.findOne(userId);
     const email = user.email;
     if (!email) {
-      throw new BadRequestException('Vui lòng điền email trước khi xác thực');
+      throw new BadRequestException('Vui l�ng di?n email tru?c khi x�c th?c');
     }
     this.checkRate(`email:start:${email}`, 5, 60 * 60 * 1000);
 
@@ -302,17 +302,17 @@ export class AuthService implements OnModuleInit {
       );
     } catch {
       throw new UnauthorizedException(
-        'Mã xác thực không hợp lệ hoặc đã hết hạn',
+        'M� x�c th?c kh�ng h?p l? ho?c d� h?t h?n',
       );
     }
 
     if (payload.email !== dto.email || payload.code !== dto.code) {
-      throw new UnauthorizedException('Mã xác thực không hợp lệ');
+      throw new UnauthorizedException('M� x�c th?c kh�ng h?p l?');
     }
 
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
-      throw new UnauthorizedException('Tài khoản không tồn tại');
+      throw new UnauthorizedException('T�i kho?n kh�ng t?n t?i');
     }
 
     await this.usersService.markEmailVerified(user.id, dto.email);
@@ -361,16 +361,16 @@ export class AuthService implements OnModuleInit {
         },
       );
     } catch {
-      throw new UnauthorizedException('Mã xác thực không hợp lệ hoặc đã hết hạn');
+      throw new UnauthorizedException('M� x�c th?c kh�ng h?p l? ho?c d� h?t h?n');
     }
 
     if (payload.kind !== 'reset' || payload.email !== email || payload.code !== code) {
-      throw new UnauthorizedException('Mã xác thực không hợp lệ');
+      throw new UnauthorizedException('M� x�c th?c kh�ng h?p l?');
     }
 
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      throw new UnauthorizedException('Tài khoản không tồn tại');
+      throw new UnauthorizedException('T�i kho?n kh�ng t?n t?i');
     }
 
     const hashed = await hash(newPassword, 10);
@@ -392,7 +392,7 @@ export class AuthService implements OnModuleInit {
     const user = await this.usersService.findOne(userId);
     const phone = user.phone;
     if (!phone) {
-      throw new BadRequestException('Vui lòng điền số điện thoại trước khi xác thực');
+      throw new BadRequestException('Vui l�ng di?n s? di?n tho?i tru?c khi x�c th?c');
     }
     this.checkRate(`phone:start:${phone}`, 5, 60 * 60 * 1000);
     const apiKey = process.env.FIREBASE_API_KEY;
@@ -586,13 +586,13 @@ export class AuthService implements OnModuleInit {
     const user = await this.usersService.findOne(userId);
     const isMatch = await compare(dto.currentPassword, user.password);
     if (!isMatch) {
-      throw new UnauthorizedException('Mật khẩu hiện tại không chính xác');
+      throw new UnauthorizedException('M?t kh?u hi?n t?i kh�ng ch�nh x�c');
     }
 
     const hashed = await hash(dto.newPassword, 10);
     await this.usersService.updatePassword(userId, hashed);
     await this.refreshTokenRepository.delete({ userId });
-    return { message: 'Đổi mật khẩu thành công, vui lòng đăng nhập lại' };
+    return { message: '�?i m?t kh?u th�nh c�ng, vui l�ng dang nh?p l?i' };
   }
 
   async updateProfile(
@@ -669,7 +669,7 @@ export class AuthService implements OnModuleInit {
     const back = files.citizenBackPhoto?.[0];
 
     if (!front || !back) {
-      throw new BadRequestException('Vui lòng gửi đủ ảnh mặt trước và mặt sau CCCD');
+      throw new BadRequestException('Vui l�ng g?i d? ?nh m?t tru?c v� m?t sau CCCD');
     }
 
     assertImageFile(front, { fieldName: 'citizenFrontPhoto' });
@@ -692,6 +692,6 @@ export class AuthService implements OnModuleInit {
       backUpload.url,
     );
 
-    return { ok: true, message: 'Căn cước công dân đã được xác thực' };
+    return { ok: true, message: 'Can cu?c c�ng d�n d� du?c x�c th?c' };
   }
 }

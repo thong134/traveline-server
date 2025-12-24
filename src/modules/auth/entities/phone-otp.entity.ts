@@ -16,7 +16,7 @@ export class PhoneOtp {
   @Column({ name: 'codeHash' })
   sessionHash: string; // bcrypt hash of Firebase sessionInfo
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamptz' })
   expiresAt: Date;
 
   @Column({ default: false })

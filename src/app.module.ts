@@ -44,7 +44,7 @@ import { NotificationModule } from './modules/notification/notification.module';
         // password: process.env.DB_PASS,
         // database: process.env.DB_NAME,
         autoLoadEntities: true,
-        synchronize: false, // tự tạo bảng dựa trên entity (dev thôi, production thì nên tắt)
+        synchronize: true, // tự tạo bảng dựa trên entity (dev thôi, production thì nên tắt)
       }),
     }),
     ThrottlerModule.forRoot([{ ttl: 60, limit: 10 }]),

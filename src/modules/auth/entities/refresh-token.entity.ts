@@ -22,6 +22,6 @@ export class RefreshToken {
   @Column()
   token: string; // bcrypt hashed refresh token
 
-  @Column()
+  @Column({ type: 'timestamptz', nullable: true })
   expiresAt: Date;
 }

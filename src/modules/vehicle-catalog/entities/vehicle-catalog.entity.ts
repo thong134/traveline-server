@@ -5,7 +5,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { RentalVehicleType } from '../../rental-vehicle/entities/rental-vehicle.entity';
+import { RentalVehicleType } from '../../rental-vehicle/enums/rental-vehicle.enum';
 
 @Entity('vehicle_catalog')
 export class VehicleCatalog {

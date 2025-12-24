@@ -26,11 +26,11 @@ import {
   ReturnRequestDto,
   ConfirmReturnDto,
 } from './dto/rental-workflow.dto';
+import { RentalVehicle } from '../rental-vehicle/entities/rental-vehicle.entity';
 import {
-  RentalVehicle,
   RentalVehicleApprovalStatus,
   RentalVehicleAvailabilityStatus,
-} from '../rental-vehicle/entities/rental-vehicle.entity';
+} from '../rental-vehicle/enums/rental-vehicle.enum';
 import { User } from '../user/entities/user.entity';
 import { assignDefined } from '../../common/utils/object.util';
 import { VouchersService } from '../voucher/voucher.service';

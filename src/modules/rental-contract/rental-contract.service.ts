@@ -21,11 +21,11 @@ import { assignDefined } from '../../common/utils/object.util';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import type { Express } from 'express';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
+import { RentalVehicle } from '../rental-vehicle/entities/rental-vehicle.entity';
 import {
-  RentalVehicle,
   RentalVehicleApprovalStatus,
   RentalVehicleAvailabilityStatus,
-} from '../rental-vehicle/entities/rental-vehicle.entity';
+} from '../rental-vehicle/enums/rental-vehicle.enum';
 
 type ContractImageFiles = {
   businessRegisterPhoto?: Express.Multer.File;

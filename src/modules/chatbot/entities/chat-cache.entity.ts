@@ -25,6 +25,6 @@ export class ChatCache {
   @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
   metadata: Record<string, unknown>;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 }

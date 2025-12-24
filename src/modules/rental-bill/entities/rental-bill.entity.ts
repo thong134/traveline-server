@@ -11,7 +11,7 @@ import {
 import { User } from '../../user/entities/user.entity';
 import { RentalBillDetail } from './rental-bill-detail.entity';
 import { Voucher } from '../../voucher/entities/voucher.entity';
-import { RentalVehicleType } from '../../rental-vehicle/entities/rental-vehicle.entity';
+import { RentalVehicleType } from '../../rental-vehicle/enums/rental-vehicle.enum';
 
 export enum RentalBillCancelledBy {
   USER = 'user',
@@ -91,6 +91,7 @@ export class RentalBill {
   @Column({
     type: 'enum',
     enum: PaymentMethod,
+    enumName: 'payment_method_enum',
     nullable: true,
   })
   paymentMethod?: PaymentMethod;

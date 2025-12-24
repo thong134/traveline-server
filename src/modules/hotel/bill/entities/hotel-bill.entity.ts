@@ -91,6 +91,7 @@ export class HotelBill {
   @Column({
     type: 'enum',
     enum: HotelPaymentMethod,
+    enumName: 'payment_method_enum',
     nullable: true,
   })
   paymentMethod?: HotelPaymentMethod;

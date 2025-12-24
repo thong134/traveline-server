@@ -110,6 +110,7 @@ export class DeliveryBill {
   @Column({
     type: 'enum',
     enum: DeliveryPaymentMethod,
+    enumName: 'payment_method_enum',
     nullable: true,
   })
   paymentMethod?: DeliveryPaymentMethod;

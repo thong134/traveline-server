@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { TransformDDMMYYYYHHmm } from '../../../common/utils/date.util';
-import { RentalVehicleType } from '../entities/rental-vehicle.entity';
+import { RentalVehicleType } from '../enums/rental-vehicle.enum';
 import {
   IsDate,
   IsEnum,

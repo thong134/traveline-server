@@ -12,23 +12,11 @@ import { RentalContract } from '../../rental-contract/entities/rental-contract.e
 import { VehicleCatalog } from '../../vehicle-catalog/entities/vehicle-catalog.entity';
 import { RentalBillDetail } from '../../rental-bill/entities/rental-bill-detail.entity';
 
-export enum RentalVehicleApprovalStatus {
-  PENDING = 'pending',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
-  INACTIVE = 'inactive',
-}
-
-export enum RentalVehicleAvailabilityStatus {
-  AVAILABLE = 'available',
-  UNAVAILABLE = 'unavailable',
-  MAINTENANCE = 'maintenance',
-}
-
-export enum RentalVehicleType {
-  BIKE = 'bike',
-  CAR = 'car',
-}
+import {
+  RentalVehicleApprovalStatus,
+  RentalVehicleAvailabilityStatus,
+  RentalVehicleType,
+} from '../enums/rental-vehicle.enum';
 
 @Entity('rental_vehicles')
 export class RentalVehicle {

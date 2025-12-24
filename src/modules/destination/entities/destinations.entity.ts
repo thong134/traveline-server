@@ -71,7 +71,7 @@ export class Destination {
   @Column({ nullable: true })
   closeTime?: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   sourceCreatedAt?: Date;
 
   @Column({ default: true })

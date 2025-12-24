@@ -25,7 +25,7 @@ import { UpdateRentalVehicleDto } from './dto/update-rental-vehicle.dto';
 import {
   RentalVehicleApprovalStatus,
   RentalVehicleAvailabilityStatus,
-} from './entities/rental-vehicle.entity';
+} from './enums/rental-vehicle.enum';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
