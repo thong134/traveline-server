@@ -26,6 +26,7 @@ export enum RentalBillType {
 export enum RentalBillStatus {
   PENDING = 'pending',
   CONFIRMED = 'confirmed',
+  PAID_PENDING_DELIVERY = 'paid_pending_delivery',
   PAID = 'paid',
   CANCELLED = 'cancelled',
   COMPLETED = 'completed',
@@ -117,6 +118,12 @@ export class RentalBill {
 
   @Column({ type: 'int', default: 0 })
   travelPointsUsed: number;
+
+  @Column({ type: 'boolean', default: false })
+  requiresEthDeposit: boolean;
+
+  @Column({ nullable: true })
+  ownerEthAddress?: string;
 
   @Column({
     type: 'enum',

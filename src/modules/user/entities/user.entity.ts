@@ -133,6 +133,9 @@ export class User {
   @Column({ nullable: true })
   bankAccountName?: string;
 
+  @Column({ nullable: true })
+  ethAddress?: string;
+
   @Column('text', { array: true, default: '{}' })
   hobbies: string[] = [];
 

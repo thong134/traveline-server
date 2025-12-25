@@ -10,6 +10,7 @@ import { Voucher } from '../voucher/entities/voucher.entity';
 import { VouchersModule } from '../voucher/voucher.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { BlockchainModule } from '../blockchain/blockchain.module';
+import { PaymentModule } from '../payment/payment.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { BlockchainModule } from '../blockchain/blockchain.module';
     VouchersModule,
     WalletModule,
     BlockchainModule,
+    PaymentModule,
   ],
   providers: [RentalBillsService],
   controllers: [RentalBillsController],

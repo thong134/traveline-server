@@ -38,6 +38,7 @@ import { Voucher } from '../voucher/entities/voucher.entity';
 import { WalletService } from '../wallet/wallet.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { parse, isValid } from 'date-fns';
+import { PaymentService } from '../payment/payment.service';
 
 const VND_TO_ETH_RATE = 80_000_000;
 
@@ -58,6 +59,7 @@ export class RentalBillsService {
     private readonly walletService: WalletService,
     private readonly blockchainService: BlockchainService,
     private readonly dataSource: DataSource,
+    private readonly paymentService: PaymentService,
   ) {}
 
   private validatePackageDates(pkg: string, start: Date, end: Date) {
@@ -279,39 +281,59 @@ export class RentalBillsService {
     return this.billRepo.save(bill);
   }
 
-  async pay(id: number, userId: number): Promise<RentalBill> {
+  async pay(id: number, userId: number): Promise<{ payUrl: string; paymentId: number }> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== RentalBillStatus.CONFIRMED) {
       throw new BadRequestException('Only CONFIRMED bills can be paid');
     }
 
-    // Process payment based on method
-    if (bill.paymentMethod === PaymentMethod.WALLET) {
-      const vehicles = bill.details.map(d => d.vehicle).filter(v => !!v);
-      const ownerWalletAddress = vehicles[0]?.contract?.user?.bankAccountNumber;
-      await this.processWalletPayment(bill, ownerWalletAddress);
-    } else if (bill.paymentMethod === PaymentMethod.MOMO) {
-      // Mock MoMo direct payment
-      this.logger.log(`Processing direct MoMo payment for bill ${bill.id}`);
+    if (!bill.paymentMethod) {
+      throw new BadRequestException('paymentMethod is required');
     }
 
-    bill.status = RentalBillStatus.PAID;
-    bill.rentalStatus = RentalProgressStatus.BOOKED;
-    
-    // Set vehicles to UNAVAILABLE
-    for (const detail of bill.details) {
-      if (detail.vehicle) {
-        detail.vehicle.availability = RentalVehicleAvailabilityStatus.UNAVAILABLE;
-        await this.vehicleRepo.save(detail.vehicle);
-      }
+    const totalAmount = parseFloat(bill.total);
+    if (totalAmount <= 0) {
+      throw new BadRequestException('Total amount must be greater than 0');
     }
 
-    return this.billRepo.save(bill);
+    // Derive owner ETH info
+    const vehicles = bill.details.map(d => d.vehicle).filter(v => !!v);
+    const ownerEthAddress = vehicles[0]?.contract?.user?.ethAddress;
+    if (ownerEthAddress) {
+      bill.ownerEthAddress = ownerEthAddress;
+      bill.requiresEthDeposit = true;
+      await this.billRepo.update(bill.id, {
+        ownerEthAddress,
+        requiresEthDeposit: true,
+      });
+    }
+
+    if (bill.paymentMethod === PaymentMethod.MOMO) {
+      const { payUrl, paymentId } = await this.paymentService.createMomoPayment({
+        rentalId: bill.id,
+        amount: totalAmount,
+      });
+      this.logger.log(`Created MoMo payment ${paymentId} for rental bill ${bill.id}`);
+      return { payUrl, paymentId };
+    }
+
+    if (bill.paymentMethod === PaymentMethod.QR_CODE) {
+      const qrData = `TRAVELINE_PAY_${bill.code}_${bill.total}`;
+      const { payUrl, paymentId } = await this.paymentService.createQrPayment({
+        rentalId: bill.id,
+        amount: totalAmount,
+        qrData,
+      });
+      this.logger.log(`Created QR payment ${paymentId} for rental bill ${bill.id}`);
+      return { payUrl, paymentId };
+    }
+
+    throw new BadRequestException('Unsupported payment method');
   }
 
   async complete(id: number, userId: number): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
-    if (bill.status !== RentalBillStatus.PAID) {
+    if (![RentalBillStatus.PAID, RentalBillStatus.PAID_PENDING_DELIVERY].includes(bill.status)) {
       throw new BadRequestException('Only PAID bills can be completed');
     }
 
@@ -364,7 +386,7 @@ export class RentalBillsService {
   async ownerDelivering(id: number, userId: number): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
     // Note: In real app, check if user is the OWNER of the vehicles
-    if (bill.status !== RentalBillStatus.PAID) {
+    if (![RentalBillStatus.PAID, RentalBillStatus.PAID_PENDING_DELIVERY].includes(bill.status)) {
       throw new BadRequestException('Chỉ có thể giao xe sau khi khách đã thanh toán');
     }
     bill.rentalStatus = RentalProgressStatus.DELIVERING;
@@ -603,8 +625,8 @@ export class RentalBillsService {
       throw new ForbiddenException('You are not the owner of this bill');
     }
 
-    if (bill.status !== RentalBillStatus.PAID) {
-      throw new BadRequestException('Can only cancel PAID bills');
+    if (![RentalBillStatus.PAID, RentalBillStatus.PAID_PENDING_DELIVERY].includes(bill.status)) {
+      throw new BadRequestException('Can only cancel paid bills');
     }
 
     const now = new Date();
@@ -649,19 +671,43 @@ export class RentalBillsService {
     const totalAmount = parseFloat(bill.total);
     if (totalAmount <= 0) return;
 
+    if (action === 'refund') {
+      await this.paymentService.refundLatestByRental(bill.id);
+    }
+
     await this.walletService.releaseFunds(bill.userId, totalAmount, `rental:${bill.id}`, action === 'release' ? ownerUserId : undefined);
 
-    if (action === 'release') {
+    const shouldUseBlockchain = bill.requiresEthDeposit && !!bill.ownerEthAddress;
+
+    if (action === 'release' && shouldUseBlockchain) {
       await this.blockchainService.adminReleaseFundsForRental(bill.id);
-      
-      // Award points: 1000 VND = 10 points
-      const pointsEarned = Math.floor(totalAmount / 100) * 1; // Actually 1000 VND = 10 pts means 100 VND = 1 pt
-      // No, 1000 VND = 10 pts is (totalAmount / 1000) * 10 = totalAmount / 100. Correct.
+    } else if (action === 'refund' && shouldUseBlockchain) {
+      await this.blockchainService.adminRefundForRental(bill.id);
+    } else if (action === 'release' && ownerUserId) {
+      const owner = await this.userRepo.findOne({ where: { id: ownerUserId } });
+      if (!owner) {
+        throw new BadRequestException('Không tìm thấy chủ xe để tạo payout');
+      }
+      if (!owner.bankName || !owner.bankAccountNumber || !owner.bankAccountName) {
+        throw new BadRequestException('Chủ xe chưa cấu hình thông tin ngân hàng');
+      }
+
+      await this.paymentService.createPayoutPending({
+        rentalId: bill.id,
+        ownerUserId,
+        amount: totalAmount,
+        bankName: owner.bankName,
+        bankAccountNumber: owner.bankAccountNumber,
+        bankAccountName: owner.bankAccountName,
+        note: `Release rental ${bill.code}`,
+      });
+    }
+
+    if (action === 'release') {
+      const pointsEarned = Math.floor(totalAmount / 100) * 1;
       if (pointsEarned > 0) {
         await this.userRepo.increment({ id: bill.userId }, 'travelPoint', pointsEarned);
       }
-    } else {
-      await this.blockchainService.adminRefundForRental(bill.id);
     }
   }
 
