@@ -87,26 +87,12 @@ export class CooperationsController {
     return this.cooperationsService.remove(id);
   }
 
-  @Post(':id/favorite')
+  @Get('favorites')
   @RequireAuth()
-  @ApiOperation({ summary: 'Thêm đối tác vào danh sách yêu thích' })
-  @ApiOkResponse({ description: 'Đã thêm đối tác vào yêu thích' })
-  favorite(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.cooperationsService.favorite(user.userId, id);
-  }
-
-  @Delete(':id/favorite')
-  @RequireAuth()
-  @ApiOperation({ summary: 'Bỏ đối tác khỏi danh sách yêu thích' })
-  @ApiOkResponse({ description: 'Đã bỏ đối tác khỏi yêu thích' })
-  unfavorite(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.cooperationsService.unfavorite(user.userId, id);
+  @ApiOperation({ summary: 'Danh sách đối tác yêu thích của tôi' })
+  @ApiOkResponse({ description: 'Danh sách đối tác được yêu thích' })
+  findFavorites(@CurrentUser() user: RequestUser) {
+    return this.cooperationsService.findFavoritesByUser(user.userId);
   }
 
   @Get(':id/hotel-availability')

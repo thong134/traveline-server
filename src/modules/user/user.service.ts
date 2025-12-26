@@ -227,69 +227,6 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  async addFavoriteEatery(userId: number, eateryId: number): Promise<string[]> {
-    return this.updateFavoriteList(userId, 'favoriteEateries', eateryId, true);
-  }
-
-  async removeFavoriteEatery(
-    userId: number,
-    eateryId: number,
-  ): Promise<string[]> {
-    return this.updateFavoriteList(userId, 'favoriteEateries', eateryId, false);
-  }
-
-  async addFavoriteCooperation(
-    userId: number,
-    cooperationId: number,
-  ): Promise<string[]> {
-    return this.updateFavoriteList(
-      userId,
-      'cooperationIds',
-      cooperationId,
-      true,
-    );
-  }
-
-  async removeFavoriteCooperation(
-    userId: number,
-    cooperationId: number,
-  ): Promise<string[]> {
-    return this.updateFavoriteList(
-      userId,
-      'cooperationIds',
-      cooperationId,
-      false,
-    );
-  }
-
-  private async updateFavoriteList(
-    userId: number,
-    field: 'favoriteEateries' | 'cooperationIds',
-    entityId: number,
-    add: boolean,
-  ): Promise<string[]> {
-    const user = await this.findOne(userId);
-    const current = Array.isArray(user[field]) ? [...user[field]] : [];
-    const candidate = String(entityId);
-
-    if (add) {
-      if (!current.includes(candidate)) {
-        current.push(candidate);
-      }
-    } else {
-      const idx = current.indexOf(candidate);
-      if (idx === -1) {
-        return current;
-      }
-      current.splice(idx, 1);
-    }
-
-    await this.usersRepository.update(userId, {
-      [field]: current,
-    } as Partial<User>);
-
-    return current;
-  }
 
   private prepareUserPayload(
     dto: any,
@@ -299,8 +236,10 @@ export class UsersService {
     const arrayFields = new Set([
       'hobbies',
       'favoriteDestinationIds',
-      'favoriteEateries',
-      'cooperationIds',
+      'favoriteTravelRouteIds',
+      'favoriteRentalVehicleIds',
+      'favoriteCooperationIds',
+      'favoriteEaterieIds',
     ]);
     const numericFields = new Set([
       'travelPoint',

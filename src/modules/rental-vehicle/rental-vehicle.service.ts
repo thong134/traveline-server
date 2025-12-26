@@ -598,4 +598,29 @@ export class RentalVehiclesService {
     });
     return upload.url;
   }
+
+  async findFavoritesByUser(userId: number): Promise<RentalVehicle[]> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    if (!user.favoriteRentalVehicleIds?.length) {
+      return [];
+    }
+
+    const plates = user.favoriteRentalVehicleIds;
+
+    const vehicles = await this.repo.find({
+      where: { licensePlate: In(plates) },
+      relations: ['vehicleCatalog', 'contract'],
+    });
+
+    const order = new Map(plates.map((value, index) => [value, index]));
+    return vehicles.sort((a, b) => {
+      const left = order.get(a.licensePlate) ?? 0;
+      const right = order.get(b.licensePlate) ?? 0;
+      return left - right;
+    });
+  }
 }

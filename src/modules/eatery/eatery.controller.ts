@@ -83,25 +83,11 @@ export class EateriesController {
     return this.service.remove(id);
   }
 
-  @Post(':id/favorite')
+  @Get('favorites')
   @RequireAuth()
-  @ApiOperation({ summary: 'Thêm quán ăn vào danh sách yêu thích' })
-  @ApiOkResponse({ description: 'Đã thêm quán ăn vào yêu thích' })
-  favorite(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.service.favorite(user.userId, id);
-  }
-
-  @Delete(':id/favorite')
-  @RequireAuth()
-  @ApiOperation({ summary: 'Bỏ quán ăn khỏi danh sách yêu thích' })
-  @ApiOkResponse({ description: 'Đã bỏ quán ăn khỏi yêu thích' })
-  unfavorite(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.service.unfavorite(user.userId, id);
+  @ApiOperation({ summary: 'Danh sách quán ăn yêu thích của tôi' })
+  @ApiOkResponse({ description: 'Danh sách quán ăn được yêu thích' })
+  findFavorites(@CurrentUser() user: RequestUser) {
+    return this.service.findFavoritesByUser(user.userId);
   }
 }

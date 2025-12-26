@@ -143,7 +143,16 @@ export class User {
   favoriteDestinationIds: string[] = [];
 
   @Column('text', { array: true, default: '{}' })
-  favoriteEateries: string[] = [];
+  favoriteTravelRouteIds: string[] = [];
+
+  @Column('text', { array: true, default: '{}' })
+  favoriteRentalVehicleIds: string[] = [];
+
+  @Column('text', { array: true, default: '{}' })
+  favoriteCooperationIds: string[] = [];
+
+  @Column('text', { array: true, default: '{}' })
+  favoriteEaterieIds: string[] = [];
 
   @Column('text', { array: true, default: '{}' })
   cooperationIds: string[] = [];

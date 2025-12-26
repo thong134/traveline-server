@@ -106,39 +106,6 @@ export class DestinationsController {
     return this.destinationsService.findOne(id);
   }
 
-  @Post(':id/favorite')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(200)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Thêm địa điểm vào danh sách yêu thích của người dùng',
-  })
-  @ApiOkResponse({
-    description: 'Địa điểm sau khi được cập nhật lượt yêu thích',
-  })
-  favoriteDestination(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.destinationsService.favoriteDestination(user.userId, id);
-  }
-
-  @Delete(':id/favorite')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(200)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Loại bỏ địa điểm khỏi danh sách yêu thích của người dùng',
-  })
-  @ApiOkResponse({
-    description: 'Địa điểm sau khi được cập nhật lượt yêu thích',
-  })
-  unfavoriteDestination(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.destinationsService.unfavoriteDestination(user.userId, id);
-  }
 
   @Patch(':id')
   @RequireAuth(UserRole.Admin)

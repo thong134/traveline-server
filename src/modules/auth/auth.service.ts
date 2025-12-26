@@ -1,4 +1,4 @@
-import {
+ï»¿import {
   BadRequestException,
   ConflictException,
   HttpException,
@@ -102,7 +102,7 @@ export class AuthService implements OnModuleInit {
     if (bucket.count + 1 > limit) {
       const waitSec = Math.ceil((bucket.resetAt - now) / 1000);
       throw new HttpException(
-        `Thao tác quá nhi?u, th? l?i sau ${waitSec}s`,
+        `Thao tï¿½c quï¿½ nhi?u, th? l?i sau ${waitSec}s`,
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
@@ -270,7 +270,7 @@ export class AuthService implements OnModuleInit {
     const user = await this.usersService.findOne(userId);
     const email = user.email;
     if (!email) {
-      throw new BadRequestException('Vui lòng di?n email tru?c khi xác th?c');
+      throw new BadRequestException('Vui lï¿½ng di?n email tru?c khi xï¿½c th?c');
     }
     this.checkRate(`email:start:${email}`, 5, 60 * 60 * 1000);
 
@@ -302,17 +302,17 @@ export class AuthService implements OnModuleInit {
       );
     } catch {
       throw new UnauthorizedException(
-        'Mã xác th?c không h?p l? ho?c dã h?t h?n',
+        'Mï¿½ xï¿½c th?c khï¿½ng h?p l? ho?c dï¿½ h?t h?n',
       );
     }
 
     if (payload.email !== dto.email || payload.code !== dto.code) {
-      throw new UnauthorizedException('Mã xác th?c không h?p l?');
+      throw new UnauthorizedException('Mï¿½ xï¿½c th?c khï¿½ng h?p l?');
     }
 
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
-      throw new UnauthorizedException('Tài kho?n không t?n t?i');
+      throw new UnauthorizedException('Tï¿½i kho?n khï¿½ng t?n t?i');
     }
 
     await this.usersService.markEmailVerified(user.id, dto.email);
@@ -361,16 +361,16 @@ export class AuthService implements OnModuleInit {
         },
       );
     } catch {
-      throw new UnauthorizedException('Mã xác th?c không h?p l? ho?c dã h?t h?n');
+      throw new UnauthorizedException('Mï¿½ xï¿½c th?c khï¿½ng h?p l? ho?c dï¿½ h?t h?n');
     }
 
     if (payload.kind !== 'reset' || payload.email !== email || payload.code !== code) {
-      throw new UnauthorizedException('Mã xác th?c không h?p l?');
+      throw new UnauthorizedException('Mï¿½ xï¿½c th?c khï¿½ng h?p l?');
     }
 
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      throw new UnauthorizedException('Tài kho?n không t?n t?i');
+      throw new UnauthorizedException('Tï¿½i kho?n khï¿½ng t?n t?i');
     }
 
     const hashed = await hash(newPassword, 10);
@@ -392,7 +392,7 @@ export class AuthService implements OnModuleInit {
     const user = await this.usersService.findOne(userId);
     const phone = user.phone;
     if (!phone) {
-      throw new BadRequestException('Vui lòng di?n s? di?n tho?i tru?c khi xác th?c');
+      throw new BadRequestException('Vui lï¿½ng di?n s? di?n tho?i tru?c khi xï¿½c th?c');
     }
     this.checkRate(`phone:start:${phone}`, 5, 60 * 60 * 1000);
     const apiKey = process.env.FIREBASE_API_KEY;
@@ -586,13 +586,13 @@ export class AuthService implements OnModuleInit {
     const user = await this.usersService.findOne(userId);
     const isMatch = await compare(dto.currentPassword, user.password);
     if (!isMatch) {
-      throw new UnauthorizedException('M?t kh?u hi?n t?i không chính xác');
+      throw new UnauthorizedException('M?t kh?u hi?n t?i khï¿½ng chï¿½nh xï¿½c');
     }
 
     const hashed = await hash(dto.newPassword, 10);
     await this.usersService.updatePassword(userId, hashed);
     await this.refreshTokenRepository.delete({ userId });
-    return { message: 'Ð?i m?t kh?u thành công, vui lòng dang nh?p l?i' };
+    return { message: 'ï¿½?i m?t kh?u thï¿½nh cï¿½ng, vui lï¿½ng dang nh?p l?i' };
   }
 
   async updateProfile(
@@ -642,22 +642,6 @@ export class AuthService implements OnModuleInit {
     return rest;
   }
 
-  favoriteEatery(userId: number, eateryId: number) {
-    return this.eateriesService.favorite(userId, eateryId);
-  }
-
-  unfavoriteEatery(userId: number, eateryId: number) {
-    return this.eateriesService.unfavorite(userId, eateryId);
-  }
-
-  favoriteCooperation(userId: number, cooperationId: number) {
-    return this.cooperationsService.favorite(userId, cooperationId);
-  }
-
-  unfavoriteCooperation(userId: number, cooperationId: number) {
-    return this.cooperationsService.unfavorite(userId, cooperationId);
-  }
-
   async verifyCitizenIdWithImages(
     userId: number,
     files: {
@@ -669,7 +653,7 @@ export class AuthService implements OnModuleInit {
     const back = files.citizenBackPhoto?.[0];
 
     if (!front || !back) {
-      throw new BadRequestException('Vui lòng g?i d? ?nh m?t tru?c và m?t sau CCCD');
+      throw new BadRequestException('Vui lÃ²ng gá»­i áº£nh máº·t trÆ°á»›c vÃ  máº·t sau CCCD');
     }
 
     assertImageFile(front, { fieldName: 'citizenFrontPhoto' });
@@ -692,6 +676,6 @@ export class AuthService implements OnModuleInit {
       backUpload.url,
     );
 
-    return { ok: true, message: 'Can cu?c công dân dã du?c xác th?c' };
+    return { ok: true, message: 'CÄƒn cÆ°á»›c cÃ´ng dÃ¢n Ä‘Ã£ Ä‘Æ°á»£c xÃ¡c thá»±c' };
   }
 }

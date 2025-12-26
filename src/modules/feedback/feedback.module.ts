@@ -11,7 +11,6 @@ import { RentalVehicle } from '../rental-vehicle/entities/rental-vehicle.entity'
 import { Cooperation } from '../cooperation/entities/cooperation.entity';
 import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 import { FeedbackReply } from './entities/feedback-reply.entity';
-import { FeedbackLike } from './entities/feedback-like.entity';
 import { FeedbackReaction } from './entities/feedback-reaction.entity';
 
 @Module({
@@ -25,7 +24,6 @@ import { FeedbackReaction } from './entities/feedback-reaction.entity';
       TravelRoute,
       RentalVehicle,
       Cooperation,
-      FeedbackLike,
       FeedbackReply,
       FeedbackReaction,
     ]),

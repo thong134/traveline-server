@@ -138,25 +138,25 @@ export class FeedbackController {
     return this.feedbackService.listReplies(feedbackId);
   }
 
-  @Post(':id/like')
-  @RequireAuth()
-  @ApiOperation({ summary: 'Like một feedback' })
-  likeFeedback(
-    @Param('id', ParseIntPipe) feedbackId: number,
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.feedbackService.like(feedbackId, user.userId);
-  }
+  // @Post(':id/like')
+  // @RequireAuth()
+  // @ApiOperation({ summary: 'Like một feedback' })
+  // likeFeedback(
+  //   @Param('id', ParseIntPipe) feedbackId: number,
+  //   @CurrentUser() user: RequestUser,
+  // ) {
+  //   return this.feedbackService.like(feedbackId, user.userId);
+  // }
 
-  @Delete(':id/like')
-  @RequireAuth()
-  @ApiOperation({ summary: 'Bỏ like một feedback' })
-  unlikeFeedback(
-    @Param('id', ParseIntPipe) feedbackId: number,
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.feedbackService.unlike(feedbackId, user.userId);
-  }
+  // @Delete(':id/like')
+  // @RequireAuth()
+  // @ApiOperation({ summary: 'Bỏ like một feedback' })
+  // unlikeFeedback(
+  //   @Param('id', ParseIntPipe) feedbackId: number,
+  //   @CurrentUser() user: RequestUser,
+  // ) {
+  //   return this.feedbackService.unlike(feedbackId, user.userId);
+  // }
 
   @Get('object-author')
   @ApiOperation({

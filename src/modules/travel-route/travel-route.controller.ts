@@ -81,22 +81,23 @@ export class TravelRoutesController {
     return this.travelRoutesService.addStops(id, dtos);
   }
 
-  @Post(':id/clone')
+  @Post(':id/publicize')
   @RequireAuth()
   @ApiOperation({
-    summary: 'Sao chép một lộ trình thành bản riêng của user hiện tại',
+    summary: 'Công khai lộ trình (tạo bản clone công khai)',
   })
-  @ApiOkResponse({ description: 'Travel route cloned' })
-  cloneRoute(
+  @ApiOkResponse({ description: 'Travel route publicized' })
+  publicizeRoute(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.travelRoutesService.cloneRoute(id);
+    return this.travelRoutesService.publicizeRoute(id, user.userId);
   }
 
   @Post(':id/use')
   @RequireAuth()
   @ApiOperation({
-    summary: 'Sử dụng bản clone gán cho user và tạo bản clone mới',
+    summary: 'Sử dụng bản clone công khai để tạo lộ trình cá nhân mới',
   })
   @ApiOkResponse({ description: 'Travel route used' })
   useClone(
@@ -215,6 +216,14 @@ export class TravelRoutesController {
   @ApiOkResponse({ description: 'Travel route list of current user' })
   findMine(@CurrentUser() user: RequestUser) {
     return this.travelRoutesService.findByUser(user.userId);
+  }
+
+  @Get('me/favorites')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Danh sách hành trình du lịch yêu thích của chính mình' })
+  @ApiOkResponse({ description: 'Favorite travel route list of current user' })
+  findMineFavorites(@CurrentUser() user: RequestUser) {
+    return this.travelRoutesService.findFavoritesByUser(user.userId);
   }
 
 

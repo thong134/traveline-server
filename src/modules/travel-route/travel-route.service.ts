@@ -50,7 +50,6 @@ export class TravelRoutesService {
     return this.dataSource.transaction(async (manager) => {
       const routeRepo = manager.getRepository(TravelRoute);
       const stopRepo = manager.getRepository(RouteStop);
-      const userRepo = manager.getRepository(User);
 
       const source = await routeRepo.findOne({
         where: { id: routeId },
@@ -62,16 +61,15 @@ export class TravelRoutesService {
         throw new NotFoundException(`Travel route ${routeId} not found`);
       }
 
-
-
       const clone = new TravelRoute();
       clone.name = source.name;
       clone.province = source.province;
-
       clone.startDate = source.startDate ?? undefined;
       clone.endDate = source.endDate ?? undefined;
       clone.status = TravelRouteStatus.DRAFT;
-      clone.user = undefined;
+      clone.user = source.user; // Still owned by the same user
+      clone.isPublic = true;     // This is the public version
+      clone.isEdited = false;    // Clones are not considered "edited" initially
       clone.totalTravelPoints = 0;
       clone.averageRating = 0;
       clone.clonedFromRoute = source;
@@ -86,15 +84,10 @@ export class TravelRoutesService {
           newStop.sequence = stop.sequence;
           newStop.startTime = stop.startTime;
           newStop.endTime = stop.endTime;
-          newStop.notes = undefined; // tránh copy thông tin cá nhân
-          newStop.images = [];
-          newStop.videos = [];
-          newStop.status = this.determineStopStatus(
-            savedRoute.startDate ?? undefined,
-            stop.dayOrder,
-            stop.startTime ?? undefined,
-            stop.endTime ?? undefined,
-          );
+          newStop.notes = undefined; // Clear personal notes
+          newStop.images = [];       // Clear personal media
+          newStop.videos = [];       // Clear personal media
+          newStop.status = RouteStopStatus.UPCOMING; // Reset stop status
           newStop.travelPoints = 0;
           if (stop.destination) {
             newStop.destination = stop.destination;
@@ -108,6 +101,31 @@ export class TravelRoutesService {
       await this.updateRouteAggregates(savedRoute.id, manager);
       return this.findOne(savedRoute.id);
     });
+  }
+
+  async publicizeRoute(routeId: number, userId: number): Promise<TravelRoute> {
+    const route = await this.routeRepo.findOne({
+      where: { id: routeId },
+      relations: { user: true },
+    });
+
+    if (!route) {
+      throw new NotFoundException(`Route ${routeId} not found`);
+    }
+
+    if (route.user?.id !== userId) {
+      throw new ForbiddenException('You do not own this route');
+    }
+
+    if (route.status !== TravelRouteStatus.COMPLETED) {
+      throw new BadRequestException('Only completed routes can be publicized');
+    }
+
+    if (!route.isEdited) {
+      throw new BadRequestException('Only edited routes can be publicized');
+    }
+
+    return this.cloneRoute(routeId);
   }
 
   async create(
@@ -170,8 +188,7 @@ export class TravelRoutesService {
       .createQueryBuilder('route')
       .leftJoinAndSelect('route.stops', 'stops')
       .leftJoinAndSelect('stops.destination', 'destination')
-      .where('route.status = :status', { status: TravelRouteStatus.DRAFT })
-      .andWhere('route.cloned_from_route_id IS NOT NULL');
+      .where('route.isPublic = :isPublic', { isPublic: true });
 
     if (province) {
       qb.andWhere('route.province = :province', { province });
@@ -188,19 +205,17 @@ export class TravelRoutesService {
   async useClone(routeId: number, userId: number): Promise<TravelRoute> {
     return this.dataSource.transaction(async (manager) => {
       const routeRepo = manager.getRepository(TravelRoute);
+      const stopRepo = manager.getRepository(RouteStop);
       const userRepo = manager.getRepository(User);
 
-      const draftRoute = await routeRepo.findOne({
-        where: { id: routeId },
-        relations: { stops: { destination: true }, clonedFromRoute: true },
+      const publicRoute = await routeRepo.findOne({
+        where: { id: routeId, isPublic: true },
+        relations: { stops: { destination: true } },
+        order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
       });
 
-      if (!draftRoute) {
-        throw new NotFoundException(`Route ${routeId} not found`);
-      }
-
-      if (draftRoute.status !== TravelRouteStatus.DRAFT || !draftRoute.clonedFromRoute) {
-        throw new BadRequestException('Route is not a valid draft clone');
+      if (!publicRoute) {
+        throw new NotFoundException(`Public route ${routeId} not found`);
       }
 
       const user = await userRepo.findOne({ where: { id: userId } });
@@ -208,63 +223,84 @@ export class TravelRoutesService {
         throw new NotFoundException(`User ${userId} not found`);
       }
 
-      draftRoute.user = user;
-      draftRoute.status = TravelRouteStatus.UPCOMING;
-      await routeRepo.save(draftRoute);
+      // Create a fresh personal copy
+      const myRoute = new TravelRoute();
+      myRoute.name = publicRoute.name;
+      myRoute.province = publicRoute.province;
+      myRoute.startDate = publicRoute.startDate ?? undefined;
+      myRoute.endDate = publicRoute.endDate ?? undefined;
+      myRoute.status = TravelRouteStatus.UPCOMING;
+      myRoute.user = user;
+      myRoute.isPublic = false;
+      myRoute.isEdited = false;
+      myRoute.totalTravelPoints = 0;
+      myRoute.averageRating = 0;
+      myRoute.clonedFromRoute = publicRoute;
 
-      if (draftRoute.clonedFromRoute) {
-          const source = draftRoute.clonedFromRoute;
-           const fullSource = await routeRepo.findOne({
-            where: { id: source.id },
-            relations: { stops: { destination: true }, user: true },
-            order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
-          });
-          
-          if (fullSource) {
-              const newClone = new TravelRoute();
-              newClone.name = fullSource.name;
-              newClone.province = fullSource.province;
-              newClone.startDate = fullSource.startDate ?? undefined;
-              newClone.endDate = fullSource.endDate ?? undefined;
-              newClone.status = TravelRouteStatus.DRAFT;
-              newClone.user = undefined;
-              newClone.totalTravelPoints = 0;
-              newClone.averageRating = 0;
-              newClone.clonedFromRoute = fullSource;
-              
-              const savedNewClone = await routeRepo.save(newClone);
-              
-              if (fullSource.stops?.length) {
-                 const stopRepo = manager.getRepository(RouteStop);
-                 const stops = fullSource.stops.map((stop) => {
-                  const newStop = new RouteStop();
-                  newStop.route = savedNewClone;
-                  newStop.dayOrder = stop.dayOrder;
-                  newStop.sequence = stop.sequence;
-                  newStop.startTime = stop.startTime;
-                  newStop.endTime = stop.endTime;
-                  newStop.notes = undefined;
-                  newStop.images = [];
-                  newStop.videos = [];
-                  newStop.status = this.determineStopStatus(
-                    savedNewClone.startDate ?? undefined,
-                    stop.dayOrder,
-                    stop.startTime ?? undefined,
-                    stop.endTime ?? undefined,
-                  );
-                  newStop.travelPoints = 0;
-                  if (stop.destination) {
-                    newStop.destination = stop.destination;
-                  }
-                  return newStop;
-                });
-                await stopRepo.save(stops);
-              }
-              await this.updateRouteAggregates(savedNewClone.id, manager);
+      const savedRoute = await routeRepo.save(myRoute);
+
+      if (publicRoute.stops?.length) {
+        const stops = publicRoute.stops.map((stop) => {
+          const newStop = new RouteStop();
+          newStop.route = savedRoute;
+          newStop.dayOrder = stop.dayOrder;
+          newStop.sequence = stop.sequence;
+          newStop.startTime = stop.startTime;
+          newStop.endTime = stop.endTime;
+          newStop.notes = undefined;
+          newStop.images = [];
+          newStop.videos = [];
+          newStop.status = this.determineStopStatus(
+            savedRoute.startDate ?? undefined,
+            stop.dayOrder,
+            stop.startTime ?? undefined,
+            stop.endTime ?? undefined,
+          );
+          newStop.travelPoints = 0;
+          if (stop.destination) {
+            newStop.destination = stop.destination;
           }
+          return newStop;
+        });
+
+        await stopRepo.save(stops);
       }
 
-      return this.findOne(draftRoute.id);
+      await this.updateRouteAggregates(savedRoute.id, manager);
+      return this.findOne(savedRoute.id);
+    });
+  }
+
+  async findFavoritesByUser(userId: number): Promise<TravelRoute[]> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    if (!user.favoriteTravelRouteIds?.length) {
+      return [];
+    }
+
+    const ids = user.favoriteTravelRouteIds
+      .map((rawId) => Number(rawId))
+      .filter((value) => !Number.isNaN(value) && Number.isInteger(value));
+
+    if (!ids.length) {
+      return [];
+    }
+
+    const routes = await this.routeRepo.find({
+      where: { id: In(ids) },
+      select: { id: true },
+    });
+
+    const refreshed = await Promise.all(routes.map((r) => this.findOne(r.id)));
+    const order = new Map(ids.map((value, index) => [value, index]));
+
+    return refreshed.sort((a, b) => {
+      const left = order.get(a.id) ?? 0;
+      const right = order.get(b.id) ?? 0;
+      return left - right;
     });
   }
 
@@ -287,7 +323,7 @@ export class TravelRoutesService {
         throw new NotFoundException(`Travel route ${routeId} not found`);
       }
 
-
+      route.isEdited = true;
       const newStops = await this.prepareStops(dtos, route, destinationRepo);
       await stopRepo.save(newStops);
 
@@ -376,6 +412,7 @@ export class TravelRoutesService {
       }
 
       await this.assignRouteFields(route, dto, manager.getRepository(User));
+      route.isEdited = true;
       await repo.save(route);
 
       if (dto.stops) {
@@ -420,6 +457,17 @@ export class TravelRoutesService {
       const stop = await this.getStopOrFail(routeId, stopId, manager, {
         withDestination: true,
       });
+
+      if (
+        stop.status === RouteStopStatus.IN_PROGRESS ||
+        stop.status === RouteStopStatus.COMPLETED ||
+        stop.status === RouteStopStatus.MISSED
+      ) {
+        throw new BadRequestException(
+          `Cannot update time for a stop that is ${stop.status}`,
+        );
+      }
+
       const nextStart = payload.startTime ?? stop.startTime;
       const nextEnd = payload.endTime ?? stop.endTime;
 
@@ -427,6 +475,12 @@ export class TravelRoutesService {
 
       stop.startTime = nextStart;
       stop.endTime = nextEnd;
+
+      const route = await manager.getRepository(TravelRoute).findOne({ where: { id: routeId } });
+      if (route) {
+        route.isEdited = true;
+        await manager.getRepository(TravelRoute).save(route);
+      }
 
       await manager.getRepository(RouteStop).save(stop);
       await this.updateRouteAggregates(routeId, manager);
@@ -450,6 +504,11 @@ export class TravelRoutesService {
       const stop = await this.getStopOrFail(routeId, stopId, manager, {
         withDestination: true,
       });
+
+      if (stop.status === RouteStopStatus.COMPLETED) {
+        throw new BadRequestException('Cannot update details for a completed stop');
+      }
+
       let destination = stop.destination;
 
       if (payload.destinationId !== undefined) {
@@ -467,6 +526,12 @@ export class TravelRoutesService {
 
       if (payload.notes !== undefined) {
         stop.notes = payload.notes;
+      }
+
+      const routeObj = await manager.getRepository(TravelRoute).findOne({ where: { id: routeId } });
+      if (routeObj) {
+        routeObj.isEdited = true;
+        await manager.getRepository(TravelRoute).save(routeObj);
       }
 
       this.validateStopTimeWindow(
@@ -491,6 +556,22 @@ export class TravelRoutesService {
   ): Promise<RouteStop> {
     await this.dataSource.transaction(async (manager) => {
       const stopRepo = manager.getRepository(RouteStop);
+      const routeRepo = manager.getRepository(TravelRoute);
+
+      const route = await routeRepo.findOne({ where: { id: routeId } });
+      if (!route) {
+        throw new NotFoundException(`Travel route ${routeId} not found`);
+      }
+
+      if (
+        route.status === TravelRouteStatus.IN_PROGRESS ||
+        route.status === TravelRouteStatus.COMPLETED ||
+        route.status === TravelRouteStatus.MISSED
+      ) {
+        throw new BadRequestException(
+          `Cannot reorder stops for a route that is ${route.status}`,
+        );
+      }
       
       const targetStop = await stopRepo.findOne({
         where: { id: stopId, route: { id: routeId } },
@@ -538,6 +619,12 @@ export class TravelRoutesService {
         updates.push(stop);
       });
 
+      const routeObj = await manager.getRepository(TravelRoute).findOne({ where: { id: routeId } });
+      if (routeObj) {
+        routeObj.isEdited = true;
+        await manager.getRepository(TravelRoute).save(routeObj);
+      }
+
       await stopRepo.save(updates);
       await this.updateRouteAggregates(routeId, manager);
     });
@@ -573,6 +660,12 @@ export class TravelRoutesService {
         stopsInDay[i].sequence = i + 1;
       }
       await stopRepo.save(stopsInDay);
+
+      const routeObj = await manager.getRepository(TravelRoute).findOne({ where: { id: routeId } });
+      if (routeObj) {
+        routeObj.isEdited = true;
+        await manager.getRepository(TravelRoute).save(routeObj);
+      }
 
       await this.updateRouteAggregates(routeId, manager);
     });
@@ -615,6 +708,12 @@ export class TravelRoutesService {
       }
 
       await stopRepo.save(stop);
+
+      const routeObj = await manager.getRepository(TravelRoute).findOne({ where: { id: routeId } });
+      if (routeObj) {
+        routeObj.isEdited = true;
+        await manager.getRepository(TravelRoute).save(routeObj);
+      }
     });
 
     return this.getStopOrFail(routeId, stopId, undefined, {
@@ -659,6 +758,12 @@ export class TravelRoutesService {
       }
 
       await stopRepo.save(stop);
+
+      const routeObj = await manager.getRepository(TravelRoute).findOne({ where: { id: routeId } });
+      if (routeObj) {
+        routeObj.isEdited = true;
+        await manager.getRepository(TravelRoute).save(routeObj);
+      }
     });
 
     return this.getStopOrFail(routeId, stopId, undefined, {

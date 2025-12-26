@@ -13,8 +13,9 @@ import { TravelRoute } from '../../travel-route/entities/travel-route.entity';
 import { Destination } from '../../destination/entities/destinations.entity';
 import { RentalVehicle } from '../../rental-vehicle/entities/rental-vehicle.entity';
 import { Cooperation } from '../../cooperation/entities/cooperation.entity';
+import { Eatery } from '../../eatery/entities/eatery.entity';
 import { FeedbackReply } from './feedback-reply.entity';
-import { FeedbackLike } from './feedback-like.entity';
+import { FeedbackReaction } from './feedback-reaction.entity';
 
 @Entity('feedbacks')
 export class Feedback {
@@ -28,8 +29,6 @@ export class Feedback {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @Column({ nullable: true })
-  userUid?: string;
 
   @ManyToOne(() => TravelRoute, (route) => route.feedbacks, {
     nullable: true,
@@ -59,6 +58,13 @@ export class Feedback {
   @JoinColumn({ name: 'cooperationId' })
   cooperation?: Cooperation;
 
+  @ManyToOne(() => Eatery, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'eateryId' })
+  eatery?: Eatery;
+
   @Column({ type: 'int', default: 0 })
   star: number;
 
@@ -83,6 +89,8 @@ export class Feedback {
   @OneToMany(() => FeedbackReply, (reply) => reply.feedback, { cascade: true })
   replies: FeedbackReply[];
 
-  @OneToMany(() => FeedbackLike, (like) => like.feedback, { cascade: true })
-  likes: FeedbackLike[];
+  @OneToMany(() => FeedbackReaction, (reaction) => reaction.feedback, {
+    cascade: true,
+  })
+  reactions: FeedbackReaction[];
 }

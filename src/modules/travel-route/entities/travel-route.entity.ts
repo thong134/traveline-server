@@ -69,6 +69,12 @@ export class TravelRoute {
   })
   status: TravelRouteStatus;
 
+  @Column({ default: false })
+  isPublic: boolean;
+
+  @Column({ default: false })
+  isEdited: boolean;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

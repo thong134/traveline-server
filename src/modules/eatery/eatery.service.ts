@@ -1,18 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { ILike, In, Repository } from 'typeorm';
 import { Eatery } from './entities/eatery.entity';
 import { CreateEateryDto } from './dto/create-eatery.dto';
 import { UpdateEateryDto } from './dto/update-eatery.dto';
 import { assignDefined } from '../../common/utils/object.util';
-import { UsersService } from '../user/user.service';
+import { User } from '../user/entities/user.entity';
 
 @Injectable()
 export class EateriesService {
   constructor(
     @InjectRepository(Eatery)
     private readonly repo: Repository<Eatery>,
-    private readonly usersService: UsersService,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   async create(dto: CreateEateryDto): Promise<Eatery> {
@@ -91,15 +92,33 @@ export class EateriesService {
     return { id, message: 'Đã xóa quán ăn' };
   }
 
-  async favorite(userId: number, eateryId: number): Promise<Eatery> {
-    await this.findOne(eateryId);
-    await this.usersService.addFavoriteEatery(userId, eateryId);
-    return this.findOne(eateryId);
-  }
+  async findFavoritesByUser(userId: number): Promise<Eatery[]> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
 
-  async unfavorite(userId: number, eateryId: number): Promise<Eatery> {
-    await this.findOne(eateryId);
-    await this.usersService.removeFavoriteEatery(userId, eateryId);
-    return this.findOne(eateryId);
+    if (!user.favoriteEaterieIds?.length) {
+      return [];
+    }
+
+    const ids = user.favoriteEaterieIds
+      .map((rawId) => Number(rawId))
+      .filter((value) => !Number.isNaN(value) && Number.isInteger(value));
+
+    if (!ids.length) {
+      return [];
+    }
+
+    const eateries = await this.repo.find({
+      where: { id: In(ids) },
+    });
+
+    const order = new Map(ids.map((value, index) => [value, index]));
+    return eateries.sort((a, b) => {
+      const left = order.get(a.id) ?? 0;
+      const right = order.get(b.id) ?? 0;
+      return left - right;
+    });
   }
 }

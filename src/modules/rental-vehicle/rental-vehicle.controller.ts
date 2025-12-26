@@ -95,6 +95,14 @@ export class RentalVehiclesController {
     return this.service.findMyVehicles(user.userId, { status });
   }
 
+  @Get('favorites')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Danh sách xe cho thuê yêu thích của tôi' })
+  @ApiOkResponse({ description: 'Danh sách xe được yêu thích' })
+  findFavorites(@CurrentUser() user: RequestUser) {
+    return this.service.findFavoritesByUser(user.userId);
+  }
+
   @Get('search')
   @ApiOperation({ summary: 'Tìm kiếm xe cho thuê với bộ lọc' })
   @ApiOkResponse({ description: 'Danh sách xe thỏa điều kiện' })

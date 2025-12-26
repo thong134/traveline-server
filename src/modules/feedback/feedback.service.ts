@@ -20,7 +20,6 @@ import { lastValueFrom } from 'rxjs';
 import type { Express } from 'express';
 import type { AxiosResponse } from 'axios';
 import { FeedbackReply } from './entities/feedback-reply.entity';
-import { FeedbackLike } from './entities/feedback-like.entity';
 import { FeedbackReaction, FeedbackReactionType } from './entities/feedback-reaction.entity';
 import { CreateReplyDto } from './dto/create-reply.dto';
 
@@ -50,8 +49,6 @@ export class FeedbackService {
     private readonly cooperationRepo: Repository<Cooperation>,
     @InjectRepository(FeedbackReply)
     private readonly replyRepo: Repository<FeedbackReply>,
-    @InjectRepository(FeedbackLike)
-    private readonly likeRepo: Repository<FeedbackLike>,
     @InjectRepository(FeedbackReaction)
     private readonly feedbackReactionRepo: Repository<FeedbackReaction>,
     private readonly cloudinary: CloudinaryService,
@@ -127,7 +124,7 @@ export class FeedbackService {
         rentalVehicle: true,
         cooperation: true,
         replies: { user: true },
-        likes: true,
+        reactions: true,
       },
     });
     if (!feedback) {
@@ -234,10 +231,6 @@ export class FeedbackService {
       feedback.user = user;
     } else if (dto.userId === null) {
       feedback.user = undefined;
-    }
-
-    if (dto.userUid !== undefined) {
-      feedback.userUid = dto.userUid;
     }
 
     if (dto.travelRouteId) {
@@ -421,7 +414,13 @@ export class FeedbackService {
       user,
       type,
     });
-    return this.feedbackReactionRepo.save(reaction);
+    const saved = await this.feedbackReactionRepo.save(reaction);
+
+    if (type === FeedbackReactionType.LOVE) {
+      await this.syncFavorite(feedback, userId, true);
+    }
+
+    return saved;
   }
 
   async removeReaction(
@@ -429,11 +428,82 @@ export class FeedbackService {
     userId: number,
     type: FeedbackReactionType = FeedbackReactionType.LIKE,
   ): Promise<void> {
+    const feedback = await this.feedbackRepo.findOne({
+      where: { id: feedbackId },
+      relations: {
+        destination: true,
+        travelRoute: true,
+        rentalVehicle: true,
+        cooperation: true,
+        eatery: true,
+      },
+    });
+
     await this.feedbackReactionRepo.delete({
       feedback: { id: feedbackId },
       user: { id: userId },
       type,
     });
+
+    if (type === FeedbackReactionType.LOVE && feedback) {
+      await this.syncFavorite(feedback, userId, false);
+    }
+  }
+
+  private async syncFavorite(
+    feedback: Feedback,
+    userId: number,
+    isAdd: boolean,
+  ): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) return;
+
+    if (feedback.destination) {
+      user.favoriteDestinationIds = this.updateFavoriteList(
+        user.favoriteDestinationIds,
+        feedback.destination.id.toString(),
+        isAdd,
+      );
+    } else if (feedback.travelRoute) {
+      user.favoriteTravelRouteIds = this.updateFavoriteList(
+        user.favoriteTravelRouteIds,
+        feedback.travelRoute.id.toString(),
+        isAdd,
+      );
+    } else if (feedback.rentalVehicle) {
+      user.favoriteRentalVehicleIds = this.updateFavoriteList(
+        user.favoriteRentalVehicleIds,
+        feedback.rentalVehicle.licensePlate, // RentalVehicle uses licensePlate as ID
+        isAdd,
+      );
+    } else if (feedback.cooperation) {
+      user.favoriteCooperationIds = this.updateFavoriteList(
+        user.favoriteCooperationIds,
+        feedback.cooperation.id.toString(),
+        isAdd,
+      );
+    } else if (feedback.eatery) {
+      user.favoriteEaterieIds = this.updateFavoriteList(
+        user.favoriteEaterieIds,
+        feedback.eatery.id.toString(),
+        isAdd,
+      );
+    }
+
+    await this.userRepo.save(user);
+  }
+
+  private updateFavoriteList(
+    list: string[] | undefined,
+    item: string,
+    isAdd: boolean,
+  ): string[] {
+    const currentList = Array.isArray(list) ? list : [];
+    if (isAdd) {
+      return currentList.includes(item) ? currentList : [...currentList, item];
+    } else {
+      return currentList.filter((i) => i !== item);
+    }
   }
 
   async listReactions(feedbackId: number): Promise<
@@ -579,39 +649,5 @@ export class FeedbackService {
       relations: { user: true },
       order: { createdAt: 'ASC' },
     });
-  }
-
-  async like(feedbackId: number, userId: number): Promise<{ liked: boolean }> {
-    const feedback = await this.feedbackRepo.findOne({ where: { id: feedbackId } });
-    if (!feedback) {
-      throw new NotFoundException(`Feedback ${feedbackId} not found`);
-    }
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException(`User ${userId} not found`);
-    }
-    const existing = await this.likeRepo.findOne({
-      where: { feedback: { id: feedbackId }, user: { id: userId } },
-    });
-    if (existing) {
-      return { liked: true };
-    }
-    const like = this.likeRepo.create({
-      feedback,
-      user,
-    });
-    await this.likeRepo.save(like);
-    return { liked: true };
-  }
-
-  async unlike(
-    feedbackId: number,
-    userId: number,
-  ): Promise<{ liked: boolean }> {
-    await this.likeRepo.delete({
-      feedback: { id: feedbackId },
-      user: { id: userId },
-    });
-    return { liked: false };
   }
 }

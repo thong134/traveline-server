@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Cooperation } from './entities/cooperation.entity';
 import { CreateCooperationDto } from './dto/create-cooperation.dto';
 import { UpdateCooperationDto } from './dto/update-cooperation.dto';
@@ -182,18 +182,34 @@ export class CooperationsService {
     await this.cooperationRepo.save(cooperation);
   }
 
-  async favorite(userId: number, cooperationId: number): Promise<Cooperation> {
-    await this.findOne(cooperationId);
-    await this.usersService.addFavoriteCooperation(userId, cooperationId);
-    return this.findOne(cooperationId);
-  }
+  async findFavoritesByUser(userId: number): Promise<Cooperation[]> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
 
-  async unfavorite(
-    userId: number,
-    cooperationId: number,
-  ): Promise<Cooperation> {
-    await this.findOne(cooperationId);
-    await this.usersService.removeFavoriteCooperation(userId, cooperationId);
-    return this.findOne(cooperationId);
+    if (!user.favoriteCooperationIds?.length) {
+      return [];
+    }
+
+    const ids = user.favoriteCooperationIds
+      .map((rawId) => Number(rawId))
+      .filter((value) => !Number.isNaN(value) && Number.isInteger(value));
+
+    if (!ids.length) {
+      return [];
+    }
+
+    const cooperations = await this.cooperationRepo.find({
+      where: { id: In(ids) },
+      relations: { manager: true },
+    });
+
+    const order = new Map(ids.map((value, index) => [value, index]));
+    return cooperations.sort((a, b) => {
+      const left = order.get(a.id) ?? 0;
+      const right = order.get(b.id) ?? 0;
+      return left - right;
+    });
   }
 }
