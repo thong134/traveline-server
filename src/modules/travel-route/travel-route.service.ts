@@ -69,7 +69,7 @@ export class TravelRoutesService {
       clone.province = source.province;
       clone.startDate = source.startDate ?? undefined;
       clone.endDate = source.endDate ?? undefined;
-      clone.status = TravelRouteStatus.DRAFT;
+      clone.status = null as any; // Public clones have null status
       clone.user = source.user; // Still owned by the same user
       clone.isPublic = true;     // This is the public version
       clone.isEdited = false;    // Clones are not considered "edited" initially
@@ -90,7 +90,7 @@ export class TravelRoutesService {
           newStop.notes = undefined; // Clear personal notes
           newStop.images = [];       // Clear personal media
           newStop.videos = [];       // Clear personal media
-          newStop.status = RouteStopStatus.UPCOMING; // Reset stop status
+          newStop.status = null as any; // Public clones have null status for stops
           newStop.travelPoints = 0;
           if (stop.destination) {
             newStop.destination = stop.destination;
@@ -334,6 +334,10 @@ export class TravelRoutesService {
       throw new NotFoundException(`Travel route ${routeId} not found`);
     }
 
+    if (!route.isPublic) {
+      throw new BadRequestException('Chỉ có thể thêm hành trình công khai vào danh sách yêu thích');
+    }
+
     const current = user.favoriteTravelRouteIds ?? [];
     if (!current.includes(routeId.toString())) {
       user.favoriteTravelRouteIds = [...current, routeId.toString()];
@@ -359,6 +363,11 @@ export class TravelRoutesService {
     if (!route) {
       throw new NotFoundException(`Travel route ${routeId} not found`);
     }
+
+    if (!route.isPublic) {
+      throw new BadRequestException('Chỉ có thể like hành trình công khai');
+    }
+
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);

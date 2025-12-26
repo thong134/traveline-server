@@ -43,6 +43,7 @@ export class RouteStop {
     type: 'enum',
     enum: RouteStopStatus,
     default: RouteStopStatus.UPCOMING,
+    nullable: true,
   })
   status: RouteStopStatus;
 

@@ -66,6 +66,7 @@ export class TravelRoute {
     type: 'enum',
     enum: TravelRouteStatus,
     default: TravelRouteStatus.DRAFT,
+    nullable: true,
   })
   status: TravelRouteStatus;
 
