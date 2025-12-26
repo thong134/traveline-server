@@ -17,6 +17,7 @@ import { UpdateTravelRouteDto } from './dto/update-travel-route.dto';
 import { RouteStopDto } from './dto/route-stop.dto';
 import { Destination } from '../destination/entities/destinations.entity';
 import { User } from '../user/entities/user.entity';
+import { TravelRouteLike } from './entities/travel-route-like.entity';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import { assertImageFile, assertVideoFile } from '../../common/upload/image-upload.utils';
 import { randomUUID } from 'crypto';
@@ -41,13 +42,15 @@ export class TravelRoutesService {
     private readonly destinationRepo: Repository<Destination>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(TravelRouteLike)
+    private readonly likeRepo: Repository<TravelRouteLike>,
     private readonly cloudinaryService: CloudinaryService,
     private readonly httpService: HttpService,
     private readonly dataSource: DataSource,
   ) {}
 
   async cloneRoute(routeId: number): Promise<TravelRoute> {
-    return this.dataSource.transaction(async (manager) => {
+    const savedId = await this.dataSource.transaction(async (manager) => {
       const routeRepo = manager.getRepository(TravelRoute);
       const stopRepo = manager.getRepository(RouteStop);
 
@@ -99,8 +102,10 @@ export class TravelRoutesService {
       }
 
       await this.updateRouteAggregates(savedRoute.id, manager);
-      return this.findOne(savedRoute.id);
+      return savedRoute.id;
     });
+
+    return this.findOne(savedId);
   }
 
   async publicizeRoute(routeId: number, userId: number): Promise<TravelRoute> {
@@ -203,7 +208,7 @@ export class TravelRoutesService {
   }
 
   async useClone(routeId: number, userId: number): Promise<TravelRoute> {
-    return this.dataSource.transaction(async (manager) => {
+    const savedId = await this.dataSource.transaction(async (manager) => {
       const routeRepo = manager.getRepository(TravelRoute);
       const stopRepo = manager.getRepository(RouteStop);
       const userRepo = manager.getRepository(User);
@@ -221,6 +226,19 @@ export class TravelRoutesService {
       const user = await userRepo.findOne({ where: { id: userId } });
       if (!user) {
         throw new NotFoundException(`User ${userId} not found`);
+      }
+
+      // Check if user already has a personal copy of this public route
+      const existingClone = await routeRepo.findOne({
+        where: {
+          user: { id: userId },
+          clonedFromRoute: { id: routeId },
+          isPublic: false,
+        },
+      });
+
+      if (existingClone) {
+        return existingClone.id; // Return existing ID instead of creating new one
       }
 
       // Create a fresh personal copy
@@ -267,8 +285,10 @@ export class TravelRoutesService {
       }
 
       await this.updateRouteAggregates(savedRoute.id, manager);
-      return this.findOne(savedRoute.id);
+      return savedRoute.id;
     });
+
+    return this.findOne(savedId);
   }
 
   async findFavoritesByUser(userId: number): Promise<TravelRoute[]> {
@@ -301,6 +321,71 @@ export class TravelRoutesService {
       const left = order.get(a.id) ?? 0;
       const right = order.get(b.id) ?? 0;
       return left - right;
+    });
+  }
+
+  async favorite(routeId: number, userId: number): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+    const route = await this.routeRepo.findOne({ where: { id: routeId } });
+    if (!route) {
+      throw new NotFoundException(`Travel route ${routeId} not found`);
+    }
+
+    const current = user.favoriteTravelRouteIds ?? [];
+    if (!current.includes(routeId.toString())) {
+      user.favoriteTravelRouteIds = [...current, routeId.toString()];
+      await this.userRepo.save(user);
+    }
+  }
+
+  async unfavorite(routeId: number, userId: number): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const current = user.favoriteTravelRouteIds ?? [];
+    if (current.includes(routeId.toString())) {
+      user.favoriteTravelRouteIds = current.filter((id) => id !== routeId.toString());
+      await this.userRepo.save(user);
+    }
+  }
+
+  async like(routeId: number, userId: number): Promise<void> {
+    const route = await this.routeRepo.findOne({ where: { id: routeId } });
+    if (!route) {
+      throw new NotFoundException(`Travel route ${routeId} not found`);
+    }
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const existing = await this.likeRepo.findOne({
+      where: { user: { id: userId }, travelRoute: { id: routeId } },
+    });
+    if (!existing) {
+      const like = this.likeRepo.create({
+        user,
+        travelRoute: route,
+      });
+      await this.likeRepo.save(like);
+    }
+  }
+
+  async unlike(routeId: number, userId: number): Promise<void> {
+    await this.likeRepo.delete({
+      user: { id: userId },
+      travelRoute: { id: routeId },
+    });
+  }
+
+  async countLikes(routeId: number): Promise<number> {
+    return this.likeRepo.count({
+      where: { travelRoute: { id: routeId } },
     });
   }
 

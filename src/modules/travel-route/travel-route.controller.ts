@@ -297,6 +297,57 @@ export class TravelRoutesController {
     return this.travelRoutesService.updateStopDetails(routeId, stopId, dto);
   }
 
+  @Post(':id/favorite')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Thêm hành trình vào danh sách yêu thích' })
+  async favorite(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    await this.travelRoutesService.favorite(id, user.userId);
+    return { message: 'Added to favorites' };
+  }
+
+  @Delete(':id/favorite')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Xóa hành trình khỏi danh sách yêu thích' })
+  async unfavorite(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    await this.travelRoutesService.unfavorite(id, user.userId);
+    return { message: 'Removed from favorites' };
+  }
+
+  @Post(':id/like')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Like hành trình' })
+  async like(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    await this.travelRoutesService.like(id, user.userId);
+    return { message: 'Liked' };
+  }
+
+  @Delete(':id/like')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Unlike hành trình' })
+  async unlike(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    await this.travelRoutesService.unlike(id, user.userId);
+    return { message: 'Unliked' };
+  }
+
+  @Get(':id/likes/count')
+  @ApiOperation({ summary: 'Lấy số lượng like của hành trình' })
+  async countLikes(@Param('id', ParseIntPipe) id: number) {
+    const count = await this.travelRoutesService.countLikes(id);
+    return { count };
+  }
+
   @Patch(':routeId/stops/:stopId/reorder')
   @RequireAuth()
   @ApiOperation({ summary: 'Thay đổi thứ tự điểm dừng trong hành trình' })

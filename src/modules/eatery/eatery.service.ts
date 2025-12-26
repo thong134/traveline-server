@@ -121,4 +121,34 @@ export class EateriesService {
       return left - right;
     });
   }
+
+  async favorite(eateryId: number, userId: number): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+    const eatery = await this.repo.findOne({ where: { id: eateryId } });
+    if (!eatery) {
+      throw new NotFoundException(`Eatery ${eateryId} not found`);
+    }
+
+    const current = user.favoriteEaterieIds ?? [];
+    if (!current.includes(eateryId.toString())) {
+      user.favoriteEaterieIds = [...current, eateryId.toString()];
+      await this.userRepo.save(user);
+    }
+  }
+
+  async unfavorite(eateryId: number, userId: number): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const current = user.favoriteEaterieIds ?? [];
+    if (current.includes(eateryId.toString())) {
+      user.favoriteEaterieIds = current.filter((id) => id !== eateryId.toString());
+      await this.userRepo.save(user);
+    }
+  }
 }

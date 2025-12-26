@@ -89,5 +89,25 @@ export class EateriesController {
   @ApiOkResponse({ description: 'Danh sách quán ăn được yêu thích' })
   findFavorites(@CurrentUser() user: RequestUser) {
     return this.service.findFavoritesByUser(user.userId);
+  }  @Post(':id/favorite')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Thêm quán ăn vào danh sách yêu thích' })
+  async favorite(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    await this.service.favorite(id, user.userId);
+    return { message: 'Added to favorites' };
+  }
+
+  @Delete(':id/favorite')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Xóa quán ăn khỏi danh sách yêu thích' })
+  async unfavorite(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    await this.service.unfavorite(id, user.userId);
+    return { message: 'Removed from favorites' };
   }
 }

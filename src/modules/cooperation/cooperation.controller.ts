@@ -93,6 +93,26 @@ export class CooperationsController {
   @ApiOkResponse({ description: 'Danh sách đối tác được yêu thích' })
   findFavorites(@CurrentUser() user: RequestUser) {
     return this.cooperationsService.findFavoritesByUser(user.userId);
+  }  @Post(':id/favorite')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Thêm đối tác vào danh sách yêu thích' })
+  async favorite(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    await this.cooperationsService.favorite(id, user.userId);
+    return { message: 'Added to favorites' };
+  }
+
+  @Delete(':id/favorite')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Xóa đối tác khỏi danh sách yêu thích' })
+  async unfavorite(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    await this.cooperationsService.unfavorite(id, user.userId);
+    return { message: 'Removed from favorites' };
   }
 
   @Get(':id/hotel-availability')

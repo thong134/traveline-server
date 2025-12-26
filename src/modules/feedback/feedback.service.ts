@@ -7,7 +7,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Feedback } from './entities/feedback.entity';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
-import { UpdateFeedbackDto } from './dto/update-feedback.dto';
 import { User } from '../user/entities/user.entity';
 import { Destination } from '../destination/entities/destinations.entity';
 import { TravelRoute } from '../travel-route/entities/travel-route.entity';
@@ -133,42 +132,6 @@ export class FeedbackService {
     return feedback;
   }
 
-  async update(
-    id: number,
-    dto: UpdateFeedbackDto,
-  ): Promise<{ feedback: Feedback; moderationResult?: Record<string, unknown> }> {
-    const feedback = await this.feedbackRepo.findOne({
-      where: { id },
-      relations: {
-        user: true,
-        destination: true,
-        travelRoute: true,
-        rentalVehicle: true,
-        cooperation: true,
-      },
-    });
-    if (!feedback) {
-      throw new NotFoundException(`Feedback ${id} not found`);
-    }
-    const previousDestinationId = feedback.destination?.id;
-    const previousTravelRouteId = feedback.travelRoute?.id;
-    const { dto: moderated, moderationResult } = await this.applyModeration(dto);
-
-    await this.assignFeedbackFields(feedback, moderated);
-    await this.feedbackRepo.save(feedback);
-    if (feedback.destination?.id || previousDestinationId) {
-      await this.recalculateDestinationRating(
-        feedback.destination?.id ?? previousDestinationId ?? undefined,
-      );
-    }
-    if (feedback.travelRoute?.id || previousTravelRouteId) {
-      await this.recalculateTravelRouteRating(
-        feedback.travelRoute?.id ?? previousTravelRouteId ?? undefined,
-      );
-    }
-    const updated = await this.findOne(id);
-    return { feedback: updated, moderationResult };
-  }
 
   async remove(id: number): Promise<{ id: number; message: string }> {
     const feedback = await this.feedbackRepo.findOne({
@@ -416,10 +379,6 @@ export class FeedbackService {
     });
     const saved = await this.feedbackReactionRepo.save(reaction);
 
-    if (type === FeedbackReactionType.LOVE) {
-      await this.syncFavorite(feedback, userId, true);
-    }
-
     return saved;
   }
 
@@ -428,83 +387,13 @@ export class FeedbackService {
     userId: number,
     type: FeedbackReactionType = FeedbackReactionType.LIKE,
   ): Promise<void> {
-    const feedback = await this.feedbackRepo.findOne({
-      where: { id: feedbackId },
-      relations: {
-        destination: true,
-        travelRoute: true,
-        rentalVehicle: true,
-        cooperation: true,
-        eatery: true,
-      },
-    });
-
     await this.feedbackReactionRepo.delete({
       feedback: { id: feedbackId },
       user: { id: userId },
       type,
     });
-
-    if (type === FeedbackReactionType.LOVE && feedback) {
-      await this.syncFavorite(feedback, userId, false);
-    }
   }
 
-  private async syncFavorite(
-    feedback: Feedback,
-    userId: number,
-    isAdd: boolean,
-  ): Promise<void> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) return;
-
-    if (feedback.destination) {
-      user.favoriteDestinationIds = this.updateFavoriteList(
-        user.favoriteDestinationIds,
-        feedback.destination.id.toString(),
-        isAdd,
-      );
-    } else if (feedback.travelRoute) {
-      user.favoriteTravelRouteIds = this.updateFavoriteList(
-        user.favoriteTravelRouteIds,
-        feedback.travelRoute.id.toString(),
-        isAdd,
-      );
-    } else if (feedback.rentalVehicle) {
-      user.favoriteRentalVehicleIds = this.updateFavoriteList(
-        user.favoriteRentalVehicleIds,
-        feedback.rentalVehicle.licensePlate, // RentalVehicle uses licensePlate as ID
-        isAdd,
-      );
-    } else if (feedback.cooperation) {
-      user.favoriteCooperationIds = this.updateFavoriteList(
-        user.favoriteCooperationIds,
-        feedback.cooperation.id.toString(),
-        isAdd,
-      );
-    } else if (feedback.eatery) {
-      user.favoriteEaterieIds = this.updateFavoriteList(
-        user.favoriteEaterieIds,
-        feedback.eatery.id.toString(),
-        isAdd,
-      );
-    }
-
-    await this.userRepo.save(user);
-  }
-
-  private updateFavoriteList(
-    list: string[] | undefined,
-    item: string,
-    isAdd: boolean,
-  ): string[] {
-    const currentList = Array.isArray(list) ? list : [];
-    if (isAdd) {
-      return currentList.includes(item) ? currentList : [...currentList, item];
-    } else {
-      return currentList.filter((i) => i !== item);
-    }
-  }
 
   async listReactions(feedbackId: number): Promise<
     {
@@ -572,7 +461,7 @@ export class FeedbackService {
   }
 
   private async applyModeration(
-    dto: CreateFeedbackDto | UpdateFeedbackDto,
+    dto: CreateFeedbackDto,
   ): Promise<{ dto: typeof dto; moderationResult?: Record<string, unknown> }> {
     if (!dto.comment) return { dto };
     try {

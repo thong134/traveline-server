@@ -212,4 +212,34 @@ export class CooperationsService {
       return left - right;
     });
   }
+
+  async favorite(cooperationId: number, userId: number): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+    const cooperation = await this.cooperationRepo.findOne({ where: { id: cooperationId } });
+    if (!cooperation) {
+      throw new NotFoundException(`Cooperation ${cooperationId} not found`);
+    }
+
+    const current = user.favoriteCooperationIds ?? [];
+    if (!current.includes(cooperationId.toString())) {
+      user.favoriteCooperationIds = [...current, cooperationId.toString()];
+      await this.userRepo.save(user);
+    }
+  }
+
+  async unfavorite(cooperationId: number, userId: number): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const current = user.favoriteCooperationIds ?? [];
+    if (current.includes(cooperationId.toString())) {
+      user.favoriteCooperationIds = current.filter((id) => id !== cooperationId.toString());
+      await this.userRepo.save(user);
+    }
+  }
 }

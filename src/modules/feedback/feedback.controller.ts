@@ -23,7 +23,7 @@ import {
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { FeedbackService } from './feedback.service';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
-import { UpdateFeedbackDto } from './dto/update-feedback.dto';
+import { FeedbackReactionType } from './entities/feedback-reaction.entity';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { mediaMulterOptions } from '../../common/upload/image-upload.config';
 import type { Express } from 'express';
@@ -138,25 +138,29 @@ export class FeedbackController {
     return this.feedbackService.listReplies(feedbackId);
   }
 
-  // @Post(':id/like')
-  // @RequireAuth()
-  // @ApiOperation({ summary: 'Like một feedback' })
-  // likeFeedback(
-  //   @Param('id', ParseIntPipe) feedbackId: number,
-  //   @CurrentUser() user: RequestUser,
-  // ) {
-  //   return this.feedbackService.like(feedbackId, user.userId);
-  // }
+  @Post(':id/reactions/:type')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Thêm reaction (like/love) cho feedback' })
+  @ApiOkResponse({ description: 'Reaction added' })
+  addReaction(
+    @Param('id', ParseIntPipe) feedbackId: number,
+    @Param('type') type: FeedbackReactionType,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.feedbackService.addReaction(feedbackId, user.userId, type);
+  }
 
-  // @Delete(':id/like')
-  // @RequireAuth()
-  // @ApiOperation({ summary: 'Bỏ like một feedback' })
-  // unlikeFeedback(
-  //   @Param('id', ParseIntPipe) feedbackId: number,
-  //   @CurrentUser() user: RequestUser,
-  // ) {
-  //   return this.feedbackService.unlike(feedbackId, user.userId);
-  // }
+  @Delete(':id/reactions/:type')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Xóa reaction (like/love) khỏi feedback' })
+  @ApiOkResponse({ description: 'Reaction removed' })
+  removeReaction(
+    @Param('id', ParseIntPipe) feedbackId: number,
+    @Param('type') type: FeedbackReactionType,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.feedbackService.removeReaction(feedbackId, user.userId, type);
+  }
 
   @Get('object-author')
   @ApiOperation({
@@ -243,25 +247,6 @@ export class FeedbackController {
     return this.feedbackService.findOne(id);
   }
 
-  @Patch(':id')
-  @RequireAuth()
-  @ApiOperation({ summary: 'Cập nhật phản hồi' })
-  @ApiOkResponse({
-    description: 'Feedback updated',
-    schema: {
-      type: 'object',
-      properties: {
-        feedback: { $ref: '#/components/schemas/Feedback' },
-        moderationResult: { type: 'object', nullable: true },
-      },
-    },
-  })
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateFeedbackDto,
-  ) {
-    return this.feedbackService.update(id, dto);
-  }
 
   @Delete(':id')
   @RequireAuth()

@@ -140,4 +140,34 @@ export class DestinationsService {
       return left - right;
     });
   }
+
+  async favorite(destinationId: number, userId: number): Promise<void> {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+    const destination = await this.repo.findOne({ where: { id: destinationId } });
+    if (!destination) {
+      throw new NotFoundException(`Destination ${destinationId} not found`);
+    }
+
+    const current = user.favoriteDestinationIds ?? [];
+    if (!current.includes(destinationId.toString())) {
+      user.favoriteDestinationIds = [...current, destinationId.toString()];
+      await this.usersRepo.save(user);
+    }
+  }
+
+  async unfavorite(destinationId: number, userId: number): Promise<void> {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const current = user.favoriteDestinationIds ?? [];
+    if (current.includes(destinationId.toString())) {
+      user.favoriteDestinationIds = current.filter((id) => id !== destinationId.toString());
+      await this.usersRepo.save(user);
+    }
+  }
 }

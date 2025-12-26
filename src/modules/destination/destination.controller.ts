@@ -105,7 +105,27 @@ export class DestinationsController {
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.destinationsService.findOne(id);
   }
+  @Post(':id/favorite')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Thêm địa điểm vào danh sách yêu thích' })
+  async favorite(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    await this.destinationsService.favorite(id, user.userId);
+    return { message: 'Added to favorites' };
+  }
 
+  @Delete(':id/favorite')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Xóa địa điểm khỏi danh sách yêu thích' })
+  async unfavorite(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    await this.destinationsService.unfavorite(id, user.userId);
+    return { message: 'Removed from favorites' };
+  }
 
   @Patch(':id')
   @RequireAuth(UserRole.Admin)

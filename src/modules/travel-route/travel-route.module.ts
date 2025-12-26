@@ -6,6 +6,7 @@ import { TravelRoutesService } from './travel-route.service';
 import { TravelRoutesController } from './travel-route.controller';
 import { TravelRoute } from './entities/travel-route.entity';
 import { RouteStop } from './entities/route-stop.entity';
+import { TravelRouteLike } from './entities/travel-route-like.entity';
 import { Destination } from '../destination/entities/destinations.entity';
 import { User } from '../user/entities/user.entity';
 import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
@@ -13,7 +14,13 @@ import { TravelRouteCronService } from './travel-route.cron';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TravelRoute, RouteStop, Destination, User]),
+    TypeOrmModule.forFeature([
+      TravelRoute,
+      RouteStop,
+      TravelRouteLike,
+      Destination,
+      User,
+    ]),
     CloudinaryModule,
     HttpModule.registerAsync({
       imports: [ConfigModule],

@@ -623,4 +623,34 @@ export class RentalVehiclesService {
       return left - right;
     });
   }
+
+  async favorite(licensePlate: string, userId: number): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+    const vehicle = await this.repo.findOne({ where: { licensePlate } });
+    if (!vehicle) {
+      throw new NotFoundException(`Vehicle ${licensePlate} not found`);
+    }
+
+    const current = user.favoriteRentalVehicleIds ?? [];
+    if (!current.includes(licensePlate)) {
+      user.favoriteRentalVehicleIds = [...current, licensePlate];
+      await this.userRepo.save(user);
+    }
+  }
+
+  async unfavorite(licensePlate: string, userId: number): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const current = user.favoriteRentalVehicleIds ?? [];
+    if (current.includes(licensePlate)) {
+      user.favoriteRentalVehicleIds = current.filter((lp) => lp !== licensePlate);
+      await this.userRepo.save(user);
+    }
+  }
 }

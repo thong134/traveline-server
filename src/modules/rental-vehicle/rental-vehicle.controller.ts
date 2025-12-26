@@ -101,6 +101,26 @@ export class RentalVehiclesController {
   @ApiOkResponse({ description: 'Danh sách xe được yêu thích' })
   findFavorites(@CurrentUser() user: RequestUser) {
     return this.service.findFavoritesByUser(user.userId);
+  }  @Post(':licensePlate/favorite')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Thêm xe vào danh sách yêu thích' })
+  async favorite(
+    @Param('licensePlate') licensePlate: string,
+    @CurrentUser() user: RequestUser,
+  ) {
+    await this.service.favorite(licensePlate, user.userId);
+    return { message: 'Added to favorites' };
+  }
+
+  @Delete(':licensePlate/favorite')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Xóa xe khỏi danh sách yêu thích' })
+  async unfavorite(
+    @Param('licensePlate') licensePlate: string,
+    @CurrentUser() user: RequestUser,
+  ) {
+    await this.service.unfavorite(licensePlate, user.userId);
+    return { message: 'Removed from favorites' };
   }
 
   @Get('search')
