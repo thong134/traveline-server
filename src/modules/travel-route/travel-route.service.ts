@@ -179,7 +179,7 @@ export class TravelRoutesService {
 
   async findByUser(userId: number): Promise<TravelRoute[]> {
     const routes = await this.routeRepo.find({
-      where: { user: { id: userId } },
+      where: { user: { id: userId }, isPublic: false },
       select: { id: true },
       order: {
         createdAt: 'DESC',
@@ -419,10 +419,10 @@ export class TravelRoutesService {
 
       route.isEdited = true;
       const newStops = await this.prepareStops(dtos, route, destinationRepo);
-      await stopRepo.save(newStops);
-
       const allStops = [...(route.stops ?? []), ...newStops];
-      this.ensureSequentialStopCoverage(route, allStops);
+      
+      this.resequenceStops(allStops);
+      await stopRepo.save(allStops);
 
       await this.updateRouteAggregates(routeId, manager);
     });
@@ -469,7 +469,7 @@ export class TravelRoutesService {
         endDate: true,
         status: true,
       },
-      where: { user: { id: userId } },
+      where: { user: { id: userId }, isPublic: false },
       order: { startDate: 'ASC', id: 'DESC' },
     });
     await Promise.all(routes.map((route) => this.refreshRouteState(route.id)));
@@ -482,7 +482,7 @@ export class TravelRoutesService {
         endDate: true,
         status: true,
       },
-      where: { user: { id: userId } },
+      where: { user: { id: userId }, isPublic: false },
       order: { startDate: 'ASC', id: 'DESC' },
     });
 
@@ -1090,6 +1090,9 @@ export class TravelRoutesService {
     const stops: RouteStop[] = [];
     const sortedDtos = [...dtos].sort((a, b) => {
       if (a.dayOrder === b.dayOrder) {
+        const timeA = a.startTime ? this.parseTimeToMinutes(a.startTime) : 0;
+        const timeB = b.startTime ? this.parseTimeToMinutes(b.startTime) : 0;
+        if (timeA !== timeB) return timeA - timeB;
         return a.sequence - b.sequence;
       }
       return a.dayOrder - b.dayOrder;
@@ -1654,6 +1657,35 @@ export class TravelRoutesService {
           );
         }
       }
+    }
+  }
+
+  private resequenceStops(stops: RouteStop[]): void {
+    const stopsByDay = new Map<number, RouteStop[]>();
+    for (const stop of stops) {
+      const list = stopsByDay.get(stop.dayOrder) ?? [];
+      list.push(stop);
+      stopsByDay.set(stop.dayOrder, list);
+    }
+
+    for (const [day, dayStops] of stopsByDay.entries()) {
+      dayStops.sort((a, b) => {
+        const timeA = a.startTime ? this.parseTimeToMinutes(a.startTime) : -1;
+        const timeB = b.startTime ? this.parseTimeToMinutes(b.startTime) : -1;
+        
+        if (timeA !== timeB) {
+          if (timeA === -1) return 1;
+          if (timeB === -1) return -1;
+          return timeA - timeB;
+        }
+        
+        // Maintain relative order for stops at the same time
+        return (a.sequence ?? 0) - (b.sequence ?? 0) || (a.id ?? 0) - (b.id ?? 0);
+      });
+
+      dayStops.forEach((stop, index) => {
+        stop.sequence = index + 1;
+      });
     }
   }
 }
