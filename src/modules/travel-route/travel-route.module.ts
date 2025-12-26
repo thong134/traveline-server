@@ -6,7 +6,6 @@ import { TravelRoutesService } from './travel-route.service';
 import { TravelRoutesController } from './travel-route.controller';
 import { TravelRoute } from './entities/travel-route.entity';
 import { RouteStop } from './entities/route-stop.entity';
-import { TravelRouteLike } from './entities/travel-route-like.entity';
 import { Destination } from '../destination/entities/destinations.entity';
 import { User } from '../user/entities/user.entity';
 import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
@@ -17,7 +16,6 @@ import { TravelRouteCronService } from './travel-route.cron';
     TypeOrmModule.forFeature([
       TravelRoute,
       RouteStop,
-      TravelRouteLike,
       Destination,
       User,
     ]),

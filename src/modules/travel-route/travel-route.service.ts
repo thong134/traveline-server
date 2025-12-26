@@ -17,7 +17,6 @@ import { UpdateTravelRouteDto } from './dto/update-travel-route.dto';
 import { RouteStopDto } from './dto/route-stop.dto';
 import { Destination } from '../destination/entities/destinations.entity';
 import { User } from '../user/entities/user.entity';
-import { TravelRouteLike } from './entities/travel-route-like.entity';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import { assertImageFile, assertVideoFile } from '../../common/upload/image-upload.utils';
 import { randomUUID } from 'crypto';
@@ -42,8 +41,6 @@ export class TravelRoutesService {
     private readonly destinationRepo: Repository<Destination>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    @InjectRepository(TravelRouteLike)
-    private readonly likeRepo: Repository<TravelRouteLike>,
     private readonly cloudinaryService: CloudinaryService,
     private readonly httpService: HttpService,
     private readonly dataSource: DataSource,
@@ -342,6 +339,8 @@ export class TravelRoutesService {
     if (!current.includes(routeId.toString())) {
       user.favoriteTravelRouteIds = [...current, routeId.toString()];
       await this.userRepo.save(user);
+
+      await this.routeRepo.increment({ id: routeId }, 'favouriteTimes', 1);
     }
   }
 
@@ -355,47 +354,9 @@ export class TravelRoutesService {
     if (current.includes(routeId.toString())) {
       user.favoriteTravelRouteIds = current.filter((id) => id !== routeId.toString());
       await this.userRepo.save(user);
+
+      await this.routeRepo.decrement({ id: routeId }, 'favouriteTimes', 1);
     }
-  }
-
-  async like(routeId: number, userId: number): Promise<void> {
-    const route = await this.routeRepo.findOne({ where: { id: routeId } });
-    if (!route) {
-      throw new NotFoundException(`Travel route ${routeId} not found`);
-    }
-
-    if (!route.isPublic) {
-      throw new BadRequestException('Chỉ có thể like hành trình công khai');
-    }
-
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException(`User ${userId} not found`);
-    }
-
-    const existing = await this.likeRepo.findOne({
-      where: { user: { id: userId }, travelRoute: { id: routeId } },
-    });
-    if (!existing) {
-      const like = this.likeRepo.create({
-        user,
-        travelRoute: route,
-      });
-      await this.likeRepo.save(like);
-    }
-  }
-
-  async unlike(routeId: number, userId: number): Promise<void> {
-    await this.likeRepo.delete({
-      user: { id: userId },
-      travelRoute: { id: routeId },
-    });
-  }
-
-  async countLikes(routeId: number): Promise<number> {
-    return this.likeRepo.count({
-      where: { travelRoute: { id: routeId } },
-    });
   }
 
   async addStops(routeId: number, dtos: RouteStopDto[]): Promise<TravelRoute> {

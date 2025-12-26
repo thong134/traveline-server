@@ -62,6 +62,9 @@ export class TravelRoute {
   @Column({ type: 'double precision', default: 0 })
   averageRating: number;
 
+  @Column({ type: 'int', default: 0 })
+  favouriteTimes: number;
+
   @Column({
     type: 'enum',
     enum: TravelRouteStatus,

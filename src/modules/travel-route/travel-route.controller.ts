@@ -319,34 +319,6 @@ export class TravelRoutesController {
     return { message: 'Removed from favorites' };
   }
 
-  @Post(':id/like')
-  @RequireAuth()
-  @ApiOperation({ summary: 'Like hành trình' })
-  async like(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-  ) {
-    await this.travelRoutesService.like(id, user.userId);
-    return { message: 'Liked' };
-  }
-
-  @Delete(':id/like')
-  @RequireAuth()
-  @ApiOperation({ summary: 'Unlike hành trình' })
-  async unlike(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-  ) {
-    await this.travelRoutesService.unlike(id, user.userId);
-    return { message: 'Unliked' };
-  }
-
-  @Get(':id/likes/count')
-  @ApiOperation({ summary: 'Lấy số lượng like của hành trình' })
-  async countLikes(@Param('id', ParseIntPipe) id: number) {
-    const count = await this.travelRoutesService.countLikes(id);
-    return { count };
-  }
 
   @Patch(':routeId/stops/:stopId/reorder')
   @RequireAuth()
