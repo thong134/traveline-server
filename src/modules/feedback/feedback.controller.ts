@@ -96,6 +96,13 @@ export class FeedbackController {
     return this.feedbackService.create(user.userId, dto, files);
   }
 
+  @Get('me')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Lấy danh sách feedback của tôi' })
+  getMyFeedback(@CurrentUser() user: RequestUser) {
+    return this.feedbackService.findAll({ userId: user.userId });
+  }
+
   @Get('by-object')
   @ApiOperation({ summary: 'Danh sách feedback theo đối tượng dịch vụ' })
   @ApiQuery({ name: 'destinationId', required: false, type: Number })

@@ -95,7 +95,7 @@ export class TravelRoutesController {
     @Body() dto: PublicizeTravelRouteDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.travelRoutesService.publicizeRoute(id, user.userId, dto.name);
+    return this.travelRoutesService.publicizeRoute(id, user.userId);
   }
 
   @Post(':id/use')

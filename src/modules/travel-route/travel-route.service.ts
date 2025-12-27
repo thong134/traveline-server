@@ -105,7 +105,7 @@ export class TravelRoutesService {
     return this.findOne(savedId);
   }
 
-  async publicizeRoute(routeId: number, userId: number, name?: string): Promise<TravelRoute> {
+  async publicizeRoute(routeId: number, userId: number): Promise<TravelRoute> {
     const route = await this.routeRepo.findOne({
       where: { id: routeId },
       relations: { user: true },
@@ -127,7 +127,7 @@ export class TravelRoutesService {
       throw new BadRequestException('Only edited routes can be publicized');
     }
 
-    return this.cloneRoute(routeId, name);
+    return this.cloneRoute(routeId);
   }
 
   async create(
@@ -204,7 +204,7 @@ export class TravelRoutesService {
     return Promise.all(routes.map((route) => this.findOne(route.id)));
   }
 
-  async useClone(routeId: number, userId: number, payload: { startDate: Date; endDate: Date }): Promise<TravelRoute> {
+  async useClone(routeId: number, userId: number, payload: { startDate: Date; endDate: Date; name?: string }): Promise<TravelRoute> {
     const savedId = await this.dataSource.transaction(async (manager) => {
       const routeRepo = manager.getRepository(TravelRoute);
       const stopRepo = manager.getRepository(RouteStop);
@@ -240,7 +240,7 @@ export class TravelRoutesService {
 
       // Create a fresh personal copy
       const myRoute = new TravelRoute();
-      myRoute.name = publicRoute.name;
+      myRoute.name = payload.name ?? publicRoute.name;
       myRoute.province = publicRoute.province;
       myRoute.startDate = payload.startDate;
       myRoute.endDate = payload.endDate;

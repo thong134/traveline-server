@@ -65,12 +65,4 @@ export class CreateFeedbackDto {
   @IsUrl(undefined, { each: true })
   videos?: string[];
 
-  @ApiPropertyOptional({
-    enum: STATUS_VALUES,
-    description: 'Feedback status',
-    default: 'pending',
-  })
-  @IsOptional()
-  @IsIn(STATUS_VALUES as unknown as string[])
-  status?: FeedbackStatus;
 }

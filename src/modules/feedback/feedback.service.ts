@@ -61,7 +61,10 @@ export class FeedbackService {
     mediaFiles?: { photos?: Express.Multer.File[]; videos?: Express.Multer.File[] },
   ): Promise<{ feedback: Feedback; moderationResult?: Record<string, unknown> }> {
     const resolved = await this.processMedia(dto, mediaFiles);
-    const { dto: moderated, moderationResult } = await this.applyModeration(resolved);
+    
+    // Determine status via moderation
+    const { status, moderationResult } = await this.applyModeration(resolved);
+    
     const feedback = new Feedback();
     
     // Assign user directly from JWT
@@ -70,8 +73,11 @@ export class FeedbackService {
       throw new NotFoundException(`User ${userId} not found`);
     }
     feedback.user = user;
+    
+    // Set status
+    feedback.status = status;
 
-    await this.assignFeedbackFields(feedback, moderated);
+    await this.assignFeedbackFields(feedback, resolved);
     const saved = await this.feedbackRepo.save(feedback);
     await this.recalculateDestinationRating(saved.destination?.id);
     await this.recalculateTravelRouteRating(saved.travelRoute?.id);
@@ -270,10 +276,6 @@ export class FeedbackService {
     if (dto.videos !== undefined) {
       feedback.videos = dto.videos ?? [];
     }
-
-    if (dto.status !== undefined) {
-      feedback.status = dto.status;
-    }
   }
 
   async findByObject(params: {
@@ -464,22 +466,26 @@ export class FeedbackService {
 
   private async applyModeration(
     dto: CreateFeedbackDto,
-  ): Promise<{ dto: typeof dto; moderationResult?: Record<string, unknown> }> {
-    if (!dto.comment) return { dto };
+  ): Promise<{ status: string; moderationResult?: Record<string, unknown> }> {
+    // Default status is 'approved' if no comment or moderation passes
+    if (!dto.comment) return { status: 'approved' };
+    
     try {
       const result = await this.moderateComment(dto.comment);
       const decision: string = result?.decision;
+      
+      let status = 'approved';
       if (decision === 'reject') {
-        dto.status = 'rejected';
+        status = 'rejected';
       } else if (decision === 'manual_review') {
-        dto.status = dto.status ?? 'pending';
-      } else if (decision === 'approve') {
-        dto.status = dto.status ?? 'approved';
+        status = 'pending';
       }
-      return { dto, moderationResult: result };
+      // 'approve' keeps it as 'approved'
+      
+      return { status, moderationResult: result };
     } catch {
-      // Nếu moderation lỗi, vẫn cho phép tạo nhưng giữ status mặc định
-      return { dto };
+      // If moderation fails, fallback to 'pending' to be safe
+      return { status: 'pending' };
     }
   }
 

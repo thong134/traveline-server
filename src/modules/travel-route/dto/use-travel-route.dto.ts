@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDate, IsString, IsNotEmpty } from 'class-validator';
+import { IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class UseTravelRouteDto {
   @ApiProperty({ description: 'New Start Date' })
@@ -12,4 +12,10 @@ export class UseTravelRouteDto {
   @Type(() => Date)
   @IsDate()
   endDate: Date;
+
+  @ApiProperty({ description: 'New Name for the personal route', required: false })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  name?: string;
 }

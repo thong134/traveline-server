@@ -31,7 +31,6 @@ export class Feedback {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-
   @ManyToOne(() => TravelRoute, (route) => route.feedbacks, {
     nullable: true,
     onDelete: 'CASCADE',
@@ -84,7 +83,7 @@ export class Feedback {
   videos: string[] = [];
 
   @ApiProperty()
-  @Column({ default: 'pending' })
+  @Column()
   status: string;
 
   @ApiProperty()
