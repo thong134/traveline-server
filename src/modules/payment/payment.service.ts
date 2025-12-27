@@ -198,7 +198,7 @@ export class PaymentService {
       }
 
       await this.rentalRepo.update(payment.rentalId, {
-        status: RentalBillStatus.PAID_PENDING_DELIVERY,
+        status: RentalBillStatus.PAID,
         rentalStatus: RentalProgressStatus.BOOKED,
       });
     }
@@ -273,7 +273,7 @@ export class PaymentService {
       }
 
       await this.rentalRepo.update(payment.rentalId, {
-        status: RentalBillStatus.PAID_PENDING_DELIVERY,
+        status: RentalBillStatus.PAID,
         rentalStatus: RentalProgressStatus.BOOKED,
       });
     }

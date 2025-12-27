@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, LessThan } from 'typeorm';
+import { Repository, DataSource, LessThan, Not, IsNull } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   PaymentMethod,
@@ -137,43 +137,45 @@ export class RentalBillsService {
 
   /**
    * Cron job to handle bill timeouts:
-   * - PENDING: Cancel after 30 minutes.
-   * - CONFIRMED: Cancel after 10 minutes if not PAID.
+   * - PENDING (post-confirm): Cancel after 10 minutes.
+   * - PENDING (pure): Cancel after 30 minutes.
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async checkTimeouts() {
     const now = new Date();
     
-    // 30 min timeout for PENDING
-    const pendingThreshold = new Date(now.getTime() - 30 * 60 * 1000);
-    const pendingBills = await this.billRepo.find({
-      where: {
-        status: RentalBillStatus.PENDING,
-        createdAt: LessThan(pendingThreshold),
-      },
-    });
+    // 10 min timeout for post-confirm PENDING (has paymentMethod)
+  const confirmedThreshold = new Date(now.getTime() - 10 * 60 * 1000);
+  const postConfirmBills = await this.billRepo.find({
+    where: {
+      status: RentalBillStatus.PENDING,
+      paymentMethod: Not(IsNull()),
+      updatedAt: LessThan(confirmedThreshold),
+    },
+  });
 
-    for (const bill of pendingBills) {
-      bill.status = RentalBillStatus.CANCELLED;
-      await this.billRepo.save(bill);
-      this.logger.log(`Bill ${bill.id} (PENDING) cancelled due to 30min timeout`);
-    }
-
-    // 10 min timeout for CONFIRMED
-    const confirmedThreshold = new Date(now.getTime() - 10 * 60 * 1000);
-    const confirmedBills = await this.billRepo.find({
-      where: {
-        status: RentalBillStatus.CONFIRMED,
-        updatedAt: LessThan(confirmedThreshold),
-      },
-    });
-
-    for (const bill of confirmedBills) {
-      bill.status = RentalBillStatus.CANCELLED;
-      await this.billRepo.save(bill);
-      this.logger.log(`Bill ${bill.id} (CONFIRMED) cancelled due to 10min timeout`);
-    }
+  for (const bill of postConfirmBills) {
+    bill.status = RentalBillStatus.CANCELLED;
+    await this.billRepo.save(bill);
+    this.logger.log(`Bill ${bill.id} (POST-CONFIRM PENDING) cancelled due to 10min timeout`);
   }
+
+  // 30 min timeout for pure PENDING (no paymentMethod)
+  const pendingThreshold = new Date(now.getTime() - 30 * 60 * 1000);
+  const pendingBills = await this.billRepo.find({
+    where: {
+      status: RentalBillStatus.PENDING,
+      paymentMethod: IsNull(),
+      createdAt: LessThan(pendingThreshold),
+    },
+  });
+
+  for (const bill of pendingBills) {
+    bill.status = RentalBillStatus.CANCELLED;
+    await this.billRepo.save(bill);
+    this.logger.log(`Bill ${bill.id} (PURE PENDING) cancelled due to 30min timeout`);
+  }
+}
 
   async create(userId: number, dto: CreateRentalBillDto): Promise<RentalBill> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -233,7 +235,7 @@ export class RentalBillsService {
   async update(id: number, userId: number, dto: UpdateRentalBillDto): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
 
-    if (bill.status !== RentalBillStatus.PENDING && bill.status !== RentalBillStatus.CONFIRMED) {
+    if (bill.status !== RentalBillStatus.PENDING) {
       throw new BadRequestException(`Cannot update bill in ${bill.status} status`);
     }
 
@@ -276,24 +278,24 @@ export class RentalBillsService {
     }
 
     if (!bill.contactName || !bill.contactPhone) {
-      throw new BadRequestException('Contact information is required before confirmation');
-    }
-    
-    await this.calculateTotal(bill.id);
-    bill.status = RentalBillStatus.CONFIRMED;
-    bill.paymentMethod = paymentMethod;
-    return this.billRepo.save(bill);
+    throw new BadRequestException('Contact information is required before confirmation');
   }
+  
+  await this.calculateTotal(bill.id);
+  // bill.status stays PENDING as per user request
+  bill.paymentMethod = paymentMethod;
+  return this.billRepo.save(bill);
+}
 
   async pay(id: number, userId: number): Promise<{ payUrl: string; paymentId: number }> {
     const bill = await this.findOne(id, userId);
-    if (bill.status !== RentalBillStatus.CONFIRMED) {
-      throw new BadRequestException('Only CONFIRMED bills can be paid');
-    }
+  if (bill.status !== RentalBillStatus.PENDING) {
+    throw new BadRequestException('Only PENDING bills can be paid');
+  }
 
-    if (!bill.paymentMethod) {
-      throw new BadRequestException('paymentMethod is required');
-    }
+  if (!bill.paymentMethod) {
+    throw new BadRequestException('paymentMethod is required (Confirm before paying)');
+  }
 
     const totalAmount = parseFloat(bill.total);
     if (totalAmount <= 0) {
@@ -337,7 +339,7 @@ export class RentalBillsService {
 
   async complete(id: number, userId: number): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
-    if (![RentalBillStatus.PAID, RentalBillStatus.PAID_PENDING_DELIVERY].includes(bill.status)) {
+    if (bill.status !== RentalBillStatus.PAID) {
       throw new BadRequestException('Only PAID bills can be completed');
     }
 
@@ -371,14 +373,14 @@ export class RentalBillsService {
       await this.processRefundOrRelease(bill, 'refund');
     }
 
-    if ([RentalBillStatus.PAID, RentalBillStatus.CONFIRMED].includes(bill.status)) {
-       for (const detail of bill.details) {
-        if (detail.vehicle) {
-          detail.vehicle.availability = RentalVehicleAvailabilityStatus.AVAILABLE;
-          await this.vehicleRepo.save(detail.vehicle);
-        }
+    if ([RentalBillStatus.PAID, RentalBillStatus.PENDING].includes(bill.status)) {
+     for (const detail of bill.details) {
+      if (detail.vehicle) {
+        detail.vehicle.availability = RentalVehicleAvailabilityStatus.AVAILABLE;
+        await this.vehicleRepo.save(detail.vehicle);
       }
     }
+  }
 
     bill.status = RentalBillStatus.CANCELLED;
     bill.rentalStatus = RentalProgressStatus.CANCELLED;
@@ -390,7 +392,7 @@ export class RentalBillsService {
   async ownerDelivering(id: number, userId: number): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
     // Note: In real app, check if user is the OWNER of the vehicles
-    if (![RentalBillStatus.PAID, RentalBillStatus.PAID_PENDING_DELIVERY].includes(bill.status)) {
+    if (bill.status !== RentalBillStatus.PAID) {
       throw new BadRequestException('Chỉ có thể giao xe sau khi khách đã thanh toán');
     }
     
@@ -693,7 +695,7 @@ export class RentalBillsService {
       throw new ForbiddenException('You are not the owner of this bill');
     }
 
-    if (![RentalBillStatus.PAID, RentalBillStatus.PAID_PENDING_DELIVERY].includes(bill.status)) {
+    if (bill.status !== RentalBillStatus.PAID) {
       throw new BadRequestException('Can only cancel paid bills');
     }
 

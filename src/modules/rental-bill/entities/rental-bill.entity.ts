@@ -25,8 +25,6 @@ export enum RentalBillType {
 
 export enum RentalBillStatus {
   PENDING = 'pending',
-  CONFIRMED = 'confirmed',
-  PAID_PENDING_DELIVERY = 'paid_pending_delivery',
   PAID = 'paid',
   CANCELLED = 'cancelled',
   COMPLETED = 'completed',
