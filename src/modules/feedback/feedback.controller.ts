@@ -49,8 +49,6 @@ export class FeedbackController {
       type: 'object',
       properties: {
         star: { type: 'integer', minimum: 1, maximum: 5 },
-        userId: { type: 'integer' },
-        userUid: { type: 'string' },
         destinationId: { type: 'integer' },
         travelRouteId: { type: 'integer' },
         licensePlate: { type: 'string' },
@@ -92,9 +90,10 @@ export class FeedbackController {
   })
   create(
     @Body() dto: CreateFeedbackDto,
-    @UploadedFiles() files?: FeedbackMediaFiles,
+    @UploadedFiles() files: FeedbackMediaFiles | undefined,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.feedbackService.create(dto, files);
+    return this.feedbackService.create(user.userId, dto, files);
   }
 
   @Get('by-object')

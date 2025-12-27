@@ -23,6 +23,8 @@ import {
 import { TravelRoutesService } from './travel-route.service';
 import { CreateTravelRouteDto } from './dto/create-travel-route.dto';
 import { UpdateTravelRouteDto } from './dto/update-travel-route.dto';
+import { UseTravelRouteDto } from './dto/use-travel-route.dto';
+import { PublicizeTravelRouteDto } from './dto/publicize-travel-route.dto';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { UpdateRouteStopTimeDto } from './dto/update-route-stop-time.dto';
 import { UpdateRouteStopDetailsDto } from './dto/update-route-stop-details.dto';
@@ -86,12 +88,14 @@ export class TravelRoutesController {
   @ApiOperation({
     summary: 'Công khai lộ trình (tạo bản clone công khai)',
   })
+  @ApiBody({ type: PublicizeTravelRouteDto })
   @ApiOkResponse({ description: 'Travel route publicized' })
   publicizeRoute(
     @Param('id', ParseIntPipe) id: number,
+    @Body() dto: PublicizeTravelRouteDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.travelRoutesService.publicizeRoute(id, user.userId);
+    return this.travelRoutesService.publicizeRoute(id, user.userId, dto.name);
   }
 
   @Post(':id/use')
@@ -102,9 +106,10 @@ export class TravelRoutesController {
   @ApiOkResponse({ description: 'Travel route used' })
   useClone(
     @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UseTravelRouteDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.travelRoutesService.useClone(id, user.userId);
+    return this.travelRoutesService.useClone(id, user.userId, dto);
   }
 
   @Get('drafts')
@@ -268,7 +273,7 @@ export class TravelRoutesController {
     @Body() dto: UpdateTravelRouteDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.travelRoutesService.update(id, dto);
+    return this.travelRoutesService.update(id, user.userId, dto);
   }
 
   @Patch(':routeId/stops/:stopId/time')

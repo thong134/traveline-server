@@ -11,6 +11,7 @@ import { VouchersModule } from '../voucher/voucher.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { BlockchainModule } from '../blockchain/blockchain.module';
 import { PaymentModule } from '../payment/payment.module';
+import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -24,7 +25,9 @@ import { PaymentModule } from '../payment/payment.module';
     VouchersModule,
     WalletModule,
     BlockchainModule,
+    BlockchainModule,
     PaymentModule,
+    CloudinaryModule,
   ],
   providers: [RentalBillsService],
   controllers: [RentalBillsController],

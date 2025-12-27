@@ -22,18 +22,6 @@ export class CreateFeedbackDto {
   @Max(5)
   star: number;
 
-  @ApiPropertyOptional({ description: 'Internal user id' })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  userId?: number;
-
-  @ApiPropertyOptional({ description: 'User Firebase UID' })
-  @IsOptional()
-  @IsString()
-  userUid?: string;
-
   @ApiPropertyOptional({ description: 'Destination internal id' })
   @IsOptional()
   @Type(() => Number)

@@ -7,12 +7,16 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiOperation,
   ApiTags,
   ApiQuery,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { RentalBillsService } from './rental-bill.service';
 import { CreateRentalBillDto } from './dto/create-rental-bill.dto';
@@ -30,6 +34,9 @@ import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { RequireVerification } from '../auth/decorators/require-verification.decorator';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import type { Express } from 'express';
+import { imageMulterOptions } from '../../common/upload/image-upload.config';
 
 @ApiTags('rental-bills')
 @RequireAuth()
@@ -161,44 +168,62 @@ export class RentalBillsController {
 
   @Patch(':id/delivered')
   @ApiOperation({ summary: 'Chủ xe: Xác nhận đã giao xe đến nơi' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'photos', maxCount: 10 }], imageMulterOptions),
+  )
   ownerDelivered(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
     @Body() dto: DeliveryActionDto,
+    @UploadedFiles() files?: Record<string, Express.Multer.File[]>,
   ) {
-    return this.service.ownerDelivered(id, user.userId, dto);
+    return this.service.ownerDelivered(id, user.userId, dto, files?.photos);
   }
 
   @RequireVerification()
   @Patch(':id/pickup')
   @ApiOperation({ summary: 'Người dùng: Xác thực selfie và nhận xe' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('selfiePhoto', imageMulterOptions))
   userPickup(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
     @Body() dto: PickupActionDto,
+    @UploadedFile() selfie?: Express.Multer.File,
   ) {
-    return this.service.userPickup(id, user.userId, dto);
+    return this.service.userPickup(id, user.userId, dto, selfie);
   }
 
   @RequireVerification()
   @Patch(':id/return-request')
   @ApiOperation({ summary: 'Người dùng: Yêu cầu trả xe (Gửi GPS + Ảnh)' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'photos', maxCount: 10 }], imageMulterOptions),
+  )
   userReturnRequest(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
     @Body() dto: ReturnRequestDto,
+    @UploadedFiles() files?: Record<string, Express.Multer.File[]>,
   ) {
-    return this.service.userReturnRequest(id, user.userId, dto);
+    return this.service.userReturnRequest(id, user.userId, dto, files?.photos);
   }
 
   @Patch(':id/confirm-return')
   @ApiOperation({ summary: 'Chủ xe: Xác nhận đã nhận xe (Validate GPS < 50m)' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'photos', maxCount: 10 }], imageMulterOptions),
+  )
   ownerConfirmReturn(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
     @Body() dto: ConfirmReturnDto,
+    @UploadedFiles() files?: Record<string, Express.Multer.File[]>,
   ) {
-    return this.service.ownerConfirmReturn(id, user.userId, dto);
+    return this.service.ownerConfirmReturn(id, user.userId, dto, files?.photos);
   }
 
   @Get(':id/payment-qr')

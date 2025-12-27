@@ -39,6 +39,9 @@ import { WalletService } from '../wallet/wallet.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { parse, isValid } from 'date-fns';
 import { PaymentService } from '../payment/payment.service';
+import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
+import type { Express } from 'express';
+import { assertImageFile } from '../../common/upload/image-upload.utils';
 
 const VND_TO_ETH_RATE = 80_000_000;
 
@@ -60,6 +63,7 @@ export class RentalBillsService {
     private readonly blockchainService: BlockchainService,
     private readonly dataSource: DataSource,
     private readonly paymentService: PaymentService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   private validatePackageDates(pkg: string, start: Date, end: Date) {
@@ -389,31 +393,57 @@ export class RentalBillsService {
     if (![RentalBillStatus.PAID, RentalBillStatus.PAID_PENDING_DELIVERY].includes(bill.status)) {
       throw new BadRequestException('Chỉ có thể giao xe sau khi khách đã thanh toán');
     }
+    
+    // Enforce flow: Must be BOOKED before DELIVERING
+    if (bill.rentalStatus !== RentalProgressStatus.BOOKED) {
+       // Allow if logic was skipped, but ideally strict:
+       // If it is PENDING, it means PaymentService didn't update it?
+       // Let's assume strict flow.
+       throw new BadRequestException('Đơn hàng chưa ở trạng thái ĐÃ ĐẶT (BOOKED)');
+    }
+
     bill.rentalStatus = RentalProgressStatus.DELIVERING;
     return this.billRepo.save(bill);
   }
 
-  async ownerDelivered(id: number, userId: number, dto: DeliveryActionDto): Promise<RentalBill> {
+  async ownerDelivered(
+    id: number,
+    userId: number,
+    dto: DeliveryActionDto,
+    photos?: Express.Multer.File[],
+  ): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
     if (bill.rentalStatus !== RentalProgressStatus.DELIVERING) {
       throw new BadRequestException('Phải bấm đang vận chuyển trước khi xác nhận đã đến');
     }
-    bill.deliveryPhotos = dto.photos;
+    const uploadedPhotos = await this.uploadBillImages(photos, id, 'delivery');
+    bill.deliveryPhotos = uploadedPhotos.length ? uploadedPhotos : dto.photos;
     bill.rentalStatus = RentalProgressStatus.DELIVERED;
     return this.billRepo.save(bill);
   }
 
-  async userPickup(id: number, userId: number, dto: PickupActionDto): Promise<RentalBill> {
+  async userPickup(
+    id: number,
+    userId: number,
+    dto: PickupActionDto,
+    selfie?: Express.Multer.File,
+  ): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
     if (bill.rentalStatus !== RentalProgressStatus.DELIVERED) {
       throw new BadRequestException('Chủ xe chưa giao xe đến nơi');
     }
-    bill.pickupSelfiePhoto = dto.selfiePhoto;
+    const uploadedSelfie = await this.uploadBillImage(selfie, id, 'pickup-selfie');
+    bill.pickupSelfiePhoto = uploadedSelfie ?? dto.selfiePhoto;
     bill.rentalStatus = RentalProgressStatus.IN_PROGRESS;
     return this.billRepo.save(bill);
   }
 
-  async userReturnRequest(id: number, userId: number, dto: ReturnRequestDto): Promise<RentalBill> {
+  async userReturnRequest(
+    id: number,
+    userId: number,
+    dto: ReturnRequestDto,
+    photos?: Express.Multer.File[],
+  ): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
     if (bill.rentalStatus !== RentalProgressStatus.IN_PROGRESS) {
       throw new BadRequestException('Đơn hàng chưa ở trạng thái đang thuê');
@@ -421,7 +451,8 @@ export class RentalBillsService {
 
     const now = new Date();
     bill.returnTimestampUser = now;
-    bill.returnPhotosUser = dto.photos;
+    const uploadedPhotos = await this.uploadBillImages(photos, id, 'return-request');
+    bill.returnPhotosUser = uploadedPhotos.length ? uploadedPhotos : dto.photos;
     bill.returnLatitudeUser = dto.latitude;
     bill.returnLongitudeUser = dto.longitude;
     bill.rentalStatus = RentalProgressStatus.RETURN_REQUESTED;
@@ -443,7 +474,12 @@ export class RentalBillsService {
     return this.billRepo.save(bill);
   }
 
-  async ownerConfirmReturn(id: number, userId: number, dto: ConfirmReturnDto): Promise<RentalBill> {
+  async ownerConfirmReturn(
+    id: number,
+    userId: number,
+    dto: ConfirmReturnDto,
+    photos?: Express.Multer.File[],
+  ): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
     if (bill.rentalStatus !== RentalProgressStatus.RETURN_REQUESTED) {
       throw new BadRequestException('Khách hàng chưa yêu cầu trả xe');
@@ -460,7 +496,8 @@ export class RentalBillsService {
         }
     }
 
-    bill.returnPhotosOwner = dto.photos;
+    const uploadedPhotos = await this.uploadBillImages(photos, id, 'return-confirm');
+    bill.returnPhotosOwner = uploadedPhotos.length ? uploadedPhotos : dto.photos;
     bill.returnLatitudeOwner = dto.latitude;
     bill.returnLongitudeOwner = dto.longitude;
     bill.rentalStatus = RentalProgressStatus.RETURN_CONFIRMED;
@@ -502,6 +539,37 @@ export class RentalBillsService {
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+  }
+
+  private async uploadBillImages(
+    files: Express.Multer.File[] | undefined,
+    billId: number,
+    label: string,
+  ): Promise<string[]> {
+    if (!files?.length) {
+      return [];
+    }
+
+    const uploads = await Promise.all(
+      files.map((file, index) => {
+        assertImageFile(file, { fieldName: label });
+        return this.cloudinaryService.uploadImage(file, {
+          folder: `traveline/rental-bills/${billId}/${label}`,
+          publicId: `${billId}_${label}_${index}`,
+        });
+      }),
+    );
+
+    return uploads.map((upload) => upload.url);
+  }
+
+  private async uploadBillImage(
+    file: Express.Multer.File | undefined,
+    billId: number,
+    label: string,
+  ): Promise<string | undefined> {
+    const [first] = await this.uploadBillImages(file ? [file] : undefined, billId, label);
+    return first;
   }
 
 

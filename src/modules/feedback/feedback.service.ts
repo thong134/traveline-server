@@ -56,12 +56,21 @@ export class FeedbackService {
   ) {}
 
   async create(
+    userId: number,
     dto: CreateFeedbackDto,
     mediaFiles?: { photos?: Express.Multer.File[]; videos?: Express.Multer.File[] },
   ): Promise<{ feedback: Feedback; moderationResult?: Record<string, unknown> }> {
     const resolved = await this.processMedia(dto, mediaFiles);
     const { dto: moderated, moderationResult } = await this.applyModeration(resolved);
     const feedback = new Feedback();
+    
+    // Assign user directly from JWT
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+    feedback.user = user;
+
     await this.assignFeedbackFields(feedback, moderated);
     const saved = await this.feedbackRepo.save(feedback);
     await this.recalculateDestinationRating(saved.destination?.id);
@@ -186,15 +195,8 @@ export class FeedbackService {
     feedback: Feedback,
     dto: Partial<CreateFeedbackDto>,
   ): Promise<void> {
-    if (dto.userId) {
-      const user = await this.userRepo.findOne({ where: { id: dto.userId } });
-      if (!user) {
-        throw new NotFoundException(`User ${dto.userId} not found`);
-      }
-      feedback.user = user;
-    } else if (dto.userId === null) {
-      feedback.user = undefined;
-    }
+    // userId is handled by the caller (create method)
+
 
     if (dto.travelRouteId) {
       const route = await this.travelRouteRepo.findOne({

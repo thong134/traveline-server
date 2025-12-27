@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../../user/entities/user.entity';
 import { TravelRoute } from '../../travel-route/entities/travel-route.entity';
 import { Destination } from '../../destination/entities/destinations.entity';
@@ -19,6 +20,7 @@ import { FeedbackReaction } from './feedback-reaction.entity';
 
 @Entity('feedbacks')
 export class Feedback {
+  @ApiProperty()
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -65,24 +67,31 @@ export class Feedback {
   @JoinColumn({ name: 'eateryId' })
   eatery?: Eatery;
 
+  @ApiProperty()
   @Column({ type: 'int', default: 0 })
   star: number;
 
+  @ApiProperty({ required: false })
   @Column({ type: 'text', nullable: true })
   comment?: string;
 
+  @ApiProperty()
   @Column('text', { array: true, default: '{}' })
   photos: string[] = [];
 
+  @ApiProperty()
   @Column('text', { array: true, default: '{}' })
   videos: string[] = [];
 
+  @ApiProperty()
   @Column({ default: 'pending' })
   status: string;
 
+  @ApiProperty()
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
+  @ApiProperty()
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 

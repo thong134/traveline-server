@@ -46,7 +46,7 @@ export class TravelRoutesService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async cloneRoute(routeId: number): Promise<TravelRoute> {
+  async cloneRoute(routeId: number, name?: string): Promise<TravelRoute> {
     const savedId = await this.dataSource.transaction(async (manager) => {
       const routeRepo = manager.getRepository(TravelRoute);
       const stopRepo = manager.getRepository(RouteStop);
@@ -62,7 +62,7 @@ export class TravelRoutesService {
       }
 
       const clone = new TravelRoute();
-      clone.name = source.name;
+      clone.name = name ?? source.name;
       clone.province = source.province;
       clone.startDate = source.startDate ?? undefined;
       clone.endDate = source.endDate ?? undefined;
@@ -105,7 +105,7 @@ export class TravelRoutesService {
     return this.findOne(savedId);
   }
 
-  async publicizeRoute(routeId: number, userId: number): Promise<TravelRoute> {
+  async publicizeRoute(routeId: number, userId: number, name?: string): Promise<TravelRoute> {
     const route = await this.routeRepo.findOne({
       where: { id: routeId },
       relations: { user: true },
@@ -127,7 +127,7 @@ export class TravelRoutesService {
       throw new BadRequestException('Only edited routes can be publicized');
     }
 
-    return this.cloneRoute(routeId);
+    return this.cloneRoute(routeId, name);
   }
 
   async create(
@@ -204,7 +204,7 @@ export class TravelRoutesService {
     return Promise.all(routes.map((route) => this.findOne(route.id)));
   }
 
-  async useClone(routeId: number, userId: number): Promise<TravelRoute> {
+  async useClone(routeId: number, userId: number, payload: { startDate: Date; endDate: Date }): Promise<TravelRoute> {
     const savedId = await this.dataSource.transaction(async (manager) => {
       const routeRepo = manager.getRepository(TravelRoute);
       const stopRepo = manager.getRepository(RouteStop);
@@ -242,8 +242,8 @@ export class TravelRoutesService {
       const myRoute = new TravelRoute();
       myRoute.name = publicRoute.name;
       myRoute.province = publicRoute.province;
-      myRoute.startDate = publicRoute.startDate ?? undefined;
-      myRoute.endDate = publicRoute.endDate ?? undefined;
+      myRoute.startDate = payload.startDate;
+      myRoute.endDate = payload.endDate;
       myRoute.status = TravelRouteStatus.UPCOMING;
       myRoute.user = user;
       myRoute.isPublic = false;
@@ -458,12 +458,22 @@ export class TravelRoutesService {
 
 
 
-  async update(id: number, dto: UpdateTravelRouteDto): Promise<TravelRoute> {
+  async update(id: number, userId: number, dto: UpdateTravelRouteDto): Promise<TravelRoute> {
     return this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(TravelRoute);
-      const route = await repo.findOne({ where: { id } });
+      const route = await repo.findOne({ where: { id }, relations: { user: true } });
       if (!route) {
         throw new NotFoundException(`Travel route ${id} not found`);
+      }
+
+      if (route.user?.id !== userId) {
+        throw new ForbiddenException('You do not own this route');
+      }
+
+      if (dto.startDate || dto.endDate) {
+        if (route.status !== TravelRouteStatus.UPCOMING) {
+          throw new BadRequestException('Cannot change start/end date for a route that is not UPCOMING');
+        }
       }
 
       await this.assignRouteFields(route, dto, manager.getRepository(User));
