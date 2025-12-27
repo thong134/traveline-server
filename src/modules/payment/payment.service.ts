@@ -45,6 +45,11 @@ interface MomoIpnPayload {
   amount?: number;
   extraData?: string;
   transId?: number;
+  orderInfo?: string;
+  orderType?: string;
+  payType?: string;
+  responseTime?: number;
+  partnerCode?: string;
 }
 
 interface UpdatePayoutStatusParams {
@@ -225,6 +230,11 @@ export class PaymentService {
       message,
       transId,
       signature,
+      orderInfo,
+      orderType,
+      payType,
+      responseTime,
+      extraData,
     } = payload;
 
     if (!orderId || !requestId || !signature) {
@@ -232,7 +242,7 @@ export class PaymentService {
       throw new BadRequestException('Thiếu orderId/requestId/signature');
     }
 
-    const rawSignature = `accessKey=${accessKey}&amount=${amount ?? ''}&extraData=&message=${message ?? ''}&orderId=${orderId}&orderInfo=&orderType=&partnerCode=${process.env.MOMO_PARTNER_CODE ?? ''}&payType=&requestId=${requestId}&responseTime=&resultCode=${resultCode ?? ''}&transId=${transId ?? ''}`;
+    const rawSignature = `accessKey=${accessKey}&amount=${amount ?? ''}&extraData=${extraData ?? ''}&message=${message ?? ''}&orderId=${orderId}&orderInfo=${orderInfo ?? ''}&orderType=${orderType ?? ''}&partnerCode=${payload.partnerCode ?? ''}&payType=${payType ?? ''}&requestId=${requestId}&responseTime=${responseTime ?? ''}&resultCode=${resultCode ?? ''}&transId=${transId ?? ''}`;
     const expected = createHmac('sha256', secretKey).update(rawSignature).digest('hex');
     
     if (expected !== signature) {
