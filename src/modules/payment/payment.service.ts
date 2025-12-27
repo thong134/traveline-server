@@ -209,9 +209,11 @@ export class PaymentService {
   }
 
   async handleMomoIpn(payload: MomoIpnPayload) {
+    this.logger.log(`Received MoMo IPN: ${JSON.stringify(payload)}`);
     const accessKey = process.env.MOMO_ACCESS_KEY;
     const secretKey = process.env.MOMO_SECRET_KEY;
     if (!accessKey || !secretKey) {
+      this.logger.error('MOMO_ACCESS_KEY or MOMO_SECRET_KEY missing in env');
       throw new BadRequestException('Thiếu cấu hình MoMo');
     }
 
@@ -226,25 +228,33 @@ export class PaymentService {
     } = payload;
 
     if (!orderId || !requestId || !signature) {
+      this.logger.warn(`Missing required fields in IPN payload: orderId=${orderId}, requestId=${requestId}`);
       throw new BadRequestException('Thiếu orderId/requestId/signature');
     }
 
     const rawSignature = `accessKey=${accessKey}&amount=${amount ?? ''}&extraData=&message=${message ?? ''}&orderId=${orderId}&orderInfo=&orderType=&partnerCode=${process.env.MOMO_PARTNER_CODE ?? ''}&payType=&requestId=${requestId}&responseTime=&resultCode=${resultCode ?? ''}&transId=${transId ?? ''}`;
     const expected = createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+    
     if (expected !== signature) {
+      this.logger.error(`Signature mismatch! Expected: ${expected}, Received: ${signature}`);
       throw new BadRequestException('Sai chữ ký MoMo');
     }
 
+    this.logger.log(`Signature verified for orderId: ${orderId}`);
+
     const payment = await this.paymentRepo.findOne({ where: { orderId, requestId } });
     if (!payment) {
+      this.logger.error(`Payment record not found for orderId: ${orderId}, requestId: ${requestId}`);
       throw new BadRequestException('Không tìm thấy payment');
     }
 
     if (payment.status === PaymentStatus.SUCCESS) {
+      this.logger.warn(`Payment ${payment.id} already processed successfully`);
       return { ok: true, message: 'Payment already processed' };
     }
 
     if (resultCode !== 0) {
+      this.logger.warn(`MoMo payment failed with resultCode ${resultCode}: ${message}`);
       const raw: Record<string, unknown> = payload as Record<string, unknown>;
       await this.paymentRepo.update(payment.id, {
         status: PaymentStatus.FAILED,
@@ -253,6 +263,8 @@ export class PaymentService {
       });
       return { ok: true, message: 'Payment failed' };
     }
+
+    this.logger.log(`Processing successful payment for rentalId: ${payment.rentalId}`);
 
     const rawOk: Record<string, unknown> = payload as Record<string, unknown>;
     await this.paymentRepo.update(payment.id, {
@@ -263,17 +275,17 @@ export class PaymentService {
 
     const rental = await this.rentalRepo.findOne({ where: { id: payment.rentalId } });
     if (rental) {
+      this.logger.log(`Found rental ${rental.id}, starting wallet escrow...`);
       // 1. Wallet escrow: Deposit from MoMo and Lock for rental
       try {
         const amountNum = parseFloat(payment.amount);
         if (amountNum > 0) {
           await this.walletService.deposit(rental.userId, amountNum, `momo:${transId ?? orderId}`);
           await this.walletService.lockFunds(rental.userId, amountNum, `rental:${rental.id}`);
-          this.logger.log(`Escrowed ${amountNum} for rental ${rental.id} via MoMo IPN`);
+          this.logger.log(`Successfully escrowed ${amountNum} for rental ${rental.id}`);
         }
       } catch (err) {
         this.logger.error(`Failed to escrow funds for rental ${rental.id}: ${err.message}`);
-        // Let it throw so MoMo retries
         throw err;
       }
 
@@ -284,6 +296,7 @@ export class PaymentService {
           const deducted = Math.min(user.travelPoint, rental.travelPointsUsed);
           if (deducted > 0) {
             await this.userRepo.update(user.id, { travelPoint: user.travelPoint - deducted });
+            this.logger.log(`Deducted ${deducted} points from user ${user.id}`);
           }
         }
         await this.rentalRepo.update(rental.id, { travelPointsUsed: 0 });
@@ -294,6 +307,9 @@ export class PaymentService {
         status: RentalBillStatus.PAID,
         rentalStatus: RentalProgressStatus.BOOKED,
       });
+      this.logger.log(`Updated rental bill ${payment.rentalId} to PAID and status to BOOKED`);
+    } else {
+      this.logger.error(`Rental not found for payment rentalId: ${payment.rentalId}`);
     }
 
     return { ok: true };
