@@ -5,6 +5,9 @@ import { Destination } from './entities/destinations.entity';
 import { CreateDestinationDto } from './dto/create-destination.dto';
 import { UpdateDestinationDto } from './dto/update-destination.dto';
 import { User } from '../user/entities/user.entity';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class DestinationsService {
@@ -13,6 +16,8 @@ export class DestinationsService {
     private readonly repo: Repository<Destination>,
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
   ) {}
 
   async create(dto: CreateDestinationDto): Promise<Destination> {
@@ -34,8 +39,9 @@ export class DestinationsService {
     limit?: number;
     offset?: number;
     province?: string;
+    sortBy?: 'rating' | 'popularity';
   }): Promise<Destination[]> {
-    const { q, available, limit = 50, offset = 0, province } = params || {};
+    const { q, available, limit = 50, offset = 0, province, sortBy } = params || {};
     const qb = this.repo.createQueryBuilder('destination');
 
     if (q) {
@@ -55,7 +61,15 @@ export class DestinationsService {
       qb.andWhere('destination.available = :available', { available });
     }
 
-    qb.orderBy('destination.createdAt', 'DESC').take(limit).skip(offset);
+    if (sortBy === 'rating') {
+      qb.orderBy('destination.rating', 'DESC');
+    } else if (sortBy === 'popularity') {
+      qb.orderBy('destination.favouriteTimes', 'DESC');
+    } else {
+      qb.orderBy('destination.createdAt', 'DESC');
+    }
+
+    qb.take(limit).skip(offset);
     return qb.getMany();
   }
 
@@ -188,6 +202,7 @@ export class DestinationsService {
     userId: number,
     province?: string,
     limit: number = 10,
+    offset: number = 0,
   ): Promise<Destination[]> {
     const user = await this.usersRepo.findOne({ where: { id: userId } });
     if (!user) {
@@ -239,6 +254,43 @@ export class DestinationsService {
 
     // Sort by score descending and return top N
     scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, limit).map((s) => s.destination);
+    return scored.slice(offset, offset + limit).map((s) => s.destination);
+  }
+
+  async inspectRecommendation(
+    userId: number,
+    province?: string,
+    limit: number = 10,
+  ) {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const aiUrl =
+      this.configService.get<string>('AI_SERVICE_URL') ??
+      'http://localhost:8000';
+
+    const payload = {
+      hobbies: user.hobbies || [],
+      favorites: user.favoriteDestinationIds || [],
+      province,
+      limit,
+    };
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.post(
+          `${aiUrl}/recommend/destinations/inspect`,
+          payload,
+        ),
+      );
+      return data;
+    } catch (error) {
+      return {
+        error: 'Failed to call AI service',
+        details: error.response?.data || error.message,
+      };
+    }
   }
 }

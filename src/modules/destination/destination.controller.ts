@@ -18,6 +18,7 @@ import {
   ApiOperation,
   ApiQuery,
   ApiTags,
+  ApiBody,
 } from '@nestjs/swagger';
 import { DestinationsService } from './destination.service';
 import { CreateDestinationDto } from './dto/create-destination.dto';
@@ -70,6 +71,12 @@ export class DestinationsController {
     description: 'Paginate starting index',
     type: Number,
   })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    enum: ['rating', 'popularity'],
+    description: 'Sort by rating or popularity',
+  })
   @ApiOkResponse({ description: 'Destination list' })
   findAll(
     @Query('q') q?: string,
@@ -77,6 +84,7 @@ export class DestinationsController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
     @Query('province') province?: string,
+    @Query('sortBy') sortBy?: 'rating' | 'popularity',
   ) {
     return this.destinationsService.findAll({
       q,
@@ -85,6 +93,7 @@ export class DestinationsController {
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
       province,
+      sortBy,
     });
   }
 
@@ -107,16 +116,43 @@ export class DestinationsController {
   })
   @ApiQuery({ name: 'province', required: false, description: 'Lọc theo tỉnh/thành phố' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Số lượng kết quả' })
+  @ApiQuery({ name: 'offset', required: false, type: Number, description: 'Vị trí bắt đầu' })
   @ApiOkResponse({ description: 'Danh sách địa điểm được đề xuất' })
   recommend(
     @CurrentUser() user: RequestUser,
     @Query('province') province?: string,
     @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ) {
     return this.destinationsService.recommendForUser(
       user.userId,
       province,
       limit ? Number(limit) : 10,
+      offset ? Number(offset) : 0,
+    );
+  }
+
+  @Post('recommend/inspect')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Debug AI Destination Scoring (Backend Proxy)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        province: { type: 'string' },
+        limit: { type: 'number', default: 10 },
+      },
+    },
+  })
+  inspectRecommendation(
+    @CurrentUser() user: RequestUser,
+    @Body() body: { province?: string; limit?: number },
+  ) {
+    return this.destinationsService.inspectRecommendation(
+      user.userId,
+      body.province,
+      body.limit,
     );
   }
 

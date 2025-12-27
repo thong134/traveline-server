@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Post,
+  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -108,7 +109,7 @@ export class ChatController {
     },
   })
   @UseInterceptors(FileInterceptor('file'))
-  async classifyImage(@UploadedFiles() file: Express.Multer.File) {
+  async classifyImage(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('Vui lòng chọn ảnh để phân loại');
     }
