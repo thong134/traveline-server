@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   BadRequestException,
   ForbiddenException,
@@ -322,7 +324,16 @@ export class RentalBillsService {
     }
 
     if (bill.paymentMethod === 'qr_code') {
-      const qrData = '/public/admin_qr.png';
+      const qrPath = path.join(process.cwd(), 'public', 'admin_qr.png');
+      let qrData = '';
+      try {
+        const imageBuffer = fs.readFileSync(qrPath);
+        qrData = `data:image/png;base64,${imageBuffer.toString('base64')}`;
+      } catch (err) {
+        this.logger.error(`Failed to read admin_qr.png: ${err.message}`);
+        qrData = '/public/admin_qr.png'; // Fallback to URL
+      }
+
       const { payUrl, paymentId } = await this.paymentService.createQrPayment({
         rentalId: bill.id,
         amount: totalAmount,
@@ -781,9 +792,19 @@ export class RentalBillsService {
 
   async generatePaymentQR(id: number, userId: number) {
     const bill = await this.findOne(id, userId);
-    // Simple mock QR text
+
+    const qrPath = path.join(process.cwd(), 'public', 'admin_qr.png');
+    let qrData = '';
+    try {
+      const imageBuffer = fs.readFileSync(qrPath);
+      qrData = `data:image/png;base64,${imageBuffer.toString('base64')}`;
+    } catch (err) {
+      this.logger.error(`Failed to read admin_qr.png: ${err.message}`);
+      qrData = '/public/admin_qr.png';
+    }
+
     return {
-      qrData: '/public/admin_qr.png',
+      qrData,
       amount: bill.total,
       message: 'Vui lòng quét mã để chuyển khoản vào tài khoản trung gian Traveline (Vietcombank)',
     };
