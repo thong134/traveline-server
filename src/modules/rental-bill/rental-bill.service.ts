@@ -311,7 +311,7 @@ export class RentalBillsService {
     }
 
     if (bill.paymentMethod === 'qr_code') {
-      const qrData = `TRAVELINE_PAY_${bill.code}_${bill.total}`;
+      const qrData = '/public/admin_qr.png';
       const { payUrl, paymentId } = await this.paymentService.createQrPayment({
         rentalId: bill.id,
         amount: totalAmount,
@@ -772,9 +772,9 @@ export class RentalBillsService {
     const bill = await this.findOne(id, userId);
     // Simple mock QR text
     return {
-      qrData: `TRAVELINE_PAY_${bill.code}_${bill.total}`,
+      qrData: '/public/admin_qr.png',
       amount: bill.total,
-      message: 'Vui lòng quét mã để thanh toán',
+      message: 'Vui lòng quét mã để chuyển khoản vào tài khoản trung gian Traveline (Vietcombank)',
     };
   }
 
