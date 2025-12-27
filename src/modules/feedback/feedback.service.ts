@@ -73,9 +73,6 @@ export class FeedbackService {
       throw new NotFoundException(`User ${userId} not found`);
     }
     feedback.user = user;
-    
-    // Set status
-    feedback.status = status;
 
     await this.assignFeedbackFields(feedback, resolved);
     const saved = await this.feedbackRepo.save(feedback);

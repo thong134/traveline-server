@@ -83,10 +83,6 @@ export class Feedback {
   videos: string[] = [];
 
   @ApiProperty()
-  @Column()
-  status: string;
-
-  @ApiProperty()
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
