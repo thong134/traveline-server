@@ -23,7 +23,7 @@ import { CreateRentalBillDto } from './dto/create-rental-bill.dto';
 import { UpdateRentalBillDto } from './dto/update-rental-bill.dto';
 import { ManageRentalBillVehicleDto } from './dto/manage-rental-bill-vehicle.dto';
 import { RentalOwnerCancelDto } from './dto/owner-cancel-bill.dto';
-import { PaymentMethod, RentalBillStatus, RentalProgressStatus } from './entities/rental-bill.entity';
+import { RentalBillStatus, RentalProgressStatus } from './entities/rental-bill.entity';
 import {
   DeliveryActionDto,
   PickupActionDto,
@@ -83,17 +83,7 @@ export class RentalBillsController {
     return this.service.update(id, user.userId, dto);
   }
 
-  @RequireVerification()
-  @Patch(':id/confirm')
-  @ApiOperation({ summary: 'Xác nhận thông tin và chọn phương thức thanh toán' })
-  @ApiQuery({ name: 'paymentMethod', required: true, enum: PaymentMethod })
-  confirm(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-    @Query('paymentMethod') paymentMethod: PaymentMethod,
-  ) {
-    return this.service.confirm(id, user.userId, paymentMethod);
-  }
+
 
   @RequireVerification()
   @Patch(':id/pay')

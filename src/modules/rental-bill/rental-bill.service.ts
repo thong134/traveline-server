@@ -9,7 +9,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, LessThan, Not, IsNull } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {
-  PaymentMethod,
   RentalBill,
   RentalBillCancelledBy,
   RentalBillStatus,
@@ -144,31 +143,33 @@ export class RentalBillsService {
   async checkTimeouts() {
     const now = new Date();
     
+
+
     // 10 min timeout for post-confirm PENDING (has paymentMethod)
-  const confirmedThreshold = new Date(now.getTime() - 10 * 60 * 1000);
-  const postConfirmBills = await this.billRepo.find({
-    where: {
-      status: RentalBillStatus.PENDING,
-      paymentMethod: Not(IsNull()),
-      updatedAt: LessThan(confirmedThreshold),
-    },
-  });
+    const confirmedThreshold = new Date(now.getTime() - 10 * 60 * 1000);
+    const postConfirmBills = await this.billRepo.find({
+      where: {
+        status: RentalBillStatus.PENDING,
+        paymentMethod: Not(IsNull()),
+        updatedAt: LessThan(confirmedThreshold),
+      },
+    });
 
-  for (const bill of postConfirmBills) {
-    bill.status = RentalBillStatus.CANCELLED;
-    await this.billRepo.save(bill);
-    this.logger.log(`Bill ${bill.id} (POST-CONFIRM PENDING) cancelled due to 10min timeout`);
-  }
+    for (const bill of postConfirmBills) {
+      bill.status = RentalBillStatus.CANCELLED;
+      await this.billRepo.save(bill);
+      this.logger.log(`Bill ${bill.id} (POST-CONFIRM PENDING) cancelled due to 10min timeout`);
+    }
 
-  // 30 min timeout for pure PENDING (no paymentMethod)
-  const pendingThreshold = new Date(now.getTime() - 30 * 60 * 1000);
-  const pendingBills = await this.billRepo.find({
-    where: {
-      status: RentalBillStatus.PENDING,
-      paymentMethod: IsNull(),
-      createdAt: LessThan(pendingThreshold),
-    },
-  });
+    // 30 min timeout for pure PENDING (no paymentMethod)
+    const pendingThreshold = new Date(now.getTime() - 30 * 60 * 1000);
+    const pendingBills = await this.billRepo.find({
+      where: {
+        status: RentalBillStatus.PENDING,
+        paymentMethod: IsNull(),
+        createdAt: LessThan(pendingThreshold),
+      },
+    });
 
   for (const bill of pendingBills) {
     bill.status = RentalBillStatus.CANCELLED;
@@ -219,6 +220,7 @@ export class RentalBillsService {
         'details.vehicle',
         'details.vehicle.contract',
         'details.vehicle.contract.user',
+        'details.vehicle.vehicleCatalog',
         'user',
         'voucher',
       ],
@@ -243,6 +245,7 @@ export class RentalBillsService {
       contactName: dto.contactName,
       contactPhone: dto.contactPhone,
       notes: dto.notes,
+      paymentMethod: dto.paymentMethod,
     });
 
     if (dto.voucherCode !== undefined) {
@@ -271,31 +274,17 @@ export class RentalBillsService {
     return this.billRepo.save(bill);
   }
 
-  async confirm(id: number, userId: number, paymentMethod: PaymentMethod): Promise<RentalBill> {
-    const bill = await this.findOne(id, userId);
-    if (bill.status !== RentalBillStatus.PENDING) {
-      throw new BadRequestException('Only PENDING bills can be confirmed');
-    }
 
-    if (!bill.contactName || !bill.contactPhone) {
-    throw new BadRequestException('Contact information is required before confirmation');
-  }
-  
-  await this.calculateTotal(bill.id);
-  // bill.status stays PENDING as per user request
-  bill.paymentMethod = paymentMethod;
-  return this.billRepo.save(bill);
-}
 
   async pay(id: number, userId: number): Promise<{ payUrl: string; paymentId: number }> {
     const bill = await this.findOne(id, userId);
-  if (bill.status !== RentalBillStatus.PENDING) {
-    throw new BadRequestException('Only PENDING bills can be paid');
-  }
+    if (bill.status !== RentalBillStatus.PENDING) {
+      throw new BadRequestException('Only PENDING bills can be paid');
+    }
 
-  if (!bill.paymentMethod) {
-    throw new BadRequestException('paymentMethod is required (Confirm before paying)');
-  }
+    if (!bill.paymentMethod) {
+      throw new BadRequestException('paymentMethod is required (Confirm before paying)');
+    }
 
     const totalAmount = parseFloat(bill.total);
     if (totalAmount <= 0) {
@@ -303,18 +292,16 @@ export class RentalBillsService {
     }
 
     // Derive owner ETH info
-    const vehicles = bill.details.map(d => d.vehicle).filter(v => !!v);
+    const vehicles = bill.details.map((d) => d.vehicle).filter((v) => !!v);
     const ownerEthAddress = vehicles[0]?.contract?.user?.ethAddress;
     if (ownerEthAddress) {
-      bill.ownerEthAddress = ownerEthAddress;
-      bill.requiresEthDeposit = true;
       await this.billRepo.update(bill.id, {
         ownerEthAddress,
         requiresEthDeposit: true,
       });
     }
 
-    if (bill.paymentMethod === PaymentMethod.MOMO) {
+    if (bill.paymentMethod === 'momo') {
       const { payUrl, paymentId } = await this.paymentService.createMomoPayment({
         rentalId: bill.id,
         amount: totalAmount,
@@ -323,7 +310,7 @@ export class RentalBillsService {
       return { payUrl, paymentId };
     }
 
-    if (bill.paymentMethod === PaymentMethod.QR_CODE) {
+    if (bill.paymentMethod === 'qr_code') {
       const qrData = `TRAVELINE_PAY_${bill.code}_${bill.total}`;
       const { payUrl, paymentId } = await this.paymentService.createQrPayment({
         rentalId: bill.id,

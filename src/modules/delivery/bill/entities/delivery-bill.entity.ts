@@ -11,11 +11,7 @@ import { User } from '../../../user/entities/user.entity';
 import { DeliveryVehicle } from '../../delivery-vehicle/entities/delivery-vehicle.entity';
 import { Voucher } from '../../../voucher/entities/voucher.entity';
 import { Cooperation } from '../../../cooperation/entities/cooperation.entity';
-export enum DeliveryPaymentMethod {
-  WALLET = 'wallet',
-  MOMO = 'momo',
-  QR_CODE = 'qr_code',
-}
+
 
 export enum DeliveryBillStatus {
   PENDING = 'PENDING',
@@ -107,13 +103,10 @@ export class DeliveryBill {
   @Column({ nullable: true })
   contactPhone?: string;
 
-  @Column({
-    type: 'enum',
-    enum: DeliveryPaymentMethod,
-    enumName: 'payment_method_enum',
-    nullable: true,
-  })
-  paymentMethod?: DeliveryPaymentMethod;
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  paymentMethod?: string;
+
+
 
   @Column({ type: 'text', nullable: true })
   notes?: string;

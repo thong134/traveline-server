@@ -23,7 +23,7 @@ import { assignDefined } from '../../../common/utils/object.util';
 import { WalletService } from '../../wallet/wallet.service';
 import { BlockchainService } from '../../blockchain/blockchain.service';
 import { parse, isValid } from 'date-fns';
-import { HotelPaymentMethod } from './entities/hotel-bill.entity';
+
 
 const VND_TO_ETH_RATE = 80_000_000;
 
@@ -240,7 +240,7 @@ export class HotelBillsService {
   async confirm(
     id: number,
     userId: number,
-    paymentMethod: HotelPaymentMethod,
+    paymentMethod: string,
   ): Promise<HotelBill> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== HotelBillStatus.PENDING) throw new BadRequestException('Not pending');
@@ -259,10 +259,7 @@ export class HotelBillsService {
     const bill = await this.findOne(id, userId);
     if (bill.status !== HotelBillStatus.CONFIRMED) throw new BadRequestException('Not confirmed');
 
-    if (bill.paymentMethod === HotelPaymentMethod.WALLET) {
-      const ownerWalletAddress = bill.cooperation?.manager?.bankAccountNumber;
-      await this.processWalletPayment(bill);
-    }
+
 
     bill.status = HotelBillStatus.PAID;
     
@@ -341,16 +338,7 @@ export class HotelBillsService {
     bill.total = formattedTotal;
   }
 
-  private async processWalletPayment(bill: HotelBill) {
-    const amount = parseFloat(bill.total);
-    if (amount <= 0) return;
-    await this.walletService.lockFunds(bill.user.id, amount, `hotel:${bill.id}`);
-    const ownerWalletAddress = bill.cooperation?.manager?.bankAccountNumber;
-    if (ownerWalletAddress) {
-      const eth = (amount / VND_TO_ETH_RATE).toFixed(8);
-      await this.blockchainService.adminDepositForRental(bill.id, ownerWalletAddress, eth);
-    }
-  }
+
 
   private async processRefundOrRelease(bill: HotelBill, action: 'release' | 'refund', ownerUserId?: number) {
     const amount = parseFloat(bill.total);

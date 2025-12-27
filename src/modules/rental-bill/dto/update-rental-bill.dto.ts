@@ -18,6 +18,11 @@ export class UpdateRentalBillDto {
   @IsString()
   notes?: string;
 
+  @ApiPropertyOptional({ description: 'Phương thức thanh toán' })
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
+
   @ApiPropertyOptional({ description: 'Mã giảm giá' })
   @IsOptional()
   @IsString()

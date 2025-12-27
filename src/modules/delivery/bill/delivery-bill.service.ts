@@ -23,7 +23,7 @@ import { WalletService } from '../../wallet/wallet.service';
 import { BlockchainService } from '../../blockchain/blockchain.service';
 import { assignDefined } from '../../../common/utils/object.util';
 import { parse, isValid } from 'date-fns';
-import { DeliveryPaymentMethod } from './entities/delivery-bill.entity';
+
 
 const VND_TO_ETH_RATE = 80_000_000;
 
@@ -191,7 +191,7 @@ export class DeliveryBillsService {
   async confirm(
     id: number,
     userId: number,
-    paymentMethod: DeliveryPaymentMethod,
+    paymentMethod: string,
   ): Promise<DeliveryBill> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== DeliveryBillStatus.PENDING) throw new BadRequestException('Not pending');
@@ -210,10 +210,7 @@ export class DeliveryBillsService {
     const bill = await this.findOne(id, userId);
     if (bill.status !== DeliveryBillStatus.CONFIRMED) throw new BadRequestException('Not confirmed');
 
-    if (bill.paymentMethod === DeliveryPaymentMethod.WALLET) {
-      const ownerWalletAddress = bill.cooperation?.manager?.bankAccountNumber || (bill.vehicle?.cooperation as any)?.manager?.bankAccountNumber;
-      await this.processWalletPayment(bill, ownerWalletAddress);
-    }
+
 
     bill.status = DeliveryBillStatus.IN_TRANSIT;
     return this.billRepo.save(bill);
@@ -278,15 +275,7 @@ export class DeliveryBillsService {
     bill.total = formattedTotal;
   }
 
-  private async processWalletPayment(bill: DeliveryBill, ownerWalletAddress?: string) {
-    const amount = parseFloat(bill.total);
-    if (amount <= 0) return;
-    await this.walletService.lockFunds(bill.user.id, amount, `delivery:${bill.id}`);
-    if (ownerWalletAddress) {
-      const eth = (amount / VND_TO_ETH_RATE).toFixed(8);
-      await this.blockchainService.adminDepositForRental(bill.id, ownerWalletAddress, eth);
-    }
-  }
+
 
   private async processRefundOrRelease(bill: DeliveryBill, action: 'release' | 'refund', ownerUserId?: number) {
     const amount = parseFloat(bill.total);

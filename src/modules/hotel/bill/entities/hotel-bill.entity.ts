@@ -13,11 +13,7 @@ import { Cooperation } from '../../../cooperation/entities/cooperation.entity';
 import { HotelBillDetail } from './hotel-bill-detail.entity';
 import { Voucher } from '../../../voucher/entities/voucher.entity';
 
-export enum HotelPaymentMethod {
-  WALLET = 'wallet',
-  MOMO = 'momo',
-  QR_CODE = 'qr_code',
-}
+
 
 export enum HotelBillStatus {
   PENDING = 'pending',
@@ -88,13 +84,10 @@ export class HotelBill {
   })
   status: HotelBillStatus;
 
-  @Column({
-    type: 'enum',
-    enum: HotelPaymentMethod,
-    enumName: 'payment_method_enum',
-    nullable: true,
-  })
-  paymentMethod?: HotelPaymentMethod;
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  paymentMethod?: string;
+
+
 
   @Column({ nullable: true })
   contactName?: string;

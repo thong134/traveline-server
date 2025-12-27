@@ -41,12 +41,6 @@ export enum RentalProgressStatus {
   CANCELLED = 'cancelled',
 }
 
-export enum PaymentMethod {
-  WALLET = 'wallet',
-  MOMO = 'momo',
-  QR_CODE = 'qr_code',
-}
-
 @Entity('rental_bills')
 export class RentalBill {
   @PrimaryGeneratedColumn()
@@ -87,13 +81,10 @@ export class RentalBill {
   @Column({ length: 32, default: '1d' })
   durationPackage: string;
 
-  @Column({
-    type: 'enum',
-    enum: PaymentMethod,
-    enumName: 'payment_method_enum',
-    nullable: true,
-  })
-  paymentMethod?: PaymentMethod;
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  paymentMethod?: string;
+
+
 
   @Column({ nullable: true })
   contactName?: string;
