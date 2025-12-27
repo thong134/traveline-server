@@ -204,55 +204,101 @@ export class DestinationsService {
     limit: number = 50,
     offset: number = 0,
   ): Promise<Destination[]> {
-    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    const user = await this.usersRepo.findOne({
+      where: { id: userId },
+      relations: [
+        'travelRoutes',
+        'travelRoutes.stops',
+        'travelRoutes.stops.destination',
+        'feedbacks',
+        'feedbacks.destination',
+      ],
+    });
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
     }
 
-    // Map user hobbies to destination categories
+    // 1. Build Behavioral Profiles
+    const historyProfile: Record<string, number> = {};
+    const engagementProfile: Record<string, number> = {};
+
+    // Analyze History (TravelRoutes & Stops)
+    for (const route of user.travelRoutes || []) {
+      for (const stop of route.stops || []) {
+        if (stop.destination?.categories) {
+          for (const cat of stop.destination.categories) {
+            historyProfile[cat] = (historyProfile[cat] || 0) + 1;
+          }
+        }
+      }
+    }
+
+    // Analyze Engagement (Feedbacks)
+    for (const feedback of user.feedbacks || []) {
+      if (feedback.destination?.categories) {
+        for (const cat of feedback.destination.categories) {
+          engagementProfile[cat] = (engagementProfile[cat] || 0) + 1;
+        }
+      }
+    }
+
+    // 2. Call AI Service for Hybrid Ranking
+    const aiUrl =
+      this.configService.get<string>('AI_SERVICE_URL') ??
+      'http://localhost:8000';
+
+    try {
+      const payload = {
+        hobbies: user.hobbies || [],
+        favorites: user.favoriteDestinationIds || [],
+        history_profile: historyProfile,
+        engagement_profile: engagementProfile,
+        province,
+        limit,
+        offset,
+      };
+
+      const { data } = await firstValueFrom(
+        this.httpService.post(`${aiUrl}/recommend/destinations`, payload),
+      );
+
+      // 3. Map AI IDs back to Entities
+      if (Array.isArray(data) && data.length > 0) {
+        const ids = data.map((item: any) => Number(item.destinationId));
+        const destinations = await this.repo.find({ where: { id: In(ids) } });
+        // Restore order from AI ranking
+        const orderMap = new Map(ids.map((id, index) => [id, index]));
+        return destinations.sort(
+          (a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0),
+        );
+      }
+    } catch (e) {
+      console.error('AI Recommendation failed, falling back to basic scoring:', e.message);
+    }
+
+    // Fallback to basic scoring if AI is down (kept for robustness)
     const targetCategories = new Set<string>();
     for (const hobby of user.hobbies || []) {
       const mapped = this.hobbyToCategoryMap[hobby] || [];
       mapped.forEach((cat) => targetCategories.add(cat));
     }
 
-    // Build query
     const qb = this.repo.createQueryBuilder('destination');
     qb.where('destination.available = :available', { available: true });
-
-    if (province) {
-      qb.andWhere('destination.province ILIKE :province', { province: `%${province}%` });
-    }
-
-    // Get all matching destinations
+    if (province) qb.andWhere('destination.province ILIKE :province', { province: `%${province}%` });
     const allDestinations = await qb.getMany();
 
-    // Score each destination
     const scored = allDestinations.map((dest) => {
       let score = 0;
-
-      // Category match score (0.5 weight)
-      const categoryMatch = (dest.categories || []).some((cat) =>
-        targetCategories.has(cat),
-      );
+      const categoryMatch = (dest.categories || []).some((cat) => targetCategories.has(cat));
       if (categoryMatch) score += 0.5;
-
-      // Popularity score (0.3 weight) - normalize favouriteTimes
       const maxFav = Math.max(...allDestinations.map((d) => d.favouriteTimes || 0), 1);
       score += 0.3 * ((dest.favouriteTimes || 0) / maxFav);
-
-      // Rating score (0.2 weight) - normalize 0-5 rating
       score += 0.2 * ((dest.rating || 0) / 5);
-
-      // Bonus if user already favorited this destination
-      if (user.favoriteDestinationIds?.includes(dest.id.toString())) {
-        score += 0.1;
-      }
-
+      if (user.favoriteDestinationIds?.includes(dest.id.toString())) score += 0.1;
       return { destination: dest, score };
     });
 
-    // Sort by score descending and return top N
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(offset, offset + limit).map((s) => s.destination);
   }
@@ -262,9 +308,39 @@ export class DestinationsService {
     province?: string,
     limit: number = 50,
   ) {
-    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    const user = await this.usersRepo.findOne({
+      where: { id: userId },
+      relations: [
+        'travelRoutes',
+        'travelRoutes.stops',
+        'travelRoutes.stops.destination',
+        'feedbacks',
+        'feedbacks.destination',
+      ],
+    });
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const historyProfile: Record<string, number> = {};
+    const engagementProfile: Record<string, number> = {};
+
+    for (const route of user.travelRoutes || []) {
+      for (const stop of route.stops || []) {
+        if (stop.destination?.categories) {
+          for (const cat of stop.destination.categories) {
+            historyProfile[cat] = (historyProfile[cat] || 0) + 1;
+          }
+        }
+      }
+    }
+
+    for (const feedback of user.feedbacks || []) {
+      if (feedback.destination?.categories) {
+        for (const cat of feedback.destination.categories) {
+          engagementProfile[cat] = (engagementProfile[cat] || 0) + 1;
+        }
+      }
     }
 
     const aiUrl =
@@ -274,6 +350,8 @@ export class DestinationsService {
     const payload = {
       hobbies: user.hobbies || [],
       favorites: user.favoriteDestinationIds || [],
+      history_profile: historyProfile,
+      engagement_profile: engagementProfile,
       province,
       limit,
     };
