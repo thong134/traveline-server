@@ -220,6 +220,17 @@ export class HotelBillsService {
       } else {
         const voucher = await this.vouchersService.findByCode(dto.voucherCode);
         if (!voucher) throw new NotFoundException('Voucher not found');
+
+        // Check minOrderValue
+        if (voucher.minOrderValue) {
+          const baseTotal = bill.details.reduce((sum, d) => sum + parseFloat(d.total), 0);
+          if (baseTotal < parseFloat(voucher.minOrderValue)) {
+            throw new BadRequestException(
+              `Đơn hàng chưa đạt giá trị tối thiểu (${voucher.minOrderValue}) để sử dụng voucher này`,
+            );
+          }
+        }
+
         bill.voucher = voucher;
         bill.voucherId = voucher.id;
       }

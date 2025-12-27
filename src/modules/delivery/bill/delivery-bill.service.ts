@@ -172,6 +172,16 @@ export class DeliveryBillsService {
       } else {
         const voucher = await this.vouchersService.findByCode(dto.voucherCode);
         if (!voucher) throw new NotFoundException('Voucher not found');
+
+        // Check minOrderValue
+        if (voucher.minOrderValue) {
+          if (parseFloat(bill.subtotal) < parseFloat(voucher.minOrderValue)) {
+            throw new BadRequestException(
+              `Đơn hàng chưa đạt giá trị tối thiểu (${voucher.minOrderValue}) để sử dụng voucher này`,
+            );
+          }
+        }
+
         bill.voucher = voucher;
       }
     }

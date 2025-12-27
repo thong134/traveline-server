@@ -255,6 +255,17 @@ export class RentalBillsService {
       } else {
         const voucher = await this.vouchersService.findByCode(dto.voucherCode);
         if (!voucher) throw new NotFoundException('Voucher not found');
+
+        // Check minOrderValue
+        if (voucher.minOrderValue) {
+          const totalFromDetails = bill.details.reduce((sum, d) => sum + parseFloat(d.price), 0);
+          if (totalFromDetails < parseFloat(voucher.minOrderValue)) {
+            throw new BadRequestException(
+              `Đơn hàng chưa đạt giá trị tối thiểu (${voucher.minOrderValue}) để sử dụng voucher này`,
+            );
+          }
+        }
+
         bill.voucher = voucher;
         bill.voucherId = voucher.id;
       }
