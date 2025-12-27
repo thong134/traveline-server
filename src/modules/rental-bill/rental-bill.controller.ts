@@ -23,6 +23,7 @@ import { CreateRentalBillDto } from './dto/create-rental-bill.dto';
 import { UpdateRentalBillDto } from './dto/update-rental-bill.dto';
 import { ManageRentalBillVehicleDto } from './dto/manage-rental-bill-vehicle.dto';
 import { RentalOwnerCancelDto } from './dto/owner-cancel-bill.dto';
+import { PaymentResponseDto, QRCodeResponseDto } from './dto/payment-response.dto';
 import { RentalBillStatus, RentalProgressStatus } from './entities/rental-bill.entity';
 import {
   DeliveryActionDto,
@@ -88,6 +89,7 @@ export class RentalBillsController {
   @RequireVerification()
   @Patch(':id/pay')
   @ApiOperation({ summary: 'Thực hiện thanh toán' })
+  @ApiOkResponse({ type: PaymentResponseDto })
   pay(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
@@ -218,6 +220,7 @@ export class RentalBillsController {
 
   @Get(':id/payment-qr')
   @ApiOperation({ summary: 'Tạo mã QR thanh toán' })
+  @ApiOkResponse({ type: QRCodeResponseDto })
   generateQR(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
