@@ -12,6 +12,7 @@ import { Cooperation } from '../cooperation/entities/cooperation.entity';
 import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 import { FeedbackReply } from './entities/feedback-reply.entity';
 import { FeedbackReaction } from './entities/feedback-reaction.entity';
+import { AiModerationLog } from './entities/ai-moderation-log.entity';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { FeedbackReaction } from './entities/feedback-reaction.entity';
       Cooperation,
       FeedbackReply,
       FeedbackReaction,
+      AiModerationLog,
     ]),
   ],
   controllers: [FeedbackController],

@@ -31,6 +31,8 @@ interface FeedbackQueryOptions {
   offset?: number;
 }
 
+import { AiModerationLog } from './entities/ai-moderation-log.entity';
+
 @Injectable()
 export class FeedbackService {
   constructor(
@@ -50,24 +52,51 @@ export class FeedbackService {
     private readonly replyRepo: Repository<FeedbackReply>,
     @InjectRepository(FeedbackReaction)
     private readonly feedbackReactionRepo: Repository<FeedbackReaction>,
+    @InjectRepository(AiModerationLog)
+    private readonly moderationLogRepo: Repository<AiModerationLog>,
     private readonly cloudinary: CloudinaryService,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {}
 
+  async checkContent(userId: number, content: string) {
+    const trimmed = content?.trim();
+    if (!trimmed) {
+      return { decision: 'approved', reasons: [] };
+    }
+
+    let aiResult;
+    try {
+      aiResult = await this.coordinateModeration(trimmed);
+    } catch (e) {
+      console.error('Moderation API failed', e);
+      // Fallback: approve if AI fails? or allow manual?
+      // For now, return a safe fallback but log error
+      aiResult = { decision: 'approved', reasons: ['ai_error'] };
+    }
+
+    // Save log
+    const log = this.moderationLogRepo.create({
+      content: trimmed,
+      aiResponse: aiResult,
+      decision: aiResult.decision,
+      userId,
+    });
+    await this.moderationLogRepo.save(log);
+
+    return aiResult;
+  }
+
   async create(
     userId: number,
     dto: CreateFeedbackDto,
     mediaFiles?: { photos?: Express.Multer.File[]; videos?: Express.Multer.File[] },
-  ): Promise<{ feedback: Feedback; moderationResult?: Record<string, unknown> }> {
+  ): Promise<Feedback> {
     const resolved = await this.processMedia(dto, mediaFiles);
     
-    // Determine status via moderation
-    const { status, moderationResult } = await this.applyModeration(resolved);
+    // No internal moderation here anymore.
     
     const feedback = new Feedback();
-    feedback.status = status;
-    feedback.moderationDetails = moderationResult;
     
     // Assign user directly from JWT
     const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -80,8 +109,21 @@ export class FeedbackService {
     const saved = await this.feedbackRepo.save(feedback);
     await this.recalculateDestinationRating(saved.destination?.id);
     await this.recalculateTravelRouteRating(saved.travelRoute?.id);
-    const feedbackEntity = await this.findOne(saved.id);
-    return { feedback: feedbackEntity, moderationResult };
+    return this.findOne(saved.id);
+  }
+
+  // Helper to call AI
+  async coordinateModeration(text: string) {
+     const baseUrl =
+      this.configService.get<string>('AI_REVIEW_BASE_URL') ??
+      this.configService.get<string>('AI_SERVICE_URL') ??
+      'http://localhost:8000';
+    
+    const observable = this.httpService.post(`${baseUrl}/moderation/predict`, {
+      text,
+    });
+    const response: AxiosResponse = await lastValueFrom(observable);
+    return response.data;
   }
 
   async findAll(options: FeedbackQueryOptions = {}): Promise<Feedback[]> {
@@ -89,7 +131,7 @@ export class FeedbackService {
       userId,
       destinationId,
       travelRouteId,
-      status,
+      status, // This param might be redundant now if we don't have status col, but let's see logic
       limit = 50,
       offset = 0,
     } = options;
@@ -120,9 +162,7 @@ export class FeedbackService {
       });
     }
 
-    if (status) {
-      qb.andWhere('feedback.status = :status', { status });
-    }
+    // if (status) { ... } -> Status column removed, so filter is invalid. Removing logic.
 
     return qb.getMany();
   }
@@ -177,9 +217,7 @@ export class FeedbackService {
       .select('COUNT(feedback.id)', 'count')
       .addSelect('COALESCE(SUM(feedback.star), 0)', 'sum')
       .where('feedback.travel_route_id = :travelRouteId', { travelRouteId })
-      .andWhere('feedback.status IN (:...statuses)', {
-        statuses: ['pending', 'approved'],
-      })
+      // Removed status check
       .getRawOne<{ count: string; sum: string }>();
 
     const count = Number(aggregation?.count ?? 0);
@@ -200,9 +238,8 @@ export class FeedbackService {
     feedback: Feedback,
     dto: Partial<CreateFeedbackDto>,
   ): Promise<void> {
+    // ... existing logic ...
     // userId is handled by the caller (create method)
-
-
     if (dto.travelRouteId) {
       const route = await this.travelRouteRepo.findOne({
         where: { id: dto.travelRouteId },
@@ -313,9 +350,7 @@ export class FeedbackService {
         licensePlate: params.licensePlate,
       });
     }
-    if (params.status) {
-      qb.andWhere('feedback.status = :status', { status: params.status });
-    }
+    // removed status filter
 
     return qb.getMany();
   }
@@ -424,9 +459,7 @@ export class FeedbackService {
       .select('COUNT(feedback.id)', 'count')
       .addSelect('COALESCE(SUM(feedback.star), 0)', 'sum')
       .where('feedback.destination_id = :destinationId', { destinationId })
-      .andWhere('feedback.status IN (:...statuses)', {
-        statuses: ['pending', 'approved'],
-      })
+      // Removed status check
       .getRawOne<{ count: string; sum: string }>();
 
     const count = Number(aggregation?.count ?? 0);
@@ -448,46 +481,8 @@ export class FeedbackService {
     await this.destinationRepo.save(destination);
   }
 
-  async moderateComment(comment?: string) {
-    const baseUrl =
-      this.configService.get<string>('AI_REVIEW_BASE_URL') ??
-      this.configService.get<string>('AI_SERVICE_URL') ??
-      'http://localhost:8000';
-    const trimmed = comment?.trim();
-    if (!trimmed) {
-      throw new BadRequestException('comment is required');
-    }
-    const observable = this.httpService.post(`${baseUrl}/moderation/predict`, {
-      text: trimmed,
-    });
-    const response: AxiosResponse = await lastValueFrom(observable);
-    return response.data;
-  }
+  // moderateComment removed or replaced by coordinateModeration
 
-  private async applyModeration(
-    dto: CreateFeedbackDto,
-  ): Promise<{ status: string; moderationResult?: Record<string, unknown> }> {
-    // Default status is 'approved' if no comment or moderation passes
-    if (!dto.comment) return { status: 'approved' };
-    
-    try {
-      const result = await this.moderateComment(dto.comment);
-      const decision: string = result?.decision;
-      
-      let status = 'approved';
-      if (decision === 'reject') {
-        status = 'rejected';
-      } else if (decision === 'manual_review') {
-        status = 'approved'; // User requested manual_review to be approved
-      }
-      // 'approve' keeps it as 'approved'
-      
-      return { status, moderationResult: result };
-    } catch {
-      // If moderation fails, fallback to 'pending' to be safe
-      return { status: 'pending' };
-    }
-  }
 
   private async processMedia(
     dto: CreateFeedbackDto,

@@ -75,18 +75,6 @@ export class Feedback {
   comment?: string;
 
   @ApiProperty()
-  @Column({
-    type: 'enum',
-    enum: ['pending', 'approved', 'rejected'],
-    default: 'approved',
-  })
-  status: string;
-
-  @ApiProperty({ required: false })
-  @Column({ type: 'jsonb', nullable: true })
-  moderationDetails?: Record<string, any>;
-
-  @ApiProperty()
   @Column('text', { array: true, default: '{}' })
   photos: string[] = [];
 

@@ -41,6 +41,23 @@ type FeedbackMediaFiles = {
 export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 
+  @Post('check-content')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Kiểm tra nội dung feedback với AI (để cảnh báo user)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['content'],
+      properties: { content: { type: 'string' } },
+    },
+  })
+  checkContent(
+    @Body('content') content: string,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.feedbackService.checkContent(user.userId, content);
+  }
+
   @Post()
   @RequireAuth()
   @ApiConsumes('multipart/form-data')
@@ -84,7 +101,6 @@ export class FeedbackController {
       type: 'object',
       properties: {
         feedback: { $ref: '#/components/schemas/Feedback' },
-        moderationResult: { type: 'object', nullable: true },
       },
     },
   })
@@ -109,20 +125,17 @@ export class FeedbackController {
   @ApiQuery({ name: 'travelRouteId', required: false, type: Number })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
   @ApiQuery({ name: 'licensePlate', required: false, type: String })
-  @ApiQuery({ name: 'status', required: false, type: String })
   findByObject(
     @Query('destinationId') destinationId?: string,
     @Query('travelRouteId') travelRouteId?: string,
     @Query('cooperationId') cooperationId?: string,
     @Query('licensePlate') licensePlate?: string,
-    @Query('status') status?: string,
   ) {
     return this.feedbackService.findByObject({
       destinationId: destinationId ? Number(destinationId) : undefined,
       travelRouteId: travelRouteId ? Number(travelRouteId) : undefined,
       cooperationId: cooperationId ? Number(cooperationId) : undefined,
       licensePlate: licensePlate || undefined,
-      status: status || undefined,
     });
   }
 
