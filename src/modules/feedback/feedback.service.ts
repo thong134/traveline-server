@@ -478,7 +478,7 @@ export class FeedbackService {
       if (decision === 'reject') {
         status = 'rejected';
       } else if (decision === 'manual_review') {
-        status = 'pending';
+        status = 'approved'; // User requested manual_review to be approved
       }
       // 'approve' keeps it as 'approved'
       
