@@ -201,7 +201,7 @@ export class DestinationsService {
   async recommendForUser(
     userId: number,
     province?: string,
-    limit: number = 10,
+    limit: number = 50,
     offset: number = 0,
   ): Promise<Destination[]> {
     const user = await this.usersRepo.findOne({ where: { id: userId } });
@@ -260,7 +260,7 @@ export class DestinationsService {
   async inspectRecommendation(
     userId: number,
     province?: string,
-    limit: number = 10,
+    limit: number = 50,
   ) {
     const user = await this.usersRepo.findOne({ where: { id: userId } });
     if (!user) {

@@ -127,7 +127,7 @@ export class DestinationsController {
     return this.destinationsService.recommendForUser(
       user.userId,
       province,
-      limit ? Number(limit) : 10,
+      limit ? Number(limit) : 50,
       offset ? Number(offset) : 0,
     );
   }
@@ -141,7 +141,7 @@ export class DestinationsController {
       type: 'object',
       properties: {
         province: { type: 'string' },
-        limit: { type: 'number', default: 10 },
+        limit: { type: 'number', default: 50 },
       },
     },
   })
