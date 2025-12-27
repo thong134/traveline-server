@@ -7,9 +7,13 @@ import { RentalBill } from '../rental-bill/entities/rental-bill.entity';
 import { User } from '../user/entities/user.entity';
 import { Payout } from './entities/payout.entity';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Payment, RentalBill, User, Payout])],
+  imports: [
+    TypeOrmModule.forFeature([Payment, RentalBill, User, Payout]),
+    WalletModule,
+  ],
   providers: [PaymentService, RolesGuard],
   controllers: [PaymentController],
   exports: [PaymentService],

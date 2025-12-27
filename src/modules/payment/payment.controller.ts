@@ -9,12 +9,11 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { UserRole } from '../user/entities/user-role.enum';
 
 @ApiTags('payments')
-@RequireAuth()
-@UseGuards(RolesGuard)
 @Controller('payments')
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
+  @RequireAuth()
   @Post('momo/create')
   @ApiOperation({ summary: 'Tạo yêu cầu thanh toán MoMo cho rental' })
   createMomo(@Body() body: { rentalId: number; amount: number }) {
@@ -33,12 +32,14 @@ export class PaymentController {
     return this.paymentService.handleMomoIpn(payload);
   }
 
+  @RequireAuth(UserRole.Admin)
   @Post('momo/refund/:id')
   @ApiOperation({ summary: 'Refund MoMo theo paymentId' })
   refund(@Param('id', ParseIntPipe) id: number) {
     return this.paymentService.refundMomo(id);
   }
 
+  @RequireAuth()
   @Post('qr/confirm')
   @ApiOperation({ summary: 'Xác nhận thanh toán QR (thủ công/webhook)' })
   confirmQr(@Body() body: { paymentId?: number; rentalId: number; amount?: number }) {
@@ -52,6 +53,7 @@ export class PaymentController {
     });
   }
 
+  @RequireAuth()
   @Post('payouts/:ownerId')
   @ApiOperation({ summary: 'Danh sách payout của chủ xe' })
   listPayouts(
@@ -64,6 +66,7 @@ export class PaymentController {
     return this.paymentService.listPayoutsByOwner(ownerId);
   }
 
+  @RequireAuth(UserRole.Admin)
   @Post('payouts/:id/status')
   @ApiOperation({ summary: 'Cập nhật trạng thái payout (admin/internal)' })
   updatePayoutStatus(

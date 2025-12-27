@@ -7,6 +7,7 @@ import { RentalBill, RentalBillStatus, RentalProgressStatus } from '../rental-bi
 import { User } from '../user/entities/user.entity';
 import axios from 'axios';
 import { createHmac } from 'crypto';
+import { WalletService } from '../wallet/wallet.service';
 
 interface CreateMomoPaymentParams {
   rentalId: number;
@@ -65,6 +66,7 @@ export class PaymentService {
     private readonly rentalRepo: Repository<RentalBill>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly walletService: WalletService,
   ) {}
 
   async createMomoPayment(params: CreateMomoPaymentParams): Promise<{ payUrl: string; paymentId: number; }> {
@@ -261,6 +263,21 @@ export class PaymentService {
 
     const rental = await this.rentalRepo.findOne({ where: { id: payment.rentalId } });
     if (rental) {
+      // 1. Wallet escrow: Deposit from MoMo and Lock for rental
+      try {
+        const amountNum = parseFloat(payment.amount);
+        if (amountNum > 0) {
+          await this.walletService.deposit(rental.userId, amountNum, `momo:${transId ?? orderId}`);
+          await this.walletService.lockFunds(rental.userId, amountNum, `rental:${rental.id}`);
+          this.logger.log(`Escrowed ${amountNum} for rental ${rental.id} via MoMo IPN`);
+        }
+      } catch (err) {
+        this.logger.error(`Failed to escrow funds for rental ${rental.id}: ${err.message}`);
+        // Let it throw so MoMo retries
+        throw err;
+      }
+
+      // 2. Travel Points deduction
       if (rental.travelPointsUsed && rental.travelPointsUsed > 0) {
         const user = await this.userRepo.findOne({ where: { id: rental.userId } });
         if (user) {
@@ -272,6 +289,7 @@ export class PaymentService {
         await this.rentalRepo.update(rental.id, { travelPointsUsed: 0 });
       }
 
+      // 3. Update Bill Status
       await this.rentalRepo.update(payment.rentalId, {
         status: RentalBillStatus.PAID,
         rentalStatus: RentalProgressStatus.BOOKED,
