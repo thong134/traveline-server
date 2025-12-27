@@ -22,7 +22,8 @@ import { assertImageFile, assertVideoFile } from '../../common/upload/image-uplo
 import { randomUUID } from 'crypto';
 import type { Express } from 'express';
 import { firstValueFrom } from 'rxjs';
-import { SuggestTravelRouteDto } from './dto/suggest-travel-route.dto';
+import { AdvancedSuggestTravelRouteDto } from './dto/advanced-suggest-travel-route.dto';
+import { QuickSuggestTravelRouteDto } from './dto/quick-suggest-travel-route.dto';
 
 interface TravelRouteQueryOptions {
   q?: string;
@@ -1265,35 +1266,35 @@ export class TravelRoutesService {
     return hours * 60 + minutes;
   }
 
-  async suggestRoute(userId: number, dto: SuggestTravelRouteDto): Promise<unknown> {
-    // Fetch user for hobbies and favorites
+  async suggestQuick(userId: number, dto: QuickSuggestTravelRouteDto): Promise<unknown> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException(`User ${userId} not found`);
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+
+    const uniqueHobbies = this.mapHobbiesToCategories(user.hobbies || []);
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post('/recommend/route', {
+          hobbies: uniqueHobbies,
+          favorites: user.favoriteDestinationIds || [],
+          province: dto.province,
+          startDate: dto.startDate,
+          endDate: dto.endDate,
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      this.handleAiServiceError(error);
     }
+  }
 
-    // Hobby to category mapping for AI service
-    const hobbyToCategoryMap: Record<string, string[]> = {
-      'Adventure': ['Thiên nhiên'],
-      'Relaxation': ['Thiên nhiên', 'Giải trí'],
-      'Culture&History': ['Công trình', 'Văn hóa', 'Lịch sử'],
-      'Entertainment': ['Giải trí'],
-      'Nature': ['Thiên nhiên'],
-      'Beach&Islands': ['Biển'],
-      'Mountain&Forest': ['Núi'],
-      'Photography': ['Thiên nhiên', 'Công trình'],
-      'Foods&Drinks': ['Công trình', 'Văn hóa'],
-    };
+  async suggestAdvanced(userId: number, dto: AdvancedSuggestTravelRouteDto): Promise<unknown> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
 
-    // Map user hobbies to categories for AI
-    const aiHobbies: string[] = [];
-    for (const hobby of user.hobbies || []) {
-      const mapped = hobbyToCategoryMap[hobby] || [];
-      aiHobbies.push(...mapped);
-    }
-    const uniqueHobbies = [...new Set(aiHobbies)];
+    const uniqueHobbies = this.mapHobbiesToCategories(user.hobbies || []);
 
-    // If startDate/endDate provided, use new AI route endpoint
+    // If dates provided, use new AI route endpoint
     if (dto.startDate && dto.endDate && dto.province) {
       try {
         const startCoords = dto.startCoordinates;
@@ -1310,22 +1311,12 @@ export class TravelRoutesService {
         );
         return response.data;
       } catch (error) {
-        const axiosError = error as AxiosError<{ detail?: string; error?: string }>;
-        if (axiosError.response) {
-          const status = axiosError.response.status;
-          const detail = axiosError.response.data?.detail ?? axiosError.response.data?.error ?? axiosError.message;
-          if (status >= 400 && status < 500) {
-            throw new BadRequestException(detail);
-          }
-          throw new ServiceUnavailableException(detail);
-        }
-        throw new ServiceUnavailableException('Không thể kết nối tới AI route service');
+        this.handleAiServiceError(error);
       }
     }
 
-    // Fallback to old API format for backward compatibility
+    // Fallback to legacy router
     const startPayload = await this.buildStartPayload(dto);
-
     const destinationIds = dto.destinationIds?.length
       ? await this.ensureDestinationsExist(dto.destinationIds)
       : undefined;
@@ -1347,20 +1338,45 @@ export class TravelRoutesService {
       );
       return response.data;
     } catch (error) {
-      const axiosError = error as AxiosError<{ detail?: string }>;
-      if (axiosError.response) {
-        const status = axiosError.response.status;
-        const detail = axiosError.response.data?.detail ?? axiosError.message;
-        if (status >= 400 && status < 500) {
-          throw new BadRequestException(detail);
-        }
-        throw new ServiceUnavailableException(detail);
-      }
-      throw new ServiceUnavailableException('Không thể kết nối tới AI route service');
+      this.handleAiServiceError(error);
     }
   }
 
-  private async buildStartPayload(dto: SuggestTravelRouteDto): Promise<{
+  private mapHobbiesToCategories(userHobbies: string[]): string[] {
+    const hobbyToCategoryMap: Record<string, string[]> = {
+      'Adventure': ['Thiên nhiên'],
+      'Relaxation': ['Thiên nhiên', 'Giải trí'],
+      'Culture&History': ['Công trình', 'Văn hóa', 'Lịch sử'],
+      'Entertainment': ['Giải trí'],
+      'Nature': ['Thiên nhiên'],
+      'Beach&Islands': ['Biển'],
+      'Mountain&Forest': ['Núi'],
+      'Photography': ['Thiên nhiên', 'Công trình'],
+      'Foods&Drinks': ['Công trình', 'Văn hóa'],
+    };
+
+    const aiHobbies: string[] = [];
+    for (const hobby of userHobbies) {
+      const mapped = hobbyToCategoryMap[hobby] || [];
+      aiHobbies.push(...mapped);
+    }
+    return [...new Set(aiHobbies)];
+  }
+
+  private handleAiServiceError(error: any) {
+    const axiosError = error as AxiosError<{ detail?: string; error?: string }>;
+    if (axiosError.response) {
+      const status = axiosError.response.status;
+      const detail = axiosError.response.data?.detail ?? axiosError.response.data?.error ?? axiosError.message;
+      if (status >= 400 && status < 500) {
+        throw new BadRequestException(detail);
+      }
+      throw new ServiceUnavailableException(detail);
+    }
+    throw new ServiceUnavailableException('Không thể kết nối tới AI route service');
+  }
+
+  private async buildStartPayload(dto: AdvancedSuggestTravelRouteDto): Promise<{
     startDestinationId?: string;
     startCoordinates?: { latitude: number; longitude: number };
     startLabel?: string;

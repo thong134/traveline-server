@@ -22,7 +22,7 @@ class CoordinatesDto {
   longitude: number;
 }
 
-export class SuggestTravelRouteDto {
+export class AdvancedSuggestTravelRouteDto {
   @ApiPropertyOptional({ description: 'ID điểm bắt đầu (ưu tiên nếu cung cấp)' })
   @IsOptional()
   @IsInt()

@@ -38,7 +38,8 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { RouteStopDto } from './dto/route-stop.dto';
 import { DeleteStopMediaDto } from './dto/delete-stop-media.dto';
-import { SuggestTravelRouteDto } from './dto/suggest-travel-route.dto';
+import { AdvancedSuggestTravelRouteDto } from './dto/advanced-suggest-travel-route.dto';
+import { QuickSuggestTravelRouteDto } from './dto/quick-suggest-travel-route.dto';
 
 type RouteStopMediaFiles = {
   images?: Express.Multer.File[];
@@ -204,15 +205,26 @@ export class TravelRoutesController {
     );
   }
 
-  @Post('suggest')
+  @Post('suggest/quick')
   @RequireAuth()
-  @ApiOperation({ summary: 'Đề xuất lộ trình du lịch dựa trên AI' })
+  @ApiOperation({ summary: 'Đề xuất lộ trình du lịch nhanh (Chỉ cần Tỉnh và Ngày)' })
   @ApiOkResponse({ description: 'Lộ trình đề xuất' })
-  suggestRoute(
-    @Body() dto: SuggestTravelRouteDto,
+  suggestQuick(
+    @Body() dto: QuickSuggestTravelRouteDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.travelRoutesService.suggestRoute(user.userId, dto);
+    return this.travelRoutesService.suggestQuick(user.userId, dto);
+  }
+
+  @Post('suggest/advanced')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Đề xuất lộ trình du lịch nâng cao (Tùy chỉnh điểm dừng, tọa độ)' })
+  @ApiOkResponse({ description: 'Lộ trình đề xuất' })
+  suggestAdvanced(
+    @Body() dto: AdvancedSuggestTravelRouteDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.travelRoutesService.suggestAdvanced(user.userId, dto);
   }
 
   @Get('me')
