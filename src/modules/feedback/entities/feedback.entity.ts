@@ -75,6 +75,14 @@ export class Feedback {
   comment?: string;
 
   @ApiProperty()
+  @Column({
+    type: 'enum',
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'approved',
+  })
+  status: string;
+
+  @ApiProperty()
   @Column('text', { array: true, default: '{}' })
   photos: string[] = [];
 

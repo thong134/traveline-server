@@ -7,6 +7,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   Content,
@@ -15,6 +16,7 @@ import {
   GoogleGenerativeAI,
 } from '@google/generative-ai';
 import axios from 'axios';
+import { firstValueFrom } from 'rxjs';
 import { IsNull, Repository } from 'typeorm';
 import { Destination } from '../destination/entities/destinations.entity';
 import { Cooperation } from '../cooperation/entities/cooperation.entity';
@@ -23,6 +25,7 @@ import { ChatUserProfile } from './entities/chat-user-profile.entity';
 import { ChatMessage } from './entities/chat-message.entity';
 import { User } from '../user/entities/user.entity';
 import { ChatImageAttachmentDto } from './dto/chat-request.dto';
+import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 
 type ChatIntent =
   | 'destination'
@@ -33,6 +36,7 @@ type ChatIntent =
   | 'booking_help'
   | 'transport'
   | 'image_request'
+  | 'image_classify'
   | 'profile_update'
   | 'other';
 
@@ -48,11 +52,13 @@ type Classification = {
 };
 
 type ChatResultItem = {
+  id?: number; // For frontend linking
   name: string;
   address?: string;
   description?: string;
   type: 'destination' | 'restaurant' | 'hotel';
   images?: string[];
+  categories?: string[]; // For image classification results
 };
 
 type ChatImagePayload = {
@@ -114,7 +120,7 @@ const MAX_RECENT_SEARCHES = 10;
 
 @Injectable()
 export class ChatService {
-  private readonly modelName = 'gemini-2.5-flash';
+  private readonly modelName = 'gemini-2.0-flash';
   private readonly visionModelName = 'gemini-2.0-flash';
   private readonly historyLimit = 6;
   private readonly modelPool = new Map<string, GenerativeModel>();
@@ -122,6 +128,8 @@ export class ChatService {
 
   constructor(
     private readonly configService: ConfigService,
+    private readonly httpService: HttpService,
+    private readonly cloudinaryService: CloudinaryService,
     @InjectRepository(Destination)
     private readonly destinationRepo: Repository<Destination>,
     @InjectRepository(Cooperation)
@@ -181,11 +189,26 @@ export class ChatService {
       : null;
     const profileSummary = this.buildProfileSummary(profile);
 
-    const classification = await this.classifyMessage(
-      message,
-      history,
-      profileSummary,
-    );
+    // If images are attached, bypass AI classification to save quota
+    // and directly assign 'image_classify' intent.
+    let classification: Classification;
+    if (attachments.length > 0) {
+      classification = {
+        intent: 'image_classify',
+        keywords: [],
+        regions: [],
+        categories: [],
+        followUp: false,
+        imageRequested: false,
+      };
+    } else {
+      classification = await this.classifyMessage(
+        message,
+        history,
+        profileSummary,
+      );
+    }
+
     const enrichedClassification = this.enrichClassificationWithHistory(
       classification,
       historyEntities,
@@ -257,6 +280,16 @@ export class ChatService {
     preferredLang: ChatLanguage,
     context: ChatRuntimeContext,
   ): Promise<ChatResponse> {
+    // Auto-detect image classification when user uploads image
+    if (context.attachments.length > 0 && classification.intent !== 'image_request') {
+      return this.handleImageClassification(
+        classification,
+        message,
+        preferredLang,
+        context,
+      );
+    }
+
     switch (classification.intent) {
       case 'destination':
         return this.handleDestinationQuery(
@@ -281,6 +314,13 @@ export class ChatService {
         );
       case 'image_request':
         return this.handleImageRequest(
+          classification,
+          message,
+          preferredLang,
+          context,
+        );
+      case 'image_classify':
+        return this.handleImageClassification(
           classification,
           message,
           preferredLang,
@@ -528,6 +568,205 @@ export class ChatService {
       text: caption,
       images: preparedImages,
     };
+  }
+
+  // AI Image Class to Vietnamese Category mapping
+  private readonly aiClassToCategoryMap: Record<string, string[]> = {
+    'forest': ['Thiên nhiên'],
+    'architecture_site': ['Lịch sử', 'Công trình'],
+    'urban_life': ['Giải trí', 'Văn hóa'],
+    'beach': ['Biển'],
+    'mountain': ['Núi'],
+  };
+
+  private async handleImageClassification(
+    classification: Classification,
+    message: string,
+    lang: ChatLanguage,
+    context: ChatRuntimeContext,
+  ): Promise<ChatResponse> {
+    if (!context.attachments.length) {
+      return this.generateConversationalReply(message, lang, 'image_classify', {
+        history: context.history,
+        profileSummary: context.profileSummary,
+        databaseMiss: true,
+      });
+    }
+
+    try {
+      const attachment = context.attachments[0];
+      
+      // Step 1: Upload image to Cloudinary
+      console.log('[Chatbot] Uploading image to Cloudinary...');
+      const uploadResult = await this.cloudinaryService.uploadBase64Image(
+        `data:${attachment.mimeType};base64,${attachment.base64}`,
+        'chatbot_images',
+      );
+      const imageUrl = uploadResult.secure_url;
+      console.log('[Chatbot] Image uploaded:', imageUrl);
+
+      // Step 2: Call our AI service for classification (NOT Gemini)
+      const aiServiceUrl = this.configService.get<string>('AI_SERVICE_URL') || 'http://localhost:8000';
+      console.log('[Chatbot] Calling AI service for classification...');
+      
+      let classifiedCategory = 'urban_life';
+      try {
+        const classifyResponse = await firstValueFrom(
+          this.httpService.post(`${aiServiceUrl}/vision/classify`, { imageUrl }),
+        );
+        classifiedCategory = classifyResponse.data?.class || classifyResponse.data?.predicted_class || 'urban_life';
+        console.log('[Chatbot] AI classified as:', classifiedCategory);
+      } catch (aiError) {
+        console.warn('[Chatbot] AI classification failed, using fallback:', aiError);
+        // If AI service fails, try to infer from user message
+        if (message.toLowerCase().includes('biển') || message.toLowerCase().includes('beach')) {
+          classifiedCategory = 'beach';
+        } else if (message.toLowerCase().includes('núi') || message.toLowerCase().includes('mountain')) {
+          classifiedCategory = 'mountain';
+        }
+      }
+      
+      // Step 3: Map to Vietnamese categories
+      const targetCategories = this.aiClassToCategoryMap[classifiedCategory] || ['Thiên nhiên'];
+      console.log('[Chatbot] Mapped to categories:', targetCategories);
+
+      // Step 4: Find destinations with matching categories
+      const destinations = await this.findDestinationsByCategories(
+        targetCategories,
+        context.profile,
+      );
+
+      if (!destinations.length) {
+        const noResultText = lang === 'en'
+          ? `I analyzed your image and it looks like a ${classifiedCategory} location. Unfortunately, I couldn't find similar places in our database.`
+          : `Tôi đã phân tích ảnh của bạn và đây có vẻ là địa điểm loại "${classifiedCategory}". Tiếc là chưa tìm thấy địa điểm tương tự trong hệ thống.`;
+        
+        return {
+          source: 'ai',
+          text: noResultText,
+          images: [{ source: 'user', url: imageUrl }],
+        };
+      }
+
+      const mapped: ChatResultItem[] = destinations.slice(0, MAX_SUGGESTION_ITEMS).map((dest) => ({
+        id: dest.id,
+        name: dest.name,
+        address: this.joinAddress([dest.specificAddress, dest.province]),
+        description: lang === 'en'
+          ? (dest.descriptionEng ?? dest.descriptionViet ?? undefined)
+          : (dest.descriptionViet ?? dest.descriptionEng ?? undefined),
+        type: 'destination' as const,
+        images: dest.photos.slice(0, 2),
+        categories: dest.categories,
+      }));
+
+      // Step 5: Ask Gemini to generate a natural response
+      let resultText = '';
+      try {
+        const placesInfo = mapped
+          .map((d, i) => `${i + 1}. ${d.name} (${d.address})`)
+          .join('\n');
+        
+        const responsePrompt = lang === 'en'
+          ? `I have analyzed the user's image and identified it as a "${classifiedCategory}" scene.\nBased on this, I found these similar destinations in our database:\n${placesInfo}\n\nPlease write a short, helpful, and natural response to the user.\n- Mention that their image looks like a ${classifiedCategory} location.\n- Briefly introduce these places as recommendations.\n- Keep the tone friendly and encouraging.`
+          : `Tôi đã phân tích ảnh của người dùng và nhận diện đây là khung cảnh thuộc loại "${classifiedCategory}".\nDựa vào đó, tôi tìm thấy các địa điểm tương tự trong cơ sở dữ liệu:\n${placesInfo}\n\nHãy viết một câu trả lời ngắn gọn, hữu ích và tự nhiên cho người dùng.\n- Nhắc rằng ảnh của họ trông giống địa điểm loại ${classifiedCategory}.\n- Giới thiệu ngắn gọn các địa điểm này như là gợi ý phù hợp.\n- Giữ giọng điệu thân thiện, hào hứng.`;
+
+        const modelResponse = await this.performModelCall(
+          (model) => model.generateContent(responsePrompt),
+          this.modelName,
+        );
+        resultText = this.extractText(modelResponse);
+      } catch (genError) {
+        console.warn('[Chatbot] Failed to generate text with Gemini, using fallback:', genError);
+        
+        // Improved Fallback Templates (No API call needed)
+        const beachTemplates = [
+          `Ảnh của bạn đẹp quá, nhìn giống như một bãi biển tuyệt vời! 🌊 Nếu bạn thích biển, mình nghĩ bạn sẽ mê ngay những địa điểm này:`,
+          `Có vẻ bạn đang tìm kiếm "vitamin sea" đúng không? 🏖️ Mình tìm thấy vài bãi biển siêu xinh này cho bạn nè:`,
+        ];
+        const mountainTemplates = [
+          `Khung cảnh núi non hùng vĩ quá! 🏔️ Dưới đây là những ngọn núi và đồi nổi tiếng mà mình nghĩ bạn nên thử chinh phục:`,
+          `Nhìn ảnh là thấy không khí trong lành của núi rừng rồi! 🌲 Bạn tham khảo thử mấy địa điểm leo núi cực chill này nhé:`,
+        ];
+        const natureTemplates = [
+          `Một bức ảnh thiên nhiên thật yên bình! 🍃 Mình đã lọc ra vài địa điểm xanh mát tương tự để bạn hòa mình vào thiên nhiên đây:`,
+        ];
+        const architectureTemplates = [
+          `Kiến trúc trong ảnh thật ấn tượng! 🏛️ Nếu bạn yêu thích lịch sử và văn hóa, đừng bỏ qua những địa danh nổi tiếng này nhé:`,
+        ];
+        const urbanTemplates = [
+          `Nhịp sống đô thị sôi động quá! 🏙️ Mình có vài gợi ý về các điểm vui chơi giải trí trong thành phố cho bạn đây:`,
+        ];
+
+        let templates = natureTemplates; // Default
+        if (classifiedCategory === 'beach') templates = beachTemplates;
+        if (classifiedCategory === 'mountain') templates = mountainTemplates;
+        if (classifiedCategory === 'architecture_site') templates = architectureTemplates;
+        if (classifiedCategory === 'urban_life') templates = urbanTemplates;
+
+        const randomIntro = templates[Math.floor(Math.random() * templates.length)];
+        const listText = mapped.map((d, i) => `${i + 1}. ${d.name}`).join('\n');
+        
+        resultText = `${randomIntro}\n${listText}`;
+      }
+
+      const dbImages = await this.prepareImagePayloads(
+        mapped.flatMap((item) => item.images ?? []),
+        'destination',
+      );
+
+      return {
+        source: 'database',
+        data: mapped,
+        text: resultText,
+        images: [
+          { source: 'user', url: imageUrl },
+          ...dbImages,
+        ],
+      };
+    } catch (error) {
+      console.error('Image classification error:', error);
+      return this.generateConversationalReply(message, lang, 'image_classify', {
+        history: context.history,
+        profileSummary: context.profileSummary,
+        databaseMiss: true,
+      });
+    }
+  }
+
+  private async findDestinationsByCategories(
+    categories: string[],
+    profile?: ChatUserProfile | null,
+  ): Promise<Destination[]> {
+    const qb = this.destinationRepo.createQueryBuilder('destination');
+    qb.where('destination.available = :available', { available: true });
+
+    // Match any of the categories
+    if (categories.length) {
+      qb.andWhere('destination.categories && ARRAY[:...cats]::text[]', {
+        cats: categories,
+      });
+    }
+
+    // Optionally filter by user's preferred regions
+    if (profile?.preferredRegions?.length) {
+      const regionClauses = profile.preferredRegions
+        .slice(0, 3)
+        .map((_, i) => `destination.province ILIKE :region${i}`);
+      
+      if (regionClauses.length) {
+        qb.andWhere(`(${regionClauses.join(' OR ')})`);
+        profile.preferredRegions.slice(0, 3).forEach((region, i) => {
+          qb.setParameter(`region${i}`, `%${region}%`);
+        });
+      }
+    }
+
+    return qb
+      .orderBy('destination.favouriteTimes', 'DESC')
+      .addOrderBy('destination.rating', 'DESC')
+      .take(10)
+      .getMany();
   }
 
   private async searchDestinations(terms: string[]): Promise<Destination[]> {
@@ -1376,6 +1615,7 @@ export class ChatService {
       const model = this.getModel(modelName);
       return await call(model);
     } catch (error) {
+      console.error('[Gemini Error]', error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -1401,30 +1641,54 @@ export class ChatService {
     const apiKey =
       this.configService.get<string>('gemini.apiKey') ??
       this.configService.get<string>('services.gemini.apiKey') ??
-      process.env.GEMINI_API_KEY;
+      process.env.GEMINI_API_KEY ??
+      process.env.GOOGLE_GENAI_API_KEY;
     if (!apiKey) {
       throw new ServiceUnavailableException(
         'Gemini API key is not configured.',
       );
     }
+    // Log masked key for debugging
+    const maskedKey = apiKey.slice(0, 6) + '...' + apiKey.slice(-4);
+    console.log(`[Gemini] Using API key: ${maskedKey}`);
+    
     this.geminiClient = new GoogleGenerativeAI(apiKey);
     return this.geminiClient;
   }
-
   private extractText(result: GenerateContentResult | undefined): string {
     if (!result) {
       return '';
     }
-    const candidates = result.response?.candidates ?? [];
-    for (const candidate of candidates) {
-      const parts = candidate.content?.parts ?? [];
-      for (const part of parts) {
-        if (part.text) {
-          return part.text.trim();
-        }
-      }
+    return result.response.text();
+  }
+
+  // Public method for testing image classification directly
+  async classifyImageOnly(file: Express.Multer.File): Promise<any> {
+    try {
+      // 1. Upload
+      const b64 = file.buffer.toString('base64');
+      const dataUri = `data:${file.mimetype};base64,${b64}`;
+      const uploadResult = await this.cloudinaryService.uploadBase64Image(dataUri, 'chatbot_debug');
+      const imageUrl = uploadResult.secure_url;
+
+      // 2. Classify
+      const aiServiceUrl = this.configService.get<string>('AI_SERVICE_URL') || 'http://localhost:8000';
+      const classifyResponse = await firstValueFrom(
+        this.httpService.post(`${aiServiceUrl}/vision/classify`, { imageUrl }),
+      );
+      
+      const rawClass = classifyResponse.data?.class || classifyResponse.data?.predicted_class || 'unknown';
+      const categories = this.aiClassToCategoryMap[rawClass] || [];
+
+      return {
+        imageUrl,
+        aiClass: rawClass,
+        mappedCategories: categories,
+        rawResponse: classifyResponse.data
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
     }
-    return '';
   }
 
   private isRecord(value: unknown): value is Record<string, unknown> {

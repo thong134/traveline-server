@@ -262,24 +262,5 @@ export class FeedbackController {
     return this.feedbackService.remove(id);
   }
 
-  @Post('moderation/test')
-  @ApiConsumes('application/json')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['comment'],
-      properties: {
-        comment: {
-          type: 'string',
-          example: 'Dịch vụ quá tệ, tôi không bao giờ quay lại!',
-          description: 'Nội dung feedback cần AI kiểm tra',
-        },
-      },
-    },
-  })
-  @ApiOperation({ summary: 'Kiểm tra AI moderation cho comment feedback' })
-  @ApiCreatedResponse({ description: 'Kết quả moderation' })
-  testModeration(@Body('comment') comment: string) {
-    return this.feedbackService.moderateComment(comment);
-  }
+
 }

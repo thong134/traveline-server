@@ -66,6 +66,7 @@ export class FeedbackService {
     const { status, moderationResult } = await this.applyModeration(resolved);
     
     const feedback = new Feedback();
+    feedback.status = status;
     
     // Assign user directly from JWT
     const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -449,13 +450,14 @@ export class FeedbackService {
   async moderateComment(comment?: string) {
     const baseUrl =
       this.configService.get<string>('AI_REVIEW_BASE_URL') ??
+      this.configService.get<string>('AI_SERVICE_URL') ??
       'http://localhost:8000';
     const trimmed = comment?.trim();
     if (!trimmed) {
       throw new BadRequestException('comment is required');
     }
-    const observable = this.httpService.post(`${baseUrl}/review`, {
-      comment: trimmed,
+    const observable = this.httpService.post(`${baseUrl}/moderation/predict`, {
+      text: trimmed,
     });
     const response: AxiosResponse = await lastValueFrom(observable);
     return response.data;

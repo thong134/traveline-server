@@ -1266,6 +1266,64 @@ export class TravelRoutesService {
   }
 
   async suggestRoute(userId: number, dto: SuggestTravelRouteDto): Promise<unknown> {
+    // Fetch user for hobbies and favorites
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    // Hobby to category mapping for AI service
+    const hobbyToCategoryMap: Record<string, string[]> = {
+      'Adventure': ['Thiên nhiên'],
+      'Relaxation': ['Thiên nhiên', 'Giải trí'],
+      'Culture&History': ['Công trình', 'Văn hóa', 'Lịch sử'],
+      'Entertainment': ['Giải trí'],
+      'Nature': ['Thiên nhiên'],
+      'Beach&Islands': ['Biển'],
+      'Mountain&Forest': ['Núi'],
+      'Photography': ['Thiên nhiên', 'Công trình'],
+      'Foods&Drinks': ['Công trình', 'Văn hóa'],
+    };
+
+    // Map user hobbies to categories for AI
+    const aiHobbies: string[] = [];
+    for (const hobby of user.hobbies || []) {
+      const mapped = hobbyToCategoryMap[hobby] || [];
+      aiHobbies.push(...mapped);
+    }
+    const uniqueHobbies = [...new Set(aiHobbies)];
+
+    // If startDate/endDate provided, use new AI route endpoint
+    if (dto.startDate && dto.endDate && dto.province) {
+      try {
+        const startCoords = dto.startCoordinates;
+        const response = await firstValueFrom(
+          this.httpService.post('/recommend/route', {
+            hobbies: uniqueHobbies,
+            favorites: user.favoriteDestinationIds || [],
+            province: dto.province,
+            startDate: dto.startDate,
+            endDate: dto.endDate,
+            start_lat: startCoords?.latitude,
+            start_long: startCoords?.longitude,
+          }),
+        );
+        return response.data;
+      } catch (error) {
+        const axiosError = error as AxiosError<{ detail?: string; error?: string }>;
+        if (axiosError.response) {
+          const status = axiosError.response.status;
+          const detail = axiosError.response.data?.detail ?? axiosError.response.data?.error ?? axiosError.message;
+          if (status >= 400 && status < 500) {
+            throw new BadRequestException(detail);
+          }
+          throw new ServiceUnavailableException(detail);
+        }
+        throw new ServiceUnavailableException('Không thể kết nối tới AI route service');
+      }
+    }
+
+    // Fallback to old API format for backward compatibility
     const startPayload = await this.buildStartPayload(dto);
 
     const destinationIds = dto.destinationIds?.length
@@ -1289,7 +1347,7 @@ export class TravelRoutesService {
       );
       return response.data;
     } catch (error) {
-      const axiosError = error as AxiosError<{ detail?: string }>; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const axiosError = error as AxiosError<{ detail?: string }>;
       if (axiosError.response) {
         const status = axiosError.response.status;
         const detail = axiosError.response.data?.detail ?? axiosError.message;

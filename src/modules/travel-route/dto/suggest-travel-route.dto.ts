@@ -53,6 +53,16 @@ export class SuggestTravelRouteDto {
   @IsString()
   province?: string;
 
+  @ApiPropertyOptional({ description: 'Ngày bắt đầu (dd/MM/yyyy)', example: '27/12/2024' })
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ description: 'Ngày kết thúc (dd/MM/yyyy)', example: '29/12/2024' })
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
   @ApiPropertyOptional({ description: 'Tổng thời gian tối đa (giờ)' })
   @IsOptional()
   @IsNumber()

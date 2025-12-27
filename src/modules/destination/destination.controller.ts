@@ -99,6 +99,27 @@ export class DestinationsController {
     return this.destinationsService.findFavoritesByUser(user.userId);
   }
 
+  @Get('recommend')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Đề xuất địa điểm phù hợp với sở thích người dùng (AI)',
+  })
+  @ApiQuery({ name: 'province', required: false, description: 'Lọc theo tỉnh/thành phố' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Số lượng kết quả' })
+  @ApiOkResponse({ description: 'Danh sách địa điểm được đề xuất' })
+  recommend(
+    @CurrentUser() user: RequestUser,
+    @Query('province') province?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.destinationsService.recommendForUser(
+      user.userId,
+      province,
+      limit ? Number(limit) : 10,
+    );
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Chi tiết địa điểm theo ID' })
   @ApiOkResponse({ description: 'Destination detail' })

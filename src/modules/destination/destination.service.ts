@@ -170,4 +170,75 @@ export class DestinationsService {
       await this.usersRepo.save(user);
     }
   }
+
+  // Hobby to Category mapping
+  private readonly hobbyToCategoryMap: Record<string, string[]> = {
+    'Adventure': ['Thiên nhiên'],
+    'Relaxation': ['Thiên nhiên', 'Giải trí'],
+    'Culture&History': ['Công trình', 'Văn hóa', 'Lịch sử'],
+    'Entertainment': ['Giải trí'],
+    'Nature': ['Thiên nhiên'],
+    'Beach&Islands': ['Biển'],
+    'Mountain&Forest': ['Núi'],
+    'Photography': ['Thiên nhiên', 'Công trình'],
+    'Foods&Drinks': ['Công trình', 'Văn hóa'],
+  };
+
+  async recommendForUser(
+    userId: number,
+    province?: string,
+    limit: number = 10,
+  ): Promise<Destination[]> {
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    // Map user hobbies to destination categories
+    const targetCategories = new Set<string>();
+    for (const hobby of user.hobbies || []) {
+      const mapped = this.hobbyToCategoryMap[hobby] || [];
+      mapped.forEach((cat) => targetCategories.add(cat));
+    }
+
+    // Build query
+    const qb = this.repo.createQueryBuilder('destination');
+    qb.where('destination.available = :available', { available: true });
+
+    if (province) {
+      qb.andWhere('destination.province ILIKE :province', { province: `%${province}%` });
+    }
+
+    // Get all matching destinations
+    const allDestinations = await qb.getMany();
+
+    // Score each destination
+    const scored = allDestinations.map((dest) => {
+      let score = 0;
+
+      // Category match score (0.5 weight)
+      const categoryMatch = (dest.categories || []).some((cat) =>
+        targetCategories.has(cat),
+      );
+      if (categoryMatch) score += 0.5;
+
+      // Popularity score (0.3 weight) - normalize favouriteTimes
+      const maxFav = Math.max(...allDestinations.map((d) => d.favouriteTimes || 0), 1);
+      score += 0.3 * ((dest.favouriteTimes || 0) / maxFav);
+
+      // Rating score (0.2 weight) - normalize 0-5 rating
+      score += 0.2 * ((dest.rating || 0) / 5);
+
+      // Bonus if user already favorited this destination
+      if (user.favoriteDestinationIds?.includes(dest.id.toString())) {
+        score += 0.1;
+      }
+
+      return { destination: dest, score };
+    });
+
+    // Sort by score descending and return top N
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, limit).map((s) => s.destination);
+  }
 }

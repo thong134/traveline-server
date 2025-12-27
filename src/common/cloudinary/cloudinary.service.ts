@@ -155,6 +155,32 @@ export class CloudinaryService {
     return this.uploadMedia(file, { ...options, resourceType: 'video' });
   }
 
+  /**
+   * Upload an image from a base64 data URI string
+   * @param dataUri - Format: data:image/jpeg;base64,/9j/4AAQ...
+   * @param folder - Cloudinary folder to upload to
+   */
+  async uploadBase64Image(
+    dataUri: string,
+    folder: string = 'chatbot_images',
+  ): Promise<UploadApiResponse> {
+    this.ensureConfigured();
+
+    try {
+      const result = await cloudinary.uploader.upload(dataUri, {
+        folder,
+        resource_type: 'image',
+      });
+      return result;
+    } catch (error) {
+      throw this.createCloudinaryException(
+        'CLOUDINARY_UPLOAD_FAILED',
+        error,
+        'Upload ảnh base64 thất bại',
+      );
+    }
+  }
+
   async deleteImage(publicId: string | null | undefined): Promise<void> {
     if (!publicId) {
       return;
