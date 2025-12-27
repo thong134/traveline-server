@@ -422,7 +422,7 @@ export class FeedbackService {
       .createQueryBuilder('feedback')
       .select('COUNT(feedback.id)', 'count')
       .addSelect('COALESCE(SUM(feedback.star), 0)', 'sum')
-      .where('feedback.destinationId = :destinationId', { destinationId })
+      .where('feedback.destination_id = :destinationId', { destinationId })
       .andWhere('feedback.status IN (:...statuses)', {
         statuses: ['pending', 'approved'],
       })
