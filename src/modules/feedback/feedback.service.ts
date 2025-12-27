@@ -67,6 +67,7 @@ export class FeedbackService {
     
     const feedback = new Feedback();
     feedback.status = status;
+    feedback.moderationDetails = moderationResult;
     
     // Assign user directly from JWT
     const user = await this.userRepo.findOne({ where: { id: userId } });

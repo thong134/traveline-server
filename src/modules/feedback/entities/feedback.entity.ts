@@ -82,6 +82,10 @@ export class Feedback {
   })
   status: string;
 
+  @ApiProperty({ required: false })
+  @Column({ type: 'jsonb', nullable: true })
+  moderationDetails?: Record<string, any>;
+
   @ApiProperty()
   @Column('text', { array: true, default: '{}' })
   photos: string[] = [];
