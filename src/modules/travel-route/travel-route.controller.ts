@@ -55,10 +55,23 @@ function mapRouteStopMediaFiles(
   };
 }
 
+import { TravelRouteCronService } from './travel-route.cron';
+
 @ApiTags('travel-routes')
 @Controller('travel-routes')
 export class TravelRoutesController {
-  constructor(private readonly travelRoutesService: TravelRoutesService) {}
+  constructor(
+    private readonly travelRoutesService: TravelRoutesService,
+    private readonly cronService: TravelRouteCronService,
+  ) {}
+
+  @Post('test/anniversary')
+  @RequireAuth()
+  @ApiOperation({ summary: '[TEST] Trigger anniversary notification check manually' })
+  @ApiOkResponse({ description: 'Anniversary check result' })
+  testAnniversary() {
+    return this.cronService.triggerAnniversaryCheck();
+  }
 
   @Post()
   @RequireAuth()
