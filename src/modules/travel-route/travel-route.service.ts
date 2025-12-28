@@ -1401,7 +1401,16 @@ export class TravelRoutesService {
         await stopRepo.save(stops);
       }
 
-      return this.findOne(savedRoute.id);
+      const finalRoute = await manager.findOne(TravelRoute, {
+        where: { id: savedRoute.id },
+        relations: { stops: { destination: true }, user: true },
+        order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
+      });
+
+      if (!finalRoute) {
+        throw new NotFoundException(`Travel route ${savedRoute.id} not found after creation`);
+      }
+      return finalRoute;
     });
   }
 
