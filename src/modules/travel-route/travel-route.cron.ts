@@ -60,6 +60,15 @@ export class TravelRouteCronService {
     const title = 'Kỷ niệm chuyến đi!';
     const body = `Đã ${period} kể từ khi bạn hoàn thành chuyến đi "${route.name}". Hãy xem lại những khoảnh khắc đáng nhớ nhé!`;
 
+    // Persist to in-app notification inbox
+    await this.notificationService.createNotification(
+      user.id,
+      title,
+      body,
+      'anniversary' as any,
+      { routeId: route.id.toString() }
+    );
+
     // Send Email
     if (user.email) {
       await this.notificationService.sendEmail(

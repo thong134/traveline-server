@@ -1,7 +1,11 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, NotFoundException } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import { createTransport, Transporter, SentMessageInfo } from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Notification, NotificationType } from './entities/notification.entity';
+import { User } from '../user/entities/user.entity';
 
 @Injectable()
 export class NotificationService implements OnModuleInit {
@@ -9,7 +13,13 @@ export class NotificationService implements OnModuleInit {
   private mailTransporter: Transporter<SentMessageInfo>;
   private firebaseApp: admin.app.App;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    @InjectRepository(Notification)
+    private readonly notificationRepo: Repository<Notification>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+  ) {}
 
   onModuleInit() {
     this.initMailTransporter();
@@ -88,5 +98,45 @@ export class NotificationService implements OnModuleInit {
     } catch (error) {
       this.logger.error(`Failed to send push notification to ${token}`, error);
     }
+  }
+
+  async createNotification(
+    userId: number,
+    title: string,
+    body: string,
+    type: NotificationType,
+    data?: any,
+  ): Promise<Notification> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+    const notification = this.notificationRepo.create({
+      user,
+      title,
+      body,
+      type,
+      data,
+      isRead: false,
+    });
+    return this.notificationRepo.save(notification);
+  }
+
+  async findMyNotifications(userId: number): Promise<Notification[]> {
+    return this.notificationRepo.find({
+      where: { user: { id: userId } },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async markAsRead(id: number, userId: number): Promise<Notification> {
+    const notification = await this.notificationRepo.findOne({
+      where: { id, user: { id: userId } },
+    });
+    if (!notification) {
+      throw new NotFoundException('Notification not found');
+    }
+    notification.isRead = true;
+    return this.notificationRepo.save(notification);
   }
 }

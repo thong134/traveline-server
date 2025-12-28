@@ -287,6 +287,17 @@ export class TravelRoutesController {
     return this.travelRoutesService.getStopDetail(routeId, stopId);
   }
 
+  @Get(':id/anniversary')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Lấy thông tin kỷ niệm và media của chuyến đi đã hoàn thành' })
+  @ApiOkResponse({ description: 'Thông tin kỷ niệm thành công' })
+  getAnniversaryDetail(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.travelRoutesService.getAnniversaryDetail(id, user.userId);
+  }
+
   @Patch(':id')
   @RequireAuth()
   @ApiOperation({ summary: 'Cập nhật hành trình du lịch' })

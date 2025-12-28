@@ -9,6 +9,7 @@ import {
 import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AxiosError } from 'axios';
+import { differenceInDays, differenceInMonths, differenceInYears } from 'date-fns';
 import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import { TravelRoute, TravelRouteStatus } from './entities/travel-route.entity';
 import { RouteStop, RouteStopStatus } from './entities/route-stop.entity';
@@ -1436,6 +1437,58 @@ export class TravelRoutesService {
       throw new ServiceUnavailableException(detail);
     }
     throw new ServiceUnavailableException('Không thể kết nối tới AI route service');
+  }
+
+  async getAnniversaryDetail(routeId: number, userId: number): Promise<any> {
+    const route = await this.routeRepo.findOne({
+      where: { id: routeId },
+      relations: { stops: true, user: true },
+    });
+
+    if (!route) throw new NotFoundException('Route not found');
+    if (route.user?.id !== userId) throw new ForbiddenException('Not your route');
+    if (route.status !== TravelRouteStatus.COMPLETED) {
+      throw new BadRequestException('Chỉ có thể xem kỷ niệm cho chuyến đi đã hoàn thành');
+    }
+
+    const today = new Date();
+    const endDate = route.endDate || new Date();
+
+    const diffYears = differenceInYears(today, endDate);
+    const diffMonths = differenceInMonths(today, endDate);
+    const diffDays = differenceInDays(today, endDate);
+    const diffWeeks = Math.floor(diffDays / 7);
+
+    let period = '';
+    if (diffYears >= 1) {
+      period = `${diffYears} năm`;
+    } else if (diffMonths >= 1) {
+      period = `${diffMonths} tháng`;
+    } else if (diffWeeks >= 1) {
+      period = `${diffWeeks} tuần`;
+    } else {
+      period = `${diffDays} ngày`;
+    }
+
+    const message = `Đã ${period} kể từ khi bạn hoàn thành chuyến đi "${route.name}". Hãy cùng xem lại những khoảnh khắc tuyệt vời nhé!`;
+
+    const media: any[] = [];
+    route.stops?.forEach((stop) => {
+      stop.images?.forEach((url) =>
+        media.push({ url, type: 'image', stopId: stop.id }),
+      );
+      stop.videos?.forEach((url) =>
+        media.push({ url, type: 'video', stopId: stop.id }),
+      );
+    });
+
+    return {
+      routeId: route.id,
+      name: route.name,
+      period,
+      message,
+      media,
+    };
   }
 
   private async buildStartPayload(dto: AdvancedSuggestTravelRouteDto): Promise<{
