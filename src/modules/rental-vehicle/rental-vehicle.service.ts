@@ -173,11 +173,21 @@ export class RentalVehiclesService {
       'registration-back',
     );
 
+    // Map VehicleCatalog.type to RentalVehicleType enum
+    let vehicleType = RentalVehicleType.BIKE;
+    const catType = (vehicleCatalog.type || '').toLowerCase();
+    if (catType.includes('ô tô') || catType.includes('car')) {
+      vehicleType = RentalVehicleType.CAR;
+    } else if (catType.includes('xe máy') || catType.includes('bike') || catType.includes('mô tô')) {
+      vehicleType = RentalVehicleType.BIKE;
+    }
+
     const entity = this.repo.create({
       licensePlate: dto.licensePlate.trim(),
       contractId: dto.contractId,
       vehicleCatalogId: dto.vehicleCatalogId,
       vehicleCatalog: vehicleCatalog,
+      vehicleType, // Set the mapped type
       pricePerHour: this.ensurePrice(dto.pricePerHour),
       pricePerDay: this.ensurePrice(dto.pricePerDay),
       priceFor4Hours: this.ensurePriceOptional(dto.priceFor4Hours),
@@ -353,7 +363,7 @@ export class RentalVehiclesService {
       qb.andWhere(
         `vehicle.licensePlate NOT IN (${bookedVehiclesSubQuery.getQuery()})`,
       );
-      qb.setParameters(bookedVehiclesSubQuery.getParameters());
+      qb.setParameters({ ...qb.getParameters(), ...bookedVehiclesSubQuery.getParameters() });
 
       // Also exclude vehicles that are in maintenance during the requested period
       const maintenanceSubQuery = this.maintenanceRepo
