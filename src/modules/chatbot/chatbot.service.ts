@@ -166,14 +166,15 @@ export class ChatService {
     );
     const history = this.mapMessagesToModelHistory(historyEntities);
 
+    const isGreeting = this.isSimpleGreeting(message);
     const canUseCache =
       attachments.length === 0 &&
       historyEntities.length === 0 &&
-      !options?.userId;
+      (isGreeting || !options?.userId);
 
     if (canUseCache) {
       const cached = await this.cacheRepo.findOne({
-        where: { message, user: IsNull() },
+        where: { message },
       });
       if (cached) {
         return {
@@ -195,6 +196,15 @@ export class ChatService {
     if (attachments.length > 0) {
       classification = {
         intent: 'image_classify',
+        keywords: [],
+        regions: [],
+        categories: [],
+        followUp: false,
+        imageRequested: false,
+      };
+    } else if (isGreeting) {
+      classification = {
+        intent: 'other',
         keywords: [],
         regions: [],
         categories: [],
@@ -1095,11 +1105,23 @@ export class ChatService {
       case 'booking_help':
       case 'transport':
       case 'image_request':
+      case 'image_classify':
       case 'profile_update':
         return intent;
       default:
         return 'other';
     }
+  }
+
+  private isSimpleGreeting(message: string): boolean {
+    const greetingKeywords = [
+      'hello', 'hi', 'hey', 'greetings', 'hola',
+      'chào', 'xin chào', 'hi ban', 'hey ban',
+      'tạm biệt', 'bye', 'goodbye', 'hen gap lai',
+      'cảm ơn', 'thanks', 'thank you', 'cam on',
+    ];
+    const normalized = message.toLowerCase().trim();
+    return greetingKeywords.some(keyword => normalized === keyword || normalized === keyword + '!');
   }
 
   private enrichClassificationWithHistory(

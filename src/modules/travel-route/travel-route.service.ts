@@ -9,7 +9,7 @@ import {
 import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AxiosError } from 'axios';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import { TravelRoute, TravelRouteStatus } from './entities/travel-route.entity';
 import { RouteStop, RouteStopStatus } from './entities/route-stop.entity';
 import { CreateTravelRouteDto } from './dto/create-travel-route.dto';
@@ -587,7 +587,7 @@ export class TravelRoutesService {
           );
         }
         destination = foundDestination;
-        stop.destination = destination;
+        stop.destination = foundDestination;
       }
 
       if (payload.notes !== undefined) {
@@ -1266,14 +1266,14 @@ export class TravelRoutesService {
     return hours * 60 + minutes;
   }
 
-  async suggestQuick(userId: number, dto: QuickSuggestTravelRouteDto): Promise<unknown> {
+  async suggestQuick(userId: number, dto: QuickSuggestTravelRouteDto): Promise<any> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
     const uniqueHobbies = this.mapHobbiesToCategories(user.hobbies || []);
 
     try {
-      const response = await firstValueFrom(
+      const resp = await firstValueFrom(
         this.httpService.post('/recommend/route', {
           hobbies: uniqueHobbies,
           favorites: user.favoriteDestinationIds || [],
@@ -1282,13 +1282,25 @@ export class TravelRoutesService {
           endDate: dto.endDate,
         }),
       );
-      return response.data;
+      const data = resp.data;
+      if (data.stops?.length) {
+        const destIds = data.stops.map((s: any) => s.destinationId).filter((id: any) => typeof id === 'number');
+        const dests = await this.destinationRepo.find({
+          where: { id: In(destIds) },
+        });
+        const destMap = new Map(dests.map(d => [d.id, d]));
+        data.stops = data.stops.map((s: any) => ({
+          ...s,
+          destination: destMap.get(s.destinationId),
+        }));
+      }
+      return data;
     } catch (error) {
       this.handleAiServiceError(error);
     }
   }
 
-  async suggestAdvanced(userId: number, dto: AdvancedSuggestTravelRouteDto): Promise<unknown> {
+  async suggestAdvanced(userId: number, dto: AdvancedSuggestTravelRouteDto): Promise<any> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
@@ -1298,7 +1310,7 @@ export class TravelRoutesService {
     if (dto.startDate && dto.endDate && dto.province) {
       try {
         const startCoords = dto.startCoordinates;
-        const response = await firstValueFrom(
+        const resp = await firstValueFrom(
           this.httpService.post('/recommend/route', {
             hobbies: uniqueHobbies,
             favorites: user.favoriteDestinationIds || [],
@@ -1309,37 +1321,87 @@ export class TravelRoutesService {
             start_long: startCoords?.longitude,
           }),
         );
-        return response.data;
+        const data = resp.data;
+        if (data.stops?.length) {
+          const destIds = data.stops.map((s: any) => s.destinationId).filter((id: any) => typeof id === 'number');
+          const dests = await this.destinationRepo.find({
+            where: { id: In(destIds) },
+          });
+          const destMap = new Map(dests.map(d => [d.id, d]));
+          data.stops = data.stops.map((s: any) => ({
+            ...s,
+            destination: destMap.get(s.destinationId),
+          }));
+        }
+        return data;
       } catch (error) {
         this.handleAiServiceError(error);
       }
     }
 
-    // Fallback to legacy router
-    const startPayload = await this.buildStartPayload(dto);
-    const destinationIds = dto.destinationIds?.length
-      ? await this.ensureDestinationsExist(dto.destinationIds)
-      : undefined;
-
+    // Legacy Fallback
     try {
-      const response = await firstValueFrom(
+      const startPayload = await this.buildStartPayload(dto);
+      const resp = await firstValueFrom(
         this.httpService.post('/route', {
-          userId: String(userId),
-          destinationIds: destinationIds?.map(String),
-          province: dto.province,
-          startDestinationId: startPayload.startDestinationId,
-          startCoordinates: startPayload.startCoordinates,
-          startLabel: startPayload.startLabel,
           maxTime: dto.maxTime,
           topN: dto.topN,
           includeRated: dto.includeRated,
           randomSeed: dto.randomSeed,
         }),
       );
-      return response.data;
+      return resp.data;
     } catch (error) {
       this.handleAiServiceError(error);
     }
+  }
+
+  async claimSuggestedRoute(userId: number, data: any): Promise<TravelRoute> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+
+    return this.dataSource.transaction(async (manager) => {
+      const routeRepo = manager.getRepository(TravelRoute);
+      const stopRepo = manager.getRepository(RouteStop);
+
+      const route = new TravelRoute();
+      route.user = user;
+      route.name = data.name || `Lộ trình ${data.province || ''}`;
+      route.province = data.province;
+      route.startDate = this.parseDateInput(data.startDate);
+      route.endDate = this.parseDateInput(data.endDate);
+      route.status = TravelRouteStatus.DRAFT;
+      route.isPublic = false;
+      route.isEdited = true;
+
+      const savedRoute = await routeRepo.save(route);
+
+      if (data.stops?.length) {
+        const stops = await Promise.all(
+          data.stops.map(async (s: any) => {
+            const stop = new RouteStop();
+            stop.route = savedRoute;
+            stop.dayOrder = s.dayOrder;
+            stop.sequence = s.sequence;
+            stop.startTime = s.startTime;
+            stop.endTime = s.endTime;
+            stop.notes = s.notes;
+            stop.status = RouteStopStatus.UPCOMING;
+
+            if (s.destinationId) {
+              const dest = await manager.findOne(Destination, { where: { id: s.destinationId } });
+              if (dest) {
+                stop.destination = dest;
+              }
+            }
+            return stop;
+          }),
+        );
+        await stopRepo.save(stops);
+      }
+
+      return this.findOne(savedRoute.id);
+    });
   }
 
   private mapHobbiesToCategories(userHobbies: string[]): string[] {

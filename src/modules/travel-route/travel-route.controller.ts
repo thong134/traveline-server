@@ -227,6 +227,17 @@ export class TravelRoutesController {
     return this.travelRoutesService.suggestAdvanced(user.userId, dto);
   }
 
+  @Post('suggest/claim')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Lưu lộ trình vừa được đề xuất vào tài khoản cá nhân' })
+  @ApiOkResponse({ description: 'Lộ trình đã được lưu' })
+  claimSuggestedRoute(
+    @Body() data: any,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.travelRoutesService.claimSuggestedRoute(user.userId, data);
+  }
+
   @Get('me')
   @RequireAuth()
   @ApiOperation({ summary: 'Danh sách hành trình du lịch của chính mình' })
