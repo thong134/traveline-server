@@ -816,6 +816,7 @@ export class RentalBillsService {
     if (params.status) qb.andWhere('bill.status = :status', { status: params.status });
     return qb.leftJoinAndSelect('bill.details', 'details')
              .leftJoinAndSelect('details.vehicle', 'vehicle')
+             .leftJoinAndSelect('vehicle.vehicleCatalog', 'catalog')
              .orderBy('bill.createdAt', 'DESC')
              .getMany();
   }
