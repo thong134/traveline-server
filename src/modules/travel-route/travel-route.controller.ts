@@ -11,6 +11,7 @@ import {
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
+import { TravelRouteCronService } from './travel-route.cron';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
@@ -55,7 +56,7 @@ function mapRouteStopMediaFiles(
   };
 }
 
-import { TravelRouteCronService } from './travel-route.cron';
+
 
 @ApiTags('travel-routes')
 @Controller('travel-routes')

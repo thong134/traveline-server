@@ -8,6 +8,7 @@ import { User } from '../user/entities/user.entity';
 import axios from 'axios';
 import { createHmac } from 'crypto';
 import { WalletService } from '../wallet/wallet.service';
+import { VouchersService } from '../voucher/voucher.service';
 
 interface CreateMomoPaymentParams {
   rentalId: number;
@@ -72,6 +73,7 @@ export class PaymentService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly walletService: WalletService,
+    private readonly vouchersService: VouchersService,
   ) {}
 
   async createMomoPayment(params: CreateMomoPaymentParams): Promise<{ payUrl: string; paymentId: number; }> {
@@ -201,7 +203,11 @@ export class PaymentService {
             await this.userRepo.update(user.id, { travelPoint: user.travelPoint - deducted });
           }
         }
-        await this.rentalRepo.update(rental.id, { travelPointsUsed: 0 });
+        // Do NOT zero out travelPointsUsed in the bill, keep it as a record
+      }
+
+      if (rental.voucherId) {
+        await this.vouchersService.incrementUsage(rental.voucherId);
       }
 
       await this.rentalRepo.update(payment.rentalId, {
@@ -309,10 +315,16 @@ export class PaymentService {
             this.logger.log(`Deducted ${deducted} points from user ${user.id}`);
           }
         }
-        await this.rentalRepo.update(rental.id, { travelPointsUsed: 0 });
+        // Keep travelPointsUsed in the bill for historical record
       }
 
-      // 3. Update Bill Status
+      // 3. Voucher Usage
+      if (rental.voucherId) {
+        await this.vouchersService.incrementUsage(rental.voucherId);
+        this.logger.log(`Incremented usage for voucher ${rental.voucherId}`);
+      }
+
+      // 4. Update Bill Status
       await this.rentalRepo.update(payment.rentalId, {
         status: RentalBillStatus.PAID,
         rentalStatus: RentalProgressStatus.BOOKED,

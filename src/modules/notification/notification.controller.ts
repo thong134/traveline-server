@@ -3,6 +3,7 @@ import {
   Get,
   Param,
   Patch,
+  Post,
   ParseIntPipe,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -10,11 +11,23 @@ import { NotificationService } from './notification.service';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
+import { ReminderCronService } from './reminder.cron';
 
 @ApiTags('notifications')
 @Controller('notifications')
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly reminderService: ReminderCronService,
+  ) {}
+
+  @Post('test/reminders')
+  @RequireAuth()
+  @ApiOperation({ summary: '[TEST] Trigger upcoming event reminders manually' })
+  @ApiOkResponse({ description: 'Reminder check result' })
+  testReminders() {
+    return this.reminderService.triggerReminderCheck();
+  }
 
   @Get()
   @RequireAuth()

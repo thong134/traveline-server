@@ -8,11 +8,13 @@ import { User } from '../user/entities/user.entity';
 import { Payout } from './entities/payout.entity';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { WalletModule } from '../wallet/wallet.module';
+import { VouchersModule } from '../voucher/voucher.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Payment, RentalBill, User, Payout]),
     WalletModule,
+    VouchersModule,
   ],
   providers: [PaymentService, RolesGuard],
   controllers: [PaymentController],

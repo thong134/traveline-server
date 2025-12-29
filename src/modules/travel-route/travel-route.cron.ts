@@ -90,7 +90,7 @@ export class TravelRouteCronService {
       title,
       body,
       'anniversary' as any,
-      { routeId: route.id.toString() }
+      { routeId: route.id.toString(), period }
     );
 
     // Send Email

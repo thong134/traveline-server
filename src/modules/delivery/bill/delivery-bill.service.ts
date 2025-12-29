@@ -136,7 +136,8 @@ export class DeliveryBillsService {
     }
 
     const saved = await this.billRepo.save(bill);
-    await this.calculateTotal(saved.id);
+    this.calculateTotal(saved);
+    await this.billRepo.save(saved);
     return this.findOne(saved.id, userId);
   }
 
@@ -173,14 +174,7 @@ export class DeliveryBillsService {
         const voucher = await this.vouchersService.findByCode(dto.voucherCode);
         if (!voucher) throw new NotFoundException('Voucher not found');
 
-        // Check minOrderValue
-        if (voucher.minOrderValue) {
-          if (parseFloat(bill.subtotal) < parseFloat(voucher.minOrderValue)) {
-            throw new BadRequestException(
-              `Đơn hàng chưa đạt giá trị tối thiểu (${voucher.minOrderValue}) để sử dụng voucher này`,
-            );
-          }
-        }
+        this.vouchersService.validateVoucherForBooking(voucher, parseFloat(bill.subtotal));
 
         bill.voucher = voucher;
       }
@@ -191,10 +185,15 @@ export class DeliveryBillsService {
       if (Number.isNaN(points) || points < 0) {
         throw new BadRequestException('travelPointsUsed must be a non-negative number');
       }
+      
+      if (bill.user && points > bill.user.travelPoint) {
+         throw new BadRequestException(`Bạn không đủ điểm (Hiện có: ${bill.user.travelPoint})`);
+      }
+      
       bill.travelPointsUsed = Math.floor(points);
     }
 
-    await this.calculateTotal(bill.id);
+    this.calculateTotal(bill);
     return this.billRepo.save(bill);
   }
 
@@ -210,7 +209,7 @@ export class DeliveryBillsService {
       throw new BadRequestException('Contact info required');
     }
 
-    await this.calculateTotal(bill.id);
+    this.calculateTotal(bill);
     bill.status = DeliveryBillStatus.CONFIRMED;
     bill.paymentMethod = paymentMethod;
     return this.billRepo.save(bill);
@@ -223,6 +222,21 @@ export class DeliveryBillsService {
 
 
     bill.status = DeliveryBillStatus.IN_TRANSIT;
+    
+    // Points deduction
+    if (bill.travelPointsUsed > 0 && bill.user) {
+       const user = await this.userRepo.findOne({ where: { id: bill.user.id } });
+       if (user) {
+         user.travelPoint = Math.max(0, user.travelPoint - bill.travelPointsUsed);
+         await this.userRepo.save(user);
+       }
+    }
+
+    // Voucher increment
+    if (bill.voucher?.id) {
+       await this.vouchersService.incrementUsage(bill.voucher.id);
+    }
+
     return this.billRepo.save(bill);
   }
 
@@ -251,28 +265,16 @@ export class DeliveryBillsService {
     return this.billRepo.save(bill);
   }
 
-  private async calculateTotal(billId: number): Promise<void> {
-    const bill = await this.billRepo.findOne({
-      where: { id: billId },
-      relations: ['voucher'],
-    });
-    if (!bill) return;
-
+  private calculateTotal(bill: DeliveryBill): void {
     let total = parseFloat(bill.subtotal);
 
-    // 1. Voucher (%)
-    if (bill.voucher && bill.voucher.value) {
-      const val = parseFloat(bill.voucher.value);
-      if (bill.voucher.discountType === 'percentage') {
-        let discountAmount = total * (val / 100);
-        if (bill.voucher.maxDiscountValue) {
-          const max = parseFloat(bill.voucher.maxDiscountValue);
-          if (discountAmount > max) discountAmount = max;
-        }
-        total = Math.max(0, total - discountAmount);
-      } else {
-        total = Math.max(0, total - val);
-      }
+    // 1. Voucher
+    if (bill.voucher) {
+      const discount = this.vouchersService.calculateDiscountAmount(
+        bill.voucher,
+        total,
+      );
+      total -= discount;
     }
 
     // 2. Points (1:1)
@@ -280,9 +282,7 @@ export class DeliveryBillsService {
       total = Math.max(0, total - bill.travelPointsUsed);
     }
 
-    const formattedTotal = this.formatMoney(total);
-    await this.billRepo.update(billId, { total: formattedTotal });
-    bill.total = formattedTotal;
+    bill.total = this.formatMoney(total);
   }
 
 

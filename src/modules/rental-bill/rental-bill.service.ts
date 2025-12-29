@@ -258,15 +258,9 @@ export class RentalBillsService {
         const voucher = await this.vouchersService.findByCode(dto.voucherCode);
         if (!voucher) throw new NotFoundException('Voucher not found');
 
-        // Check minOrderValue
-        if (voucher.minOrderValue) {
-          const totalFromDetails = bill.details.reduce((sum, d) => sum + parseFloat(d.price), 0);
-          if (totalFromDetails < parseFloat(voucher.minOrderValue)) {
-            throw new BadRequestException(
-              `Đơn hàng chưa đạt giá trị tối thiểu (${voucher.minOrderValue}) để sử dụng voucher này`,
-            );
-          }
-        }
+        // Reuse VouchersService validation
+        const totalFromDetails = bill.details.reduce((sum, d) => sum + parseFloat(d.price), 0);
+        this.vouchersService.validateVoucherForBooking(voucher, totalFromDetails);
 
         bill.voucher = voucher;
         bill.voucherId = voucher.id;
@@ -278,11 +272,17 @@ export class RentalBillsService {
       if (Number.isNaN(points) || points < 0) {
         throw new BadRequestException('travelPointsUsed must be a non-negative number');
       }
+
+      // Check if user has enough points
+      if (bill.user && points > bill.user.travelPoint) {
+         throw new BadRequestException(`Bạn không đủ điểm (Hiện có: ${bill.user.travelPoint})`);
+      }
+
       bill.travelPointsUsed = Math.floor(points);
     }
 
-    // Recalculate total if something changed
-    await this.calculateTotal(bill.id);
+    // Recalculate total in-memory based on updated props
+    this.calculateTotal(bill);
     
     return this.billRepo.save(bill);
   }
@@ -639,7 +639,12 @@ export class RentalBillsService {
     });
 
     await this.detailRepo.save(detail);
-    await this.calculateTotal(id);
+
+    // Refresh details for calculation
+    bill.details = await this.detailRepo.find({ where: { billId: bill.id } });
+    this.calculateTotal(bill);
+    await this.billRepo.save(bill);
+
     return this.findOne(id, userId);
   }
 
@@ -650,34 +655,29 @@ export class RentalBillsService {
     }
 
     await this.detailRepo.delete({ billId: id, licensePlate });
-    await this.calculateTotal(id);
+
+    // Refresh details
+    bill.details = await this.detailRepo.find({ where: { billId: bill.id } });
+    this.calculateTotal(bill);
+    await this.billRepo.save(bill);
+
     return this.findOne(id, userId);
   }
 
-  private async calculateTotal(billId: number): Promise<void> {
-    const bill = await this.billRepo.findOne({
-      where: { id: billId },
-      relations: ['details', 'voucher'],
-    });
-    if (!bill) return;
-
-    // Total = Sum of package prices (already calculated in addVehicleToBill)
-    const totalFromDetails = bill.details.reduce((sum, d) => sum + parseFloat(d.price), 0);
+  private calculateTotal(bill: RentalBill): void {
+    const totalFromDetails = (bill.details || []).reduce(
+      (sum, d) => sum + parseFloat(d.price),
+      0,
+    );
     let finalAmount = totalFromDetails;
 
-    // 1. Voucher (%)
-    if (bill.voucher && bill.voucher.value) {
-      const discountVal = parseFloat(bill.voucher.value);
-      if (bill.voucher.discountType === 'percentage') {
-        let discountAmount = finalAmount * (discountVal / 100);
-        if (bill.voucher.maxDiscountValue) {
-          const maxDiscount = parseFloat(bill.voucher.maxDiscountValue);
-          if (discountAmount > maxDiscount) discountAmount = maxDiscount;
-        }
-        finalAmount = Math.max(0, finalAmount - discountAmount);
-      } else {
-        finalAmount = Math.max(0, finalAmount - discountVal);
-      }
+    // 1. Voucher
+    if (bill.voucher) {
+      const discount = this.vouchersService.calculateDiscountAmount(
+        bill.voucher,
+        finalAmount,
+      );
+      finalAmount -= discount;
     }
 
     // 2. TravelPoint (1:1)
@@ -685,10 +685,7 @@ export class RentalBillsService {
       finalAmount = Math.max(0, finalAmount - bill.travelPointsUsed);
     }
 
-    const formattedTotal = this.formatMoney(finalAmount);
-    await this.billRepo.update(billId, { total: formattedTotal });
-    
-    bill.total = formattedTotal;
+    bill.total = this.formatMoney(finalAmount);
   }
 
   async ownerCancel(id: number, ownerUserId: number, reason: string): Promise<RentalBill> {

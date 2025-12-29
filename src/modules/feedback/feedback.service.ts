@@ -110,6 +110,7 @@ export class FeedbackService {
     const saved = await this.feedbackRepo.save(feedback);
     await this.recalculateDestinationRating(saved.destination?.id);
     await this.recalculateTravelRouteRating(saved.travelRoute?.id);
+    await this.recalculateCooperationRating(saved.cooperation?.id);
     return this.findOne(saved.id);
   }
 
@@ -165,7 +166,7 @@ export class FeedbackService {
     }
 
     if (cooperationId) {
-      qb.andWhere('feedback.cooperation_id = :cooperationId', {
+      qb.andWhere('feedback.cooperationId = :cooperationId', {
         cooperationId,
       });
     }
@@ -205,12 +206,16 @@ export class FeedbackService {
     }
     const destinationId = feedback.destination?.id;
     const travelRouteId = feedback.travelRoute?.id;
+    const cooperationId = feedback.cooperation?.id;
     await this.feedbackRepo.remove(feedback);
     if (destinationId) {
       await this.recalculateDestinationRating(destinationId);
     }
     if (travelRouteId) {
       await this.recalculateTravelRouteRating(travelRouteId);
+    }
+    if (cooperationId) {
+      await this.recalculateCooperationRating(cooperationId);
     }
     return { id, message: 'Feedback deleted' };
   }
@@ -487,6 +492,35 @@ export class FeedbackService {
     }
 
     await this.destinationRepo.save(destination);
+  }
+
+  private async recalculateCooperationRating(
+    cooperationId?: number,
+  ): Promise<void> {
+    if (!cooperationId) return;
+
+    const aggregation = await this.feedbackRepo
+      .createQueryBuilder('feedback')
+      .select('COUNT(feedback.id)', 'count')
+      .addSelect('COALESCE(SUM(feedback.star), 0)', 'sum')
+      .where('feedback.cooperationId = :cooperationId', { cooperationId })
+      .getRawOne<{ count: string; sum: string }>();
+
+    const count = Number(aggregation?.count ?? 0);
+    const sum = Number(aggregation?.sum ?? 0);
+
+    const cooperation = await this.cooperationRepo.findOne({
+      where: { id: cooperationId },
+    });
+    if (!cooperation) return;
+
+    cooperation.averageRating =
+      count > 0 ? (sum / count).toFixed(2) : '0.00';
+    // cooperation entity doesn't have userRatingsTotal column in outline, but let's check
+    // Actually Cooperations entity only has numberOfObjects, numberOfObjectTypes.
+    // The user didn't specify userRatingsTotal for cooperation but requested it for destinations.
+    // Let's check cooperation entity again.
+    await this.cooperationRepo.save(cooperation);
   }
 
   // moderateComment removed or replaced by coordinateModeration

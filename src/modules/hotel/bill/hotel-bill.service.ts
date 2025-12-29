@@ -179,7 +179,7 @@ export class HotelBillsService {
       }
     }
     
-    await this.calculateTotal(saved.id);
+    this.calculateTotal(saved);
     await this.billRepo.save(saved);
 
     return this.findOne(saved.id, userId);
@@ -221,15 +221,8 @@ export class HotelBillsService {
         const voucher = await this.vouchersService.findByCode(dto.voucherCode);
         if (!voucher) throw new NotFoundException('Voucher not found');
 
-        // Check minOrderValue
-        if (voucher.minOrderValue) {
-          const baseTotal = bill.details.reduce((sum, d) => sum + parseFloat(d.total), 0);
-          if (baseTotal < parseFloat(voucher.minOrderValue)) {
-            throw new BadRequestException(
-              `Đơn hàng chưa đạt giá trị tối thiểu (${voucher.minOrderValue}) để sử dụng voucher này`,
-            );
-          }
-        }
+        const baseTotal = bill.details.reduce((sum, d) => sum + parseFloat(d.total), 0);
+        this.vouchersService.validateVoucherForBooking(voucher, baseTotal);
 
         bill.voucher = voucher;
         bill.voucherId = voucher.id;
@@ -241,10 +234,15 @@ export class HotelBillsService {
       if (Number.isNaN(points) || points < 0) {
         throw new BadRequestException('travelPointsUsed must be a non-negative number');
       }
+      
+      if (bill.user && points > bill.user.travelPoint) {
+         throw new BadRequestException(`Bạn không đủ điểm (Hiện có: ${bill.user.travelPoint})`);
+      }
+      
       bill.travelPointsUsed = Math.floor(points);
     }
 
-    await this.calculateTotal(bill.id);
+    this.calculateTotal(bill);
     return this.billRepo.save(bill);
   }
 
@@ -260,7 +258,7 @@ export class HotelBillsService {
       throw new BadRequestException('Contact info required');
     }
 
-    await this.calculateTotal(bill.id);
+    this.calculateTotal(bill);
     bill.status = HotelBillStatus.CONFIRMED;
     bill.paymentMethod = paymentMethod;
     return this.billRepo.save(bill);
@@ -274,6 +272,20 @@ export class HotelBillsService {
 
     bill.status = HotelBillStatus.PAID;
     
+    // Points deduction
+    if (bill.travelPointsUsed > 0 && bill.user) {
+       const user = await this.userRepo.findOne({ where: { id: bill.user.id } });
+       if (user) {
+         user.travelPoint = Math.max(0, user.travelPoint - bill.travelPointsUsed);
+         await this.userRepo.save(user);
+       }
+    }
+
+    // Voucher increment
+    if (bill.voucherId) {
+       await this.vouchersService.incrementUsage(bill.voucherId);
+    }
+
     // Ensure room availability (reservation)
     for (const detail of bill.details) {
       await this.hotelRoomsService.ensureRoomAvailability(detail.room, bill.checkInDate, bill.checkOutDate, 1, bill.id);
@@ -314,29 +326,20 @@ export class HotelBillsService {
     return this.billRepo.save(bill);
   }
 
-  private async calculateTotal(billId: number): Promise<void> {
-    const bill = await this.billRepo.findOne({
-      where: { id: billId },
-      relations: ['details', 'voucher'],
-    });
-    if (!bill) return;
-
-    const totalFromDetails = bill.details.reduce((sum, d) => sum + parseFloat(d.total), 0);
+  private calculateTotal(bill: HotelBill): void {
+    const totalFromDetails = (bill.details || []).reduce(
+      (sum, d) => sum + parseFloat(d.total),
+      0,
+    );
     let finalAmount = totalFromDetails;
 
-    // 1. Voucher (%)
-    if (bill.voucher && bill.voucher.value) {
-      const val = parseFloat(bill.voucher.value);
-      if (bill.voucher.discountType === 'percentage') {
-        let discountAmount = finalAmount * (val / 100);
-        if (bill.voucher.maxDiscountValue) {
-          const max = parseFloat(bill.voucher.maxDiscountValue);
-          if (discountAmount > max) discountAmount = max;
-        }
-        finalAmount = Math.max(0, finalAmount - discountAmount);
-      } else {
-        finalAmount = Math.max(0, finalAmount - val);
-      }
+    // 1. Voucher
+    if (bill.voucher) {
+      const discount = this.vouchersService.calculateDiscountAmount(
+        bill.voucher,
+        finalAmount,
+      );
+      finalAmount -= discount;
     }
 
     // 2. Points (1:1)
@@ -344,9 +347,7 @@ export class HotelBillsService {
       finalAmount = Math.max(0, finalAmount - bill.travelPointsUsed);
     }
 
-    const formattedTotal = this.formatMoney(finalAmount);
-    await this.billRepo.update(billId, { total: formattedTotal });
-    bill.total = formattedTotal;
+    bill.total = this.formatMoney(finalAmount);
   }
 
 
