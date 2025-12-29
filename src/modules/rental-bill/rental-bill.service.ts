@@ -817,4 +817,26 @@ export class RentalBillsService {
              .orderBy('bill.createdAt', 'DESC')
              .getMany();
   }
+
+  async findBillsByOwner(ownerId: number, params: { status?: RentalBillStatus } = {}): Promise<RentalBill[]> {
+    const qb = this.billRepo.createQueryBuilder('bill');
+    
+    // Join relations to filter by vehicle owner
+    qb.leftJoinAndSelect('bill.details', 'details')
+      .leftJoinAndSelect('details.vehicle', 'vehicle')
+      .leftJoinAndSelect('vehicle.contract', 'contract')
+      .leftJoinAndSelect('contract.user', 'owner')
+      // Also join other necessary data for display
+      .leftJoinAndSelect('vehicle.vehicleCatalog', 'catalog')
+      .leftJoinAndSelect('bill.user', 'renter');
+
+    // Filter where contract owner is the requested user
+    qb.where('owner.id = :ownerId', { ownerId });
+
+    if (params.status) {
+      qb.andWhere('bill.status = :status', { status: params.status });
+    }
+
+    return qb.orderBy('bill.createdAt', 'DESC').getMany();
+  }
 }

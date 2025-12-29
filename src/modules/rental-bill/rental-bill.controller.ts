@@ -65,6 +65,16 @@ export class RentalBillsController {
     return this.service.findAll(user.userId, { status });
   }
 
+  @Get('owner/me')
+  @ApiOperation({ summary: 'Danh sách hóa đơn cho xe của tôi (Chủ xe)' })
+  @ApiQuery({ name: 'status', required: false, enum: RentalBillStatus })
+  findOwnerBills(
+    @CurrentUser() user: RequestUser,
+    @Query('status') status?: RentalBillStatus,
+  ) {
+    return this.service.findBillsByOwner(user.userId, { status });
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Chi tiết hóa đơn thuê xe' })
   findOne(
