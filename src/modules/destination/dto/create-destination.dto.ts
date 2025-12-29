@@ -54,6 +54,11 @@ export class CreateDestinationDto {
   @IsString()
   specificAddress?: string;
 
+  @ApiPropertyOptional({ description: 'Reform address (normalized new address)' })
+  @IsOptional()
+  @IsString()
+  reformAddress?: string;
+
   @ApiProperty({ description: 'Latitude in decimal degrees' })
   @Type(() => Number)
   @IsNumber()

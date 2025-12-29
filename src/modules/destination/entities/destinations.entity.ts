@@ -38,6 +38,9 @@ export class Destination {
   @Column({ nullable: true })
   specificAddress?: string;
 
+  @Column({ nullable: true })
+  reformAddress?: string;
+
   @Column({ type: 'double precision' })
   latitude: number;
 

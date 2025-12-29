@@ -37,6 +37,13 @@ export class NotificationController {
     return this.notificationService.findMyNotifications(user.userId);
   }
 
+  @Get('all')
+  @ApiOperation({ summary: 'Lấy tất cả thông báo của hệ thống (Dành cho Dev/Admin)' })
+  @ApiOkResponse({ description: 'Danh sách tất cả thông báo' })
+  findAllNotifications() {
+    return this.notificationService.findAllNotifications();
+  }
+
   @Patch(':id/read')
   @RequireAuth()
   @ApiOperation({ summary: 'Đánh dấu thông báo là đã đọc' })

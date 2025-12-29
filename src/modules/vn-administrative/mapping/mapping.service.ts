@@ -65,6 +65,7 @@ export interface DestinationTranslationResult {
     legacyAddress: string;
     reformAddress: string;
     suggestedSpecificAddress: string;
+    newReformAddress: string;
   };
 }
 
@@ -115,7 +116,6 @@ export class AdministrativeMappingService {
     newAddress: string;
   }> {
     const { specificAddress, provinceName, wardName } = dto;
-
     const legacyWard = await this.findLegacyWardByName(wardName, provinceName);
 
     if (!legacyWard) {
@@ -127,13 +127,20 @@ export class AdministrativeMappingService {
     const { commune, province } =
       await this.resolveMappingForLegacyWard(legacyWard);
 
+    // FIX: Extract segments from specificAddress to avoid duplication
+    const segments = this.extractAddressSegments(specificAddress);
+    const baseSpecificAddress = this.buildBaseSpecificAddress(
+      specificAddress,
+      segments,
+    );
+
     const oldAddress = [specificAddress, wardName, provinceName]
       .map((value) => value?.trim())
       .filter((value): value is string => Boolean(value && value.length))
       .join(', ');
 
     const newAddress = this.composeNewAddress(
-      specificAddress,
+      baseSpecificAddress,
       commune,
       province,
     );
@@ -213,6 +220,7 @@ export class AdministrativeMappingService {
         const updatePayload: Partial<Destination> = {
           district: analysis.legacy.districtName ?? undefined,
           districtCode: analysis.legacy.districtCode ?? undefined,
+          reformAddress: analysis.addresses.newReformAddress,
         };
 
         if (
@@ -372,6 +380,7 @@ export class AdministrativeMappingService {
         legacyAddress,
         reformAddress,
         suggestedSpecificAddress,
+        newReformAddress: reformAddress,
       },
     };
   }

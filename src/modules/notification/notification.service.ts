@@ -139,4 +139,12 @@ export class NotificationService implements OnModuleInit {
     notification.isRead = true;
     return this.notificationRepo.save(notification);
   }
+
+  async findAllNotifications(): Promise<Notification[]> {
+    return this.notificationRepo.find({
+      relations: { user: true },
+      order: { createdAt: 'DESC' },
+      take: 100, // Limit for safety
+    });
+  }
 }

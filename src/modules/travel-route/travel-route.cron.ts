@@ -26,7 +26,7 @@ export class TravelRouteCronService {
   async triggerAnniversaryCheck() {
     const routes = await this.routeRepo.find({
       where: { status: TravelRouteStatus.COMPLETED },
-      relations: { user: true },
+      relations: { user: true, stops: true },
     });
 
     this.logger.log(`Found ${routes.length} completed routes to check`);
@@ -36,11 +36,7 @@ export class TravelRouteCronService {
     const oneMonthAgo = subMonths(today, 1);
     const oneYearAgo = subYears(today, 1);
 
-    this.logger.log(`Today: ${today.toISOString()}`);
-    this.logger.log(`1 week ago: ${oneWeekAgo.toISOString()}`);
-    this.logger.log(`1 month ago: ${oneMonthAgo.toISOString()}`);
-    this.logger.log(`1 year ago: ${oneYearAgo.toISOString()}`);
-
+    const matchedRoutes: any[] = [];
     let notificationsSent = 0;
 
     for (const route of routes) {
@@ -52,29 +48,46 @@ export class TravelRouteCronService {
       const endDate = new Date(route.endDate);
       this.logger.log(`Route ${route.id} "${route.name}" endDate: ${endDate.toISOString()}`);
       
-      // Check 1 week
-      if (isSameDay(endDate, oneWeekAgo)) {
-        this.logger.log(`Route ${route.id} matches 1 week anniversary!`);
-        await this.sendAnniversaryNotification(route, '1 tuần');
+      let period = '';
+      if (isSameDay(endDate, oneWeekAgo)) period = '1 tuần';
+      else if (isSameDay(endDate, oneMonthAgo)) period = '1 tháng';
+      else if (isSameDay(endDate, oneYearAgo)) period = '1 năm';
+
+      if (period) {
+        this.logger.log(`Route ${route.id} matches ${period} anniversary!`);
+        await this.sendAnniversaryNotification(route, period);
         notificationsSent++;
-      }
-      // Check 1 month
-      else if (isSameDay(endDate, oneMonthAgo)) {
-        this.logger.log(`Route ${route.id} matches 1 month anniversary!`);
-        await this.sendAnniversaryNotification(route, '1 tháng');
-        notificationsSent++;
-      }
-      // Check 1 year
-      else if (isSameDay(endDate, oneYearAgo)) {
-        this.logger.log(`Route ${route.id} matches 1 year anniversary!`);
-        await this.sendAnniversaryNotification(route, '1 năm');
-        notificationsSent++;
+        
+        // Add to response with stops and a flattened media list for convenience
+        const allMedia: any[] = [];
+        (route.stops || []).forEach(stop => {
+          if (stop.images) {
+            stop.images.forEach(url => allMedia.push({ url, type: 'image', stopId: stop.id }));
+          }
+          if (stop.videos) {
+            stop.videos.forEach(url => allMedia.push({ url, type: 'video', stopId: stop.id }));
+          }
+        });
+
+        matchedRoutes.push({
+          id: route.id,
+          name: route.name,
+          endDate: route.endDate,
+          period,
+          userName: route.user.fullName || route.user.username,
+          stops: route.stops,
+          aggregatedMedia: allMedia
+        });
       } else {
         this.logger.log(`Route ${route.id} does not match any anniversary date`);
       }
     }
 
-    return { checked: routes.length, notificationsSent };
+    return { 
+      checkedCount: routes.length, 
+      notificationsSent, 
+      matchedRoutes 
+    };
   }
 
   private async sendAnniversaryNotification(route: TravelRoute, period: string) {
