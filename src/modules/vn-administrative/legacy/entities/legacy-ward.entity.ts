@@ -2,7 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
 import { LegacyDistrict } from './legacy-district.entity';
 import { LegacyAdministrativeUnit } from './legacy-administrative-unit.entity';
 
-@Entity('wards')
+@Entity('wards', { synchronize: false })
 export class LegacyWard {
   @PrimaryColumn({ length: 20 })
   code: string;

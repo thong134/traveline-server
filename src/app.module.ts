@@ -29,6 +29,7 @@ import { WalletModule } from './modules/wallet/wallet.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationModule } from './modules/notification/notification.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { ProvincesModule } from './modules/province/province.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { PaymentModule } from './modules/payment/payment.module';
     ScheduleModule.forRoot(),
     NotificationModule,
     PaymentModule,
+    ProvincesModule,
   ],
 })
 export class AppModule {}

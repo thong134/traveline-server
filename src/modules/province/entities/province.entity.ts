@@ -2,36 +2,36 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
 @Entity('provinces')
 export class Province {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column({ unique: true })
+  @PrimaryColumn({ length: 20 })
   code: string;
 
-  @Column()
+  @Column({ length: 255, nullable: true })
   name: string;
 
-  @Column({ nullable: true })
-  region?: string;
+  @Column({ name: 'name_en', length: 255, nullable: true })
+  nameEn?: string;
 
-  @Column({ type: 'text', nullable: true })
-  description?: string;
+  @Column({ name: 'full_name', length: 255, nullable: true })
+  fullName: string;
 
-  @Column({ nullable: true })
-  imageUrl?: string;
+  @Column({ name: 'full_name_en', length: 255, nullable: true })
+  fullNameEn?: string;
 
-  @Column({ default: true })
-  active: boolean;
+  @Column({ name: 'code_name', length: 255, nullable: true })
+  codeName?: string;
 
-  @CreateDateColumn({ type: 'timestamptz' })
-  createdAt: Date;
+  @Column({ name: 'avatar_url', nullable: true })
+  avatarUrl?: string;
 
-  @UpdateDateColumn({ type: 'timestamptz' })
-  updatedAt: Date;
+  @Column({ name: 'administrative_unit_id', type: 'integer', nullable: true })
+  administrativeUnitId?: number;
+
+  @Column({ name: 'administrative_region_id', type: 'integer', nullable: true })
+  administrativeRegionId?: number;
 }

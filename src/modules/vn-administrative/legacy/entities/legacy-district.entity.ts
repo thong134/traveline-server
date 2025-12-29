@@ -10,7 +10,7 @@ import { LegacyProvince } from './legacy-province.entity';
 import { LegacyAdministrativeUnit } from './legacy-administrative-unit.entity';
 import { LegacyWard } from './legacy-ward.entity';
 
-@Entity('districts')
+@Entity('districts', { synchronize: false })
 export class LegacyDistrict {
   @PrimaryColumn({ length: 20 })
   code: string;

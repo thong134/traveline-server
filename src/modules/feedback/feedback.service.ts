@@ -26,6 +26,7 @@ interface FeedbackQueryOptions {
   userId?: number;
   destinationId?: number;
   travelRouteId?: number;
+  cooperationId?: number;
   status?: string;
   limit?: number;
   offset?: number;
@@ -131,6 +132,7 @@ export class FeedbackService {
       userId,
       destinationId,
       travelRouteId,
+      cooperationId,
       status, // This param might be redundant now if we don't have status col, but let's see logic
       limit = 50,
       offset = 0,
@@ -159,6 +161,12 @@ export class FeedbackService {
     if (travelRouteId) {
       qb.andWhere('feedback.travel_route_id = :travelRouteId', {
         travelRouteId,
+      });
+    }
+
+    if (cooperationId) {
+      qb.andWhere('feedback.cooperation_id = :cooperationId', {
+        cooperationId,
       });
     }
 

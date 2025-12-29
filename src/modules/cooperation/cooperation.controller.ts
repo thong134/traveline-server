@@ -61,6 +61,14 @@ export class CooperationsController {
     return this.cooperationsService.findAll({ type, city, province, active });
   }
 
+  @Get('favorites')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Danh sách đối tác yêu thích của tôi' })
+  @ApiOkResponse({ description: 'Danh sách đối tác được yêu thích' })
+  findFavorites(@CurrentUser() user: RequestUser) {
+    return this.cooperationsService.findFavoritesByUser(user.userId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Chi tiết đối tác hợp tác' })
   @ApiOkResponse({ description: 'Cooperation detail' })
@@ -87,13 +95,7 @@ export class CooperationsController {
     return this.cooperationsService.remove(id);
   }
 
-  @Get('favorites')
-  @RequireAuth()
-  @ApiOperation({ summary: 'Danh sách đối tác yêu thích của tôi' })
-  @ApiOkResponse({ description: 'Danh sách đối tác được yêu thích' })
-  findFavorites(@CurrentUser() user: RequestUser) {
-    return this.cooperationsService.findFavoritesByUser(user.userId);
-  }  @Post(':id/favorite')
+  @Post(':id/favorite')
   @RequireAuth()
   @ApiOperation({ summary: 'Thêm đối tác vào danh sách yêu thích' })
   async favorite(

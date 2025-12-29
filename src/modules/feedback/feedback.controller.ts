@@ -224,6 +224,12 @@ export class FeedbackController {
     type: Number,
   })
   @ApiQuery({
+    name: 'cooperationId',
+    required: false,
+    description: 'Filter by cooperation id',
+    type: Number,
+  })
+  @ApiQuery({
     name: 'status',
     required: false,
     description: 'Filter by status',
@@ -245,6 +251,7 @@ export class FeedbackController {
     @Query('userId') userId?: string,
     @Query('destinationId') destinationId?: string,
     @Query('travelRouteId') travelRouteId?: string,
+    @Query('cooperationId') cooperationId?: string,
     @Query('status') status?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
@@ -253,6 +260,7 @@ export class FeedbackController {
       userId: userId ? Number(userId) : undefined,
       destinationId: destinationId ? Number(destinationId) : undefined,
       travelRouteId: travelRouteId ? Number(travelRouteId) : undefined,
+      cooperationId: cooperationId ? Number(cooperationId) : undefined,
       status: status || undefined,
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,

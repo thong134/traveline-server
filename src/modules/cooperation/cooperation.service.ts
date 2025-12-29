@@ -202,7 +202,15 @@ export class CooperationsService {
 
     const cooperations = await this.cooperationRepo.find({
       where: { id: In(ids) },
-      relations: { manager: true },
+      relations: {
+        manager: true,
+        rooms: true,
+        deliveryVehicles: true,
+        restaurantTables: true,
+        busTypes: true,
+        trainRoutes: true,
+        flights: true,
+      },
     });
 
     const order = new Map(ids.map((value, index) => [value, index]));

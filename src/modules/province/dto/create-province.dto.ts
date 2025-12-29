@@ -18,29 +18,35 @@ export class CreateProvinceDto {
   @MinLength(2)
   name: string;
 
-  @ApiPropertyOptional({
-    description: 'Geographic region grouping',
-    example: 'Miền Trung',
-  })
+  @ApiPropertyOptional({ description: 'Province name in English' })
   @IsOptional()
   @IsString()
-  region?: string;
+  nameEn?: string;
 
-  @ApiPropertyOptional({ description: 'Short description for display' })
+  @ApiProperty({ description: 'Full province name' })
+  @IsString()
+  fullName: string;
+
+  @ApiPropertyOptional({ description: 'Full province name in English' })
   @IsOptional()
   @IsString()
-  description?: string;
+  fullNameEn?: string;
 
-  @ApiPropertyOptional({ description: 'Cover image URL' })
+  @ApiPropertyOptional({ description: 'Code name' })
+  @IsOptional()
+  @IsString()
+  codeName?: string;
+
+  @ApiPropertyOptional({ description: 'Avatar image URL' })
   @IsOptional()
   @IsUrl()
-  imageUrl?: string;
+  avatarUrl?: string;
 
-  @ApiPropertyOptional({
-    description: 'Whether province is active for selection',
-    default: true,
-  })
+  @ApiPropertyOptional({ description: 'Administrative Unit ID' })
   @IsOptional()
-  @IsBoolean()
-  active?: boolean;
+  administrativeUnitId?: number;
+
+  @ApiPropertyOptional({ description: 'Administrative Region ID' })
+  @IsOptional()
+  administrativeRegionId?: number;
 }

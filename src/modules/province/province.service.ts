@@ -13,57 +13,62 @@ export class ProvincesService {
   ) {}
 
   async create(dto: CreateProvinceDto): Promise<Province> {
-    const province = this.repo.create({
-      ...dto,
-      active: dto.active ?? true,
-    });
+    const province = this.repo.create(dto);
     return this.repo.save(province);
   }
 
   async findAll(
-    options: { q?: string; region?: string; active?: boolean } = {},
+    options: { q?: string } = {},
   ): Promise<Province[]> {
-    const { q, region, active } = options;
+    const { q } = options;
     const qb = this.repo.createQueryBuilder('province');
 
     if (q) {
-      qb.andWhere('(province.name ILIKE :q OR province.code ILIKE :q)', {
+      qb.andWhere('(province.name ILIKE :q OR province.code ILIKE :q OR province.fullName ILIKE :q)', {
         q: `%${q}%`,
       });
-    }
-
-    if (region) {
-      qb.andWhere('province.region = :region', { region });
-    }
-
-    if (typeof active === 'boolean') {
-      qb.andWhere('province.active = :active', { active });
     }
 
     return qb.orderBy('province.name', 'ASC').getMany();
   }
 
-  async findOne(id: number): Promise<Province> {
-    const province = await this.repo.findOne({ where: { id } });
+  async findOne(code: string): Promise<Province> {
+    const province = await this.repo.findOne({ where: { code } });
     if (!province) {
-      throw new NotFoundException(`Province ${id} not found`);
+      throw new NotFoundException(`Province with code ${code} not found`);
     }
     return province;
   }
 
-  findByCode(code: string): Promise<Province | null> {
-    return this.repo.findOne({ where: { code } });
-  }
-
-  async update(id: number, dto: UpdateProvinceDto): Promise<Province> {
-    const province = await this.findOne(id);
+  async update(code: string, dto: UpdateProvinceDto): Promise<Province> {
+    const province = await this.findOne(code);
     Object.assign(province, dto);
     return this.repo.save(province);
   }
 
-  async remove(id: number): Promise<{ id: number; message: string }> {
-    const province = await this.findOne(id);
+  async bulkUpdate(
+    updates: { code: string; avatarUrl?: string }[],
+  ): Promise<Province[]> {
+    const codes = updates.map((u) => u.code);
+    const provinces = await this.repo.find({
+      where: updates.map((u) => ({ code: u.code })),
+    });
+
+    const provinceMap = new Map(provinces.map((p) => [p.code, p]));
+
+    for (const update of updates) {
+      const province = provinceMap.get(update.code);
+      if (province) {
+        if (update.avatarUrl !== undefined) province.avatarUrl = update.avatarUrl;
+      }
+    }
+
+    return this.repo.save(provinces);
+  }
+
+  async remove(code: string): Promise<{ code: string; message: string }> {
+    const province = await this.findOne(code);
     await this.repo.remove(province);
-    return { id, message: 'Province deleted' };
+    return { code, message: 'Province deleted' };
   }
 }
