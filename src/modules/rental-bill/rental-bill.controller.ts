@@ -94,8 +94,6 @@ export class RentalBillsController {
     return this.service.update(id, user.userId, dto);
   }
 
-
-
   @RequireVerification()
   @Patch(':id/pay')
   @ApiOperation({ summary: 'Thực hiện thanh toán' })

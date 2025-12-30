@@ -32,6 +32,9 @@ interface TravelRouteQueryOptions {
   province?: string;
 }
 
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../notification/entities/notification.entity';
+
 @Injectable()
 export class TravelRoutesService {
   constructor(
@@ -46,6 +49,7 @@ export class TravelRoutesService {
     private readonly cloudinaryService: CloudinaryService,
     private readonly httpService: HttpService,
     private readonly dataSource: DataSource,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async cloneRoute(routeId: number, name?: string): Promise<TravelRoute> {
@@ -1752,11 +1756,38 @@ export class TravelRoutesService {
     const updates: Partial<TravelRoute> = {};
 
     if (route.totalTravelPoints !== totalPoints) {
+      const diff = totalPoints - (route.totalTravelPoints ?? 0);
       updates.totalTravelPoints = totalPoints;
+
+      if (diff > 0 && route.user?.id) {
+        // Award points to actual user balance
+        await this.userRepo.increment({ id: route.user.id }, 'travelPoint', diff);
+        
+        // Notify User
+        await this.notificationService.createNotification(
+          route.user.id,
+          'Thưởng điểm TravelPoints',
+          `Bạn vừa nhận được ${diff} điểm từ việc cập nhật lộ trình ${route.name}.`,
+          NotificationType.REMINDER,
+          { routeId: route.id.toString(), category: 'travel-route', type: 'reward_points' }
+        );
+      }
     }
 
     if (route.status !== nextRouteStatus) {
+      const oldStatus = route.status;
       updates.status = nextRouteStatus;
+
+      // Notify route completion
+      if (nextRouteStatus === TravelRouteStatus.COMPLETED && oldStatus !== TravelRouteStatus.COMPLETED && route.user?.id) {
+         await this.notificationService.createNotification(
+           route.user.id,
+           'Lộ trình hoàn tất!',
+           `Chúc mừng! Bạn đã hoàn thành toàn bộ các điểm dừng trong lộ trình ${route.name}.`,
+           NotificationType.REMINDER,
+           { routeId: route.id.toString(), category: 'travel-route', type: 'route_completed' }
+         );
+      }
     }
 
     if (Object.keys(updates).length) {

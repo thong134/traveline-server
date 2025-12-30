@@ -211,16 +211,16 @@ export class PaymentService {
       }
 
       // 2. Travel Points deduction
-      if (rental.travelPointsUsed && rental.travelPointsUsed > 0) {
-        const user = await this.userRepo.findOne({ where: { id: rental.userId } });
-        if (user) {
-          const deducted = Math.min(user.travelPoint, rental.travelPointsUsed);
-          if (deducted > 0) {
-            await this.userRepo.update(user.id, { travelPoint: user.travelPoint - deducted });
-          }
+    if (rental.travelPointsUsed && rental.travelPointsUsed > 0) {
+      const user = await this.userRepo.findOne({ where: { id: rental.userId } });
+      if (user) {
+        const deducted = Math.min(user.travelPoint, rental.travelPointsUsed);
+        if (deducted > 0) {
+          await this.userRepo.decrement({ id: user.id }, 'travelPoint', deducted);
+          this.logger.log(`Deducted ${deducted} points from user ${user.id} (QR Confirmation)`);
         }
-        // Do NOT zero out travelPointsUsed in the bill, keep it as a record
       }
+    }
 
       if (rental.voucherId) {
         await this.vouchersService.incrementUsage(rental.voucherId);
@@ -322,17 +322,16 @@ export class PaymentService {
       }
 
       // 2. Travel Points deduction
-      if (rental.travelPointsUsed && rental.travelPointsUsed > 0) {
-        const user = await this.userRepo.findOne({ where: { id: rental.userId } });
-        if (user) {
-          const deducted = Math.min(user.travelPoint, rental.travelPointsUsed);
-          if (deducted > 0) {
-            await this.userRepo.update(user.id, { travelPoint: user.travelPoint - deducted });
-            this.logger.log(`Deducted ${deducted} points from user ${user.id}`);
-          }
+    if (rental.travelPointsUsed && rental.travelPointsUsed > 0) {
+      const user = await this.userRepo.findOne({ where: { id: rental.userId } });
+      if (user) {
+        const deducted = Math.min(user.travelPoint, rental.travelPointsUsed);
+        if (deducted > 0) {
+          await this.userRepo.decrement({ id: user.id }, 'travelPoint', deducted);
+          this.logger.log(`Deducted ${deducted} points from user ${user.id} (MoMo IPN)`);
         }
-        // Keep travelPointsUsed in the bill for historical record
       }
+    }
 
       // 3. Voucher Usage
       if (rental.voucherId) {

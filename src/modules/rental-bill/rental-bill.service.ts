@@ -238,9 +238,13 @@ export class RentalBillsService {
     if (!bill) {
       throw new NotFoundException(`Rental bill ${id} not found`);
     }
-    if (bill.userId !== userId) {
+
+    // Authorization: Must be renter or owner
+    const ownerId = bill.details?.[0]?.vehicle?.contract?.user?.id;
+    if (bill.userId !== userId && ownerId !== userId) {
       throw new ForbiddenException('You do not have access to this rental bill');
     }
+
     return bill;
   }
 
@@ -349,41 +353,6 @@ export class RentalBillsService {
       });
       this.logger.log(`Created QR payment ${paymentId} for rental bill ${bill.id}`);
       return { payUrl, paymentId };
-    }
-
-    if (bill.paymentMethod === 'wallet') {
-      // 1. Transactional check and lock
-      await this.dataSource.transaction(async (manager) => {
-        const user = await manager.findOne(User, { where: { id: bill.userId } });
-        if (!user) throw new NotFoundException('User not found');
-        
-        // 2. Lock funds (Internal balance check included)
-        await this.walletService.lockFunds(bill.userId, totalAmount, `rental:${bill.id}`);
-        this.logger.log(`Locked ${totalAmount} from user ${bill.userId} wallet for rental ${bill.id}`);
-
-        // 3. Deduct Travel Points
-        if (bill.travelPointsUsed > 0) {
-          const deducted = Math.min(user.travelPoint, bill.travelPointsUsed);
-          if (deducted > 0) {
-            await manager.update(User, user.id, { travelPoint: user.travelPoint - deducted });
-            this.logger.log(`Deducted ${deducted} points from user ${user.id} (Wallet pay)`);
-          }
-        }
-
-        // 4. Increment Voucher Usage
-        if (bill.voucherId) {
-          await this.vouchersService.incrementUsage(bill.voucherId);
-          this.logger.log(`Incremented usage for voucher ${bill.voucherId} (Wallet pay)`);
-        }
-
-        // 5. Update Status
-        await manager.update(RentalBill, bill.id, { 
-          status: RentalBillStatus.PAID,
-          rentalStatus: RentalProgressStatus.BOOKED
-        });
-      });
-
-      return { payUrl: 'wallet_success', paymentId: 0 };
     }
 
     throw new BadRequestException('Unsupported payment method');
@@ -881,6 +850,14 @@ export class RentalBillsService {
       if (bill.travelPointsUsed > 0) {
         await this.userRepo.increment({ id: bill.userId }, 'travelPoint', bill.travelPointsUsed);
         this.logger.log(`Refunded ${bill.travelPointsUsed} points to user ${bill.userId} for rental ${bill.id}`);
+        
+        await this.notificationService.createNotification(
+          bill.userId,
+          'Hoàn điểm TravelPoints',
+          `Bạn đã được hoàn lại ${bill.travelPointsUsed} điểm từ đơn hàng ${bill.code}.`,
+          NotificationType.REMINDER,
+          { billId: bill.id.toString(), category: 'rental-vehicle', type: 'refund_points' }
+        );
       }
 
       // 3. Decrement Voucher Usage
@@ -888,6 +865,15 @@ export class RentalBillsService {
         await this.vouchersService.decrementUsage(bill.voucherId);
         this.logger.log(`Decremented usage for voucher ${bill.voucherId} due to refund`);
       }
+
+      // Notify Refund Success
+      await this.notificationService.createNotification(
+        bill.userId,
+        'Hoàn tiền thành công',
+        `Số tiền ${parseFloat(bill.total).toLocaleString('vi-VN')}đ từ đơn hàng ${bill.code} đã được hoàn lại vào ví/tài khoản của bạn.`,
+        NotificationType.REMINDER,
+        { billId: bill.id.toString(), category: 'rental-vehicle', type: 'refund_money' }
+      );
     }
 
     // 4. Release Wallet Funds (Back to user if refund, or to owner if release)
@@ -901,6 +887,15 @@ export class RentalBillsService {
       await this.blockchainService.adminRefundForRental(bill.id);
     } else if (action === 'release' && ownerUserId) {
       this.logger.log(`Automatically released funds to owner ${ownerUserId} for bill ${bill.code}`);
+      
+      // Notify Owner about Payout
+      await this.notificationService.createNotification(
+        ownerUserId,
+        'Thanh toán doanh thu',
+        `Hệ thống đã chuyển ${totalAmount.toLocaleString('vi-VN')}đ doanh thu từ đơn hàng ${bill.code} vào tài khoản của bạn.`,
+        NotificationType.REMINDER,
+        { billId: bill.id.toString(), category: 'rental-vehicle', type: 'payout' }
+      );
     }
 
     if (action === 'release') {
@@ -908,6 +903,14 @@ export class RentalBillsService {
       if (pointsEarned > 0) {
         await this.userRepo.increment({ id: bill.userId }, 'travelPoint', pointsEarned);
         this.logger.log(`User ${bill.userId} earned ${pointsEarned} points for completed rental ${bill.id}`);
+        
+        await this.notificationService.createNotification(
+          bill.userId,
+          'Thưởng điểm TravelPoints',
+          `Chúc mừng! Bạn nhận được ${pointsEarned} điểm từ việc hoàn thành đơn hàng ${bill.code}.`,
+          NotificationType.REMINDER,
+          { billId: bill.id.toString(), category: 'rental-vehicle', type: 'reward_points' }
+        );
       }
     }
   }

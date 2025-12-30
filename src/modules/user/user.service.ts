@@ -134,6 +134,12 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
+  async updateFcmToken(userId: number, token: string): Promise<User> {
+    const user = await this.findOne(userId);
+    user.fcmToken = token;
+    return this.usersRepository.save(user);
+  }
+
   async updateInitialProfile(
     userId: number,
     data: {

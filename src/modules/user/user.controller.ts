@@ -32,6 +32,8 @@ import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
 import type { Express } from 'express';
 
+import { UpdateFcmTokenDto } from './dto/update-fcm-token.dto';
+
 @ApiTags('users')
 @RequireAuth()
 @Controller('users')
@@ -40,6 +42,16 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
+
+  @Patch('profile/fcm-token')
+  @ApiOperation({ summary: 'Cập nhật FCM token để nhận thông báo đẩy' })
+  @ApiOkResponse({ description: 'Token updated' })
+  updateFcmToken(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: UpdateFcmTokenDto,
+  ) {
+    return this.usersService.updateFcmToken(user.userId, dto.token);
+  }
 
   @Get('profile/me')
   @ApiOperation({ summary: 'Lấy thông tin người dùng hiện tại' })

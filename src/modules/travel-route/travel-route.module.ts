@@ -10,6 +10,7 @@ import { Destination } from '../destination/entities/destinations.entity';
 import { User } from '../user/entities/user.entity';
 import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 import { TravelRouteCronService } from './travel-route.cron';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { TravelRouteCronService } from './travel-route.cron';
       User,
     ]),
     CloudinaryModule,
+    NotificationModule,
     HttpModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
