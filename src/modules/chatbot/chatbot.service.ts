@@ -93,12 +93,12 @@ type ChatResponse =
   | {
       source: 'database';
       data: ChatResultItem[];
-      text?: string;
+      text?: string | { opening: string; closing: string };
       images?: ChatImagePayload[];
     }
   | {
       source: 'ai';
-      text: string;
+      text: string | { opening: string; closing: string };
       images?: ChatImagePayload[];
     };
 
@@ -407,7 +407,9 @@ export class ChatService {
       await this.cacheRepo.save(
         this.cacheRepo.create({
           message,
-          response: response.text,
+          response: typeof response.text === 'string' 
+            ? response.text 
+            : (response.text?.opening + '\n' + response.text?.closing) || '',
           metadata: { images: response.images ?? [] },
         }),
       );
@@ -745,9 +747,9 @@ export class ChatService {
 
   // AI Image Class to Vietnamese Category mapping
   private readonly aiClassToCategoryMap: Record<string, string[]> = {
-    'forest': ['Thiên nhiên'],
-    'architecture_site': ['Lịch sử', 'Công trình'],
-    'urban_life': ['Giải trí', 'Văn hóa'],
+    'forest': ['Thiên nhiên', 'Rừng'],
+    'architecture_site': ['Lịch sử', 'Công trình', 'Văn hóa'],
+    'urban_life': ['Giải trí', 'Văn hóa', 'Thành phố'],
     'beach': ['Biển'],
     'mountain': ['Núi'],
   };
@@ -766,21 +768,45 @@ export class ChatService {
       });
     }
 
+    // 1. Check for "Identify" intent (e.g. "Đây là đâu?", "Where is this?")
+    // If user wants to identify the specific location, we return the standard "Hard to recognize" message.
+    const identifyKeywordsLower = lang === 'en' 
+        ? ['where is', 'what is this', 'identify', 'location name']
+        : ['đây là đâu', 'chỗ nào', 'tên là gì', 'địa điểm nào'];
+    const msgLower = message.toLowerCase();
+    
+    // Only block if SHORT query asking for ID (to avoid blocking "Tìm chỗ giống này nhưng ở đâu đẹp")
+    // Simple heuristic: if contains key phrases.
+    const isIdentifyRequest = identifyKeywordsLower.some(kw => msgLower.includes(kw));
+
+    if (isIdentifyRequest) {
+        return {
+            source: 'ai',
+            text: lang === 'en' 
+                ? "It's a bit hard to recognize the exact location from this image. However, I can look for similar places if you'd like!"
+                : "Nhìn hình này hơi khó để nhận biết chính xác địa điểm. Tuy nhiên mình có thể tìm các địa điểm có khung cảnh tương tự nhé!",
+            images: this.attachmentsToResponse(context.attachments)
+        };
+    }
+
     try {
       const attachment = context.attachments[0];
       
-      // Step 1: Upload image to Cloudinary
-      console.log('[Chatbot] Uploading image to Cloudinary...');
-      const uploadResult = await this.cloudinaryService.uploadBase64Image(
-        `data:${attachment.mimeType};base64,${attachment.base64}`,
-        'chatbot_images',
-      );
-      const imageUrl = uploadResult.secure_url;
-      console.log('[Chatbot] Image uploaded:', imageUrl);
+      // Step 1: Upload to Cloudinary
+      // Optimize: If it's already a URL from user (unlikely in this flow), skip
+      let imageUrl = '';
+      if (attachment.origin === 'user-url' && attachment.base64.startsWith('http')) {
+          imageUrl = attachment.base64;
+      } else {
+        const uploadResult = await this.cloudinaryService.uploadBase64Image(
+            `data:${attachment.mimeType};base64,${attachment.base64}`,
+            'chatbot_images',
+        );
+        imageUrl = uploadResult.secure_url;
+      }
 
-      // Step 2: Call our AI service for classification (NOT Gemini)
+      // Step 2: Call AI service
       const aiServiceUrl = this.configService.get<string>('AI_SERVICE_URL') || 'http://localhost:8000';
-      console.log('[Chatbot] Calling AI service for classification...');
       
       let classifiedCategory = 'urban_life';
       try {
@@ -788,99 +814,70 @@ export class ChatService {
           this.httpService.post(`${aiServiceUrl}/vision/classify`, { imageUrl }),
         );
         classifiedCategory = classifyResponse.data?.class || classifyResponse.data?.predicted_class || 'urban_life';
-        console.log('[Chatbot] AI classified as:', classifiedCategory);
       } catch (aiError) {
-        console.warn('[Chatbot] AI classification failed, using fallback:', aiError);
-        // If AI service fails, try to infer from user message
-        if (message.toLowerCase().includes('biển') || message.toLowerCase().includes('beach')) {
-          classifiedCategory = 'beach';
-        } else if (message.toLowerCase().includes('núi') || message.toLowerCase().includes('mountain')) {
-          classifiedCategory = 'mountain';
-        }
+        console.warn('[Chatbot] AI classification failed, using fallback.');
+        if (msgLower.includes('biển') || msgLower.includes('beach')) classifiedCategory = 'beach';
+        else if (msgLower.includes('núi') || msgLower.includes('mountain')) classifiedCategory = 'mountain';
       }
       
-      // Step 3: Map to Vietnamese categories
+      // Step 3: Map to Categories
       const targetCategories = this.aiClassToCategoryMap[classifiedCategory] || ['Thiên nhiên'];
-      console.log('[Chatbot] Mapped to categories:', targetCategories);
 
-      // Step 4: Find destinations with matching categories
+      // Step 4: Search DB
       const destinations = await this.findDestinationsByCategories(
         targetCategories,
         context.profile,
       );
 
       if (!destinations.length) {
-        const noResultText = lang === 'en'
-          ? `I analyzed your image and it looks like a ${classifiedCategory} location. Unfortunately, I couldn't find similar places in our database.`
-          : `Tôi đã phân tích ảnh của bạn và đây có vẻ là địa điểm loại "${classifiedCategory}". Tiếc là chưa tìm thấy địa điểm tương tự trong hệ thống.`;
-        
         return {
           source: 'ai',
-          text: noResultText,
+          text: lang === 'en'
+            ? `It looks like a ${classifiedCategory} scene, but I couldn't find similar places nearby.`
+            : `Ảnh này nhìn giống cảnh ${classifiedCategory}, nhưng tiếc là mình chưa tìm thấy địa điểm tương tự trong hệ thống.`,
           images: [{ source: 'user', url: imageUrl }],
         };
       }
 
-      const mapped: ChatResultItem[] = destinations.slice(0, MAX_SUGGESTION_ITEMS).map((dest) => ({
+      const mapped: ChatResultItem[] = destinations.slice(0, 5).map((dest) => ({
         id: dest.id,
         name: dest.name,
-        address: this.joinAddress([dest.specificAddress, dest.province]),
-        description: lang === 'en'
-          ? (dest.descriptionEng ?? dest.descriptionViet ?? undefined)
-          : (dest.descriptionViet ?? dest.descriptionEng ?? undefined),
+        address: this.joinAddress([dest.province]), // Simple address
         type: 'destination' as const,
-        images: dest.photos.slice(0, 2),
+        images: dest.photos.slice(0, 1),
         categories: dest.categories,
       }));
 
-      // Step 5: Ask Gemini to generate a natural response
-      let resultText = '';
+      // Step 5: Generate Structure Response (Opening/Closing)
+      // Use fallback if AI is overloaded
+      
+      let opening = '';
+      let closing = '';
+      
       try {
-        const placesInfo = mapped
-          .map((d, i) => `${i + 1}. ${d.name} (${d.address})`)
-          .join('\n');
-        
-        const responsePrompt = lang === 'en'
-          ? `I have analyzed the user's image and identified it as a "${classifiedCategory}" scene.\nBased on this, I found these similar destinations in our database:\n${placesInfo}\n\nPlease write a short, helpful, and natural response to the user.\n- Mention that their image looks like a ${classifiedCategory} location.\n- Briefly introduce these places as recommendations.\n- Keep the tone friendly and encouraging.`
-          : `Tôi đã phân tích ảnh của người dùng và nhận diện đây là khung cảnh thuộc loại "${classifiedCategory}".\nDựa vào đó, tôi tìm thấy các địa điểm tương tự trong cơ sở dữ liệu:\n${placesInfo}\n\nHãy viết một câu trả lời ngắn gọn, hữu ích và tự nhiên cho người dùng.\n- Nhắc rằng ảnh của họ trông giống địa điểm loại ${classifiedCategory}.\n- Giới thiệu ngắn gọn các địa điểm này như là gợi ý phù hợp.\n- Giữ giọng điệu thân thiện, hào hứng.`;
-
-        const modelResponse = await this.performModelCall(
-          (model) => model.generateContent(responsePrompt),
-          this.modelName,
-        );
-        resultText = this.extractText(modelResponse);
-      } catch (genError) {
-        console.warn('[Chatbot] Failed to generate text with Gemini, using fallback:', genError);
-        
-        // Improved Fallback Templates (No API call needed)
-        const beachTemplates = [
-          `Ảnh của bạn đẹp quá, nhìn giống như một bãi biển tuyệt vời! 🌊 Nếu bạn thích biển, mình nghĩ bạn sẽ mê ngay những địa điểm này:`,
-          `Có vẻ bạn đang tìm kiếm "vitamin sea" đúng không? 🏖️ Mình tìm thấy vài bãi biển siêu xinh này cho bạn nè:`,
-        ];
-        const mountainTemplates = [
-          `Khung cảnh núi non hùng vĩ quá! 🏔️ Dưới đây là những ngọn núi và đồi nổi tiếng mà mình nghĩ bạn nên thử chinh phục:`,
-          `Nhìn ảnh là thấy không khí trong lành của núi rừng rồi! 🌲 Bạn tham khảo thử mấy địa điểm leo núi cực chill này nhé:`,
-        ];
-        const natureTemplates = [
-          `Một bức ảnh thiên nhiên thật yên bình! 🍃 Mình đã lọc ra vài địa điểm xanh mát tương tự để bạn hòa mình vào thiên nhiên đây:`,
-        ];
-        const architectureTemplates = [
-          `Kiến trúc trong ảnh thật ấn tượng! 🏛️ Nếu bạn yêu thích lịch sử và văn hóa, đừng bỏ qua những địa danh nổi tiếng này nhé:`,
-        ];
-        const urbanTemplates = [
-          `Nhịp sống đô thị sôi động quá! 🏙️ Mình có vài gợi ý về các điểm vui chơi giải trí trong thành phố cho bạn đây:`,
-        ];
-
-        let templates = natureTemplates; // Default
-        if (classifiedCategory === 'beach') templates = beachTemplates;
-        if (classifiedCategory === 'mountain') templates = mountainTemplates;
-        if (classifiedCategory === 'architecture_site') templates = architectureTemplates;
-        if (classifiedCategory === 'urban_life') templates = urbanTemplates;
-
-        const randomIntro = templates[Math.floor(Math.random() * templates.length)];
-        const listText = mapped.map((d, i) => `${i + 1}. ${d.name}`).join('\n');
-        
-        resultText = `${randomIntro}\n${listText}`;
+          // Attempt AI Generation
+          const prompt = lang === 'en'
+            ? `User uploaded an image of "${classifiedCategory}". Found ${mapped.length} similar places: ${mapped.map(d=>d.name).join(', ')}. Generate Opening (e.g. "Great photo! Here are similar places:") and Closing (e.g. "Want to see more?"). JSON: {"opening": "...", "closing": "..."}`
+            : `Người dùng gửi ảnh cảnh "${classifiedCategory}". Tìm thấy ${mapped.length} nơi tương tự: ${mapped.map(d=>d.name).join(', ')}. Tạo câu Mở đầu (vd: "Ảnh đẹp quá! Đây là mấy chỗ tương tự:") và Kết thúc (vd: "Bạn thích chỗ nào không?"). JSON: {"opening": "...", "closing": "..."}`;
+            
+          const response = await this.performModelCall(
+            (model) => model.generateContent({
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: 'application/json' }
+            }),
+            this.modelName,
+          );
+          const json = JSON.parse(this.extractText(response));
+          opening = json.opening;
+          closing = json.closing;
+      } catch (e) {
+          // Fallback if AI fails (Overloaded)
+          opening = lang === 'en' 
+            ? `Your photo looks like a ${classifiedCategory} spot! Here are some similar places:`
+            : `Ảnh của bạn nhìn giống cảnh ${classifiedCategory} quá! Dưới đây là một vài địa điểm tương tự nè:`;
+          closing = lang === 'en'
+            ? "Do you like any of them?"
+            : "Bạn thấy mấy chỗ này thế nào?";
       }
 
       const dbImages = await this.prepareImagePayloads(
@@ -891,19 +888,19 @@ export class ChatService {
       return {
         source: 'database',
         data: mapped,
-        text: resultText,
+        text: { opening, closing },
         images: [
           { source: 'user', url: imageUrl },
           ...dbImages,
         ],
       };
+
     } catch (error) {
-      console.error('Image classification error:', error);
-      return this.generateConversationalReply(message, lang, 'image_classify', {
-        history: context.history,
-        profileSummary: context.profileSummary,
-        databaseMiss: true,
-      });
+      console.error('Image classification critical error:', error);
+      return {
+          source: 'ai',
+          text: lang === 'en' ? "Something went wrong processing your image." : "Có lỗi xảy ra khi xử lý ảnh của bạn."
+      };
     }
   }
 
@@ -1911,16 +1908,22 @@ export class ChatService {
   }
 
   private pickResponseText(response: ChatResponse): string {
-    if (response.source === 'ai') {
-      return response.text;
+    const text = response.text;
+    if (typeof text === 'string') {
+        return text;
     }
-    if (response.text && response.text.trim().length) {
-      return response.text;
+    if (text && typeof text === 'object') {
+        return `${text.opening}\n${text.closing}`;
     }
-    const items = response.data
-      .map((item) => `${item.name}${item.address ? ` - ${item.address}` : ''}`)
-      .join('\n');
-    return items || 'No response generated.';
+
+    if (response.source === 'database') {
+        const items = response.data
+        .map((item) => `${item.name}${item.address ? ` - ${item.address}` : ''}`)
+        .join('\n');
+        return items || 'No response generated.';
+    }
+    
+    return 'No response generated.';
   }
 
   private normalizeSessionId(
