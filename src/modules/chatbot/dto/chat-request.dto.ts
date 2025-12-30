@@ -34,6 +34,19 @@ export class ChatRequestDto {
   sessionId?: string;
 }
 
+export class DestinationSearchDto {
+  @ApiProperty({ description: 'Search query for destinations (e.g. "Hanoi")' })
+  @IsString()
+  @IsNotEmpty()
+  message: string;
+
+  @ApiPropertyOptional({ description: 'Language (vi | en)' })
+  @IsOptional()
+  @IsString()
+  @IsIn(['vi', 'en'])
+  lang?: string;
+}
+
 // Keep for backward compatibility with service
 export class ChatImageAttachmentDto {
   type: 'base64' | 'url';

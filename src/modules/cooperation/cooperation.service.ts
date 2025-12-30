@@ -72,16 +72,21 @@ export class CooperationsService {
 
   async findAll(
     params: {
+      q?: string;
       type?: string;
       city?: string;
       province?: string;
       active?: boolean;
     } = {},
   ): Promise<Cooperation[]> {
-    const { type, city, province, active } = params;
+    const { q, type, city, province, active } = params;
     const qb = this.cooperationRepo
       .createQueryBuilder('cooperation')
       .leftJoinAndSelect('cooperation.manager', 'manager');
+
+    if (q) {
+      qb.andWhere('(cooperation.name ILIKE :q OR cooperation.code ILIKE :q)', { q: `%${q}%` });
+    }
 
     if (type) {
       qb.andWhere('cooperation.type = :type', { type });

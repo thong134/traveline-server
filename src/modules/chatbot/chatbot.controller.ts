@@ -21,6 +21,7 @@ import { ChatService } from './chatbot.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
+import { DestinationSearchDto } from './dto/chat-request.dto';
 
 @ApiTags('chat')
 @UseGuards(ThrottlerGuard)
@@ -114,5 +115,13 @@ export class ChatController {
       throw new BadRequestException('Vui lòng chọn ảnh để phân loại');
     }
     return this.chatService.classifyImageOnly(file);
+  }
+
+  @Post('search-destinations')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Smart Search: Tìm địa điểm chi tiết qua chat logic' })
+  async searchDestinations(@Body() dto: DestinationSearchDto, @CurrentUser() user: RequestUser) {
+    return this.chatService.handleDestinationSearchApi(dto.message, dto.lang, user.userId);
   }
 }

@@ -15,6 +15,10 @@ import { RouteStop } from '../travel-route/entities/route-stop.entity';
 import { BusType } from '../bus/bus/entities/bus-type.entity';
 import { TrainRoute } from '../train/train/entities/train-route.entity';
 import { Flight } from '../flight/flight/entities/flight.entity';
+import { RentalBillsModule } from '../rental-bill/rental-bill.module';
+import { RentalVehiclesModule } from '../rental-vehicle/rental-vehicle.module';
+import { TravelRoutesModule } from '../travel-route/travel-route.module';
+import { CooperationsModule } from '../cooperation/cooperation.module';
 import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 
 @Module({
@@ -25,6 +29,10 @@ import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
       maxRedirects: 3,
     }),
     CloudinaryModule,
+    RentalBillsModule,
+    RentalVehiclesModule,
+    TravelRoutesModule,
+    CooperationsModule,
     TypeOrmModule.forFeature([
       Destination,
       Cooperation,
