@@ -71,9 +71,9 @@ export class Voucher {
   @OneToMany(() => RentalBill, (bill: RentalBill) => bill.voucher)
   rentalBills: RentalBill[];
 
-  @CreateDateColumn({ type: 'timestamptz' })
+  @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: 'timestamptz' })
+  @UpdateDateColumn({ type: 'timestamp' })
   updatedAt: Date;
 }

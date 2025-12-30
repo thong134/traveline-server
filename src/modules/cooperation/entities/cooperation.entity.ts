@@ -145,9 +145,9 @@ export class Cooperation {
   @OneToMany(() => FlightBill, (bill) => bill.cooperation)
   flightBills: FlightBill[];
 
-  @CreateDateColumn({ type: 'timestamptz' })
+  @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: 'timestamptz' })
+  @UpdateDateColumn({ type: 'timestamp' })
   updatedAt: Date;
 }

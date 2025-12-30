@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import 'dotenv/config';
+import { LocalTimeInterceptor } from './common/interceptors/local-time.interceptor';
 process.env.TZ = 'Asia/Ho_Chi_Minh';
 
 async function bootstrap() {
@@ -22,6 +23,8 @@ async function bootstrap() {
       transform: true, // tự convert kiểu (e.g. string->number)
     }),
   );
+
+  app.useGlobalInterceptors(new LocalTimeInterceptor());
 
   const config = new DocumentBuilder()
     .setTitle('Traveline API')

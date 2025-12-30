@@ -42,10 +42,10 @@ export class TravelRoute {
   @Column({ nullable: true })
   province?: string;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   startDate?: Date;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   endDate?: Date;
 
   @OneToMany(() => RouteStop, (stop: RouteStop) => stop.route, {
@@ -79,9 +79,9 @@ export class TravelRoute {
   @Column({ default: false })
   isEdited: boolean;
 
-  @CreateDateColumn({ type: 'timestamptz' })
+  @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: 'timestamptz' })
+  @UpdateDateColumn({ type: 'timestamp' })
   updatedAt: Date;
 }

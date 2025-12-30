@@ -62,10 +62,10 @@ export class RentalBill {
   @Column({ type: 'enum', enum: RentalBillType, default: RentalBillType.DAILY })
   rentalType: RentalBillType;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: 'timestamp'})
   startDate: Date;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: 'timestamp' })
   endDate: Date;
 
   @Column({ nullable: true })
@@ -156,7 +156,7 @@ export class RentalBill {
   @Column('text', { array: true, default: '{}' })
   returnPhotosOwner: string[];
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   returnTimestampUser?: Date;
 
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
@@ -181,9 +181,9 @@ export class RentalBill {
   )
   details: RentalBillDetail[];
 
-  @CreateDateColumn({ type: 'timestamptz' })
+  @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: 'timestamptz' })
+  @UpdateDateColumn({ type: 'timestamp' })
   updatedAt: Date;
 }
