@@ -422,7 +422,7 @@ export class RentalBillsService {
     const now = new Date();
     const oneHourBeforeStart = new Date(bill.startDate.getTime() - 60 * 60 * 1000);
     if (now < oneHourBeforeStart) {
-      throw new BadRequestException('Chỉ được phép bấm giao xe trước giờ thuê tối đa 1 tiếng');
+      throw new BadRequestException(`Chỉ được phép bấm giao xe từ lúc ${oneHourBeforeStart.toLocaleString('vi-VN')} (tối đa 1 tiếng trước giờ thuê)`);
     }
     
     if (bill.rentalStatus !== RentalProgressStatus.BOOKED) {
@@ -463,7 +463,7 @@ export class RentalBillsService {
     const now = new Date();
     const thirtyMinsBeforeStart = new Date(bill.startDate.getTime() - 30 * 60 * 1000);
     if (now < thirtyMinsBeforeStart) {
-      throw new BadRequestException('Chỉ được phép xác nhận đã giao đến trước giờ thuê tối đa 30 phút');
+      throw new BadRequestException(`Chỉ được phép xác nhận đã giao đến từ lúc ${thirtyMinsBeforeStart.toLocaleString('vi-VN')} (tối đa 30 phút trước giờ thuê)`);
     }
 
     const uploadedPhotos = await this.uploadBillImages(photos, id, 'delivery');
@@ -537,7 +537,7 @@ export class RentalBillsService {
     const now = new Date();
     const thirtyMinsBeforeEnd = new Date(bill.endDate.getTime() - 30 * 60 * 1000);
     if (now < thirtyMinsBeforeEnd) {
-      throw new BadRequestException('Chỉ được phép yêu cầu trả xe trước giờ kết thúc tối đa 30 phút');
+      throw new BadRequestException(`Chỉ được phép yêu cầu trả xe từ lúc ${thirtyMinsBeforeEnd.toLocaleString('vi-VN')} (tối đa 30 phút trước giờ kết thúc)`);
     }
 
     bill.returnTimestampUser = now;
