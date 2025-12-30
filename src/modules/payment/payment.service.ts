@@ -195,6 +195,22 @@ export class PaymentService {
 
     const rental = await this.rentalRepo.findOne({ where: { id: payment.rentalId } });
     if (rental) {
+      this.logger.log(`Found rental ${rental.id}, starting wallet escrow for QR payment...`);
+      // 1. Wallet escrow: Deposit and Lock
+      try {
+        const amountNum = parseFloat(payment.amount);
+        if (amountNum > 0) {
+          await this.walletService.deposit(rental.userId, amountNum, `qr:${payment.id}`);
+          await this.walletService.lockFunds(rental.userId, amountNum, `rental:${rental.id}`);
+          this.logger.log(`Successfully escrowed ${amountNum} for rental ${rental.id}`);
+        }
+      } catch (err) {
+        this.logger.error(`Failed to escrow funds for QR rental ${rental.id}: ${err.message}`);
+        // Consider if we should fail the whole transaction or just log
+        throw err;
+      }
+
+      // 2. Travel Points deduction
       if (rental.travelPointsUsed && rental.travelPointsUsed > 0) {
         const user = await this.userRepo.findOne({ where: { id: rental.userId } });
         if (user) {

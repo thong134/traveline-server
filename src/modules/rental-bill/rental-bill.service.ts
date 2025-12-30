@@ -418,6 +418,12 @@ export class RentalBillsService {
     if (bill.status !== RentalBillStatus.PAID) {
       throw new BadRequestException('Chỉ có thể giao xe sau khi khách đã thanh toán');
     }
+
+    const now = new Date();
+    const oneHourBeforeStart = new Date(bill.startDate.getTime() - 60 * 60 * 1000);
+    if (now < oneHourBeforeStart) {
+      throw new BadRequestException('Chỉ được phép bấm giao xe trước giờ thuê tối đa 1 tiếng');
+    }
     
     if (bill.rentalStatus !== RentalProgressStatus.BOOKED) {
        throw new BadRequestException('Đơn hàng chưa ở trạng thái ĐÃ ĐẶT (BOOKED)');
@@ -453,6 +459,13 @@ export class RentalBillsService {
     if (bill.rentalStatus !== RentalProgressStatus.DELIVERING) {
       throw new BadRequestException('Phải bấm đang vận chuyển trước khi xác nhận đã đến');
     }
+
+    const now = new Date();
+    const thirtyMinsBeforeStart = new Date(bill.startDate.getTime() - 30 * 60 * 1000);
+    if (now < thirtyMinsBeforeStart) {
+      throw new BadRequestException('Chỉ được phép xác nhận đã giao đến trước giờ thuê tối đa 30 phút');
+    }
+
     const uploadedPhotos = await this.uploadBillImages(photos, id, 'delivery');
     bill.deliveryPhotos = uploadedPhotos.length ? uploadedPhotos : dto.photos;
     bill.rentalStatus = RentalProgressStatus.DELIVERED;
@@ -518,10 +531,15 @@ export class RentalBillsService {
     if (!bill) throw new NotFoundException('Bill not found');
 
     if (bill.rentalStatus !== RentalProgressStatus.IN_PROGRESS) {
-      throw new BadRequestException('Chưa thể yêu cầu trả xe');
+      throw new BadRequestException('Chỉ được phép yêu cầu trả xe khi đang trong quá trình hành trình (IN_PROGRESS)');
     }
 
     const now = new Date();
+    const thirtyMinsBeforeEnd = new Date(bill.endDate.getTime() - 30 * 60 * 1000);
+    if (now < thirtyMinsBeforeEnd) {
+      throw new BadRequestException('Chỉ được phép yêu cầu trả xe trước giờ kết thúc tối đa 30 phút');
+    }
+
     bill.returnTimestampUser = now;
     const uploadedPhotos = await this.uploadBillImages(photos, id, 'return-request');
     bill.returnPhotosUser = uploadedPhotos.length ? uploadedPhotos : dto.photos;
@@ -840,23 +858,9 @@ export class RentalBillsService {
     } else if (action === 'refund' && shouldUseBlockchain) {
       await this.blockchainService.adminRefundForRental(bill.id);
     } else if (action === 'release' && ownerUserId) {
-      const owner = await this.userRepo.findOne({ where: { id: ownerUserId } });
-      if (!owner) {
-        throw new BadRequestException('Không tìm thấy chủ xe để tạo payout');
-      }
-      if (!owner.bankName || !owner.bankAccountNumber || !owner.bankAccountName) {
-        throw new BadRequestException('Chủ xe chưa cấu hình thông tin ngân hàng');
-      }
-
-      await this.paymentService.createPayoutPending({
-        rentalId: bill.id,
-        ownerUserId,
-        amount: totalAmount,
-        bankName: owner.bankName,
-        bankAccountNumber: owner.bankAccountNumber,
-        bankAccountName: owner.bankAccountName,
-        note: `Release rental ${bill.code}`,
-      });
+      // Escrow logic: Money is automatically moved from renter's lockedBalance 
+      // to owner's wallet balance in walletService.releaseFunds() above.
+      this.logger.log(`Automatically released funds to owner ${ownerUserId} for bill ${bill.code}`);
     }
 
     if (action === 'release') {
