@@ -164,7 +164,9 @@ export class RentalBillsService {
     for (const bill of postConfirmBills) {
       bill.status = RentalBillStatus.CANCELLED;
       await this.billRepo.save(bill);
-      this.logger.log(`Bill ${bill.id} (POST-CONFIRM PENDING) cancelled due to 10min timeout`);
+      const billTime = bill.updatedAt.toLocaleString('vi-VN');
+      const thresholdTime = confirmedThreshold.toLocaleString('vi-VN');
+      this.logger.log(`Bill ${bill.id} (POST-CONFIRM PENDING) cancelled. Bill updated at: ${billTime}, Threshold: ${thresholdTime}`);
     }
 
     // 30 min timeout for pure PENDING (no paymentMethod)
@@ -180,7 +182,9 @@ export class RentalBillsService {
   for (const bill of pendingBills) {
     bill.status = RentalBillStatus.CANCELLED;
     await this.billRepo.save(bill);
-    this.logger.log(`Bill ${bill.id} (PURE PENDING) cancelled due to 30min timeout`);
+    const billTime = bill.createdAt.toLocaleString('vi-VN');
+    const thresholdTime = pendingThreshold.toLocaleString('vi-VN');
+    this.logger.log(`Bill ${bill.id} (PURE PENDING) cancelled. Bill created at: ${billTime}, Threshold: ${thresholdTime}`);
   }
 }
 

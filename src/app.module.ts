@@ -47,6 +47,9 @@ import { ProvincesModule } from './modules/province/province.module';
         // database: process.env.DB_NAME,
         autoLoadEntities: true,
         synchronize: true, // tự tạo bảng dựa trên entity (dev thôi, production thì nên tắt)
+        extra: {
+          options: '-c timezone=Asia/Ho_Chi_Minh',
+        },
       }),
     }),
     ThrottlerModule.forRoot([{ ttl: 60, limit: 10 }]),
