@@ -58,6 +58,7 @@ type ChatIntent =
   | 'search_hotel'
   | 'search_restaurant'
   | 'create_route'
+  | 'greeting'
   | 'other';
 
 type ChatLanguage = 'vi' | 'en';
@@ -217,26 +218,28 @@ export class ChatService {
         .map((d, i) => `${i + 1}. ${d.name} (${d.province})`)
         .join('\n');
 
-      const prompt = preferredLang === 'en'
-        ? `User query: "${message}". Found these places:\n${itemsInfo}\n\nGenerate a friendly Opening sentence (e.g., "Here are some great suggestions...") and a Closing sentence (e.g., "Would you like to book a hotel nearby?").\nReply ONLY with JSON: {"opening": "...", "closing": "..."}`
-        : `Người dùng hỏi: "${message}". Tìm thấy:\n${itemsInfo}\n\n Hãy viết một câu Mở đầu thân thiện (ví dụ: "Mình tìm thấy vài địa điểm thú vị...") và một câu Kết thúc gợi mở (ví dụ: "Bạn có muốn xem khách sạn gần đó không?").\nTrả lời CHỈ bằng JSON: {"opening": "...", "closing": "..."}`;
-
-      const response = await this.performModelCall(
-        (model) => model.generateContent({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: 'application/json' }
-        }),
-        this.modelName,
-      );
-      
-      const raw = this.extractText(response);
       try {
+        const prompt = preferredLang === 'en'
+          ? `User query: "${message}". Found these places:\n${itemsInfo}\n\nGenerate a friendly Opening sentence (e.g., "Here are some great suggestions...") and a Closing sentence (e.g., "Would you like to book a hotel nearby?").\nReply ONLY with JSON: {"opening": "...", "closing": "..."}`
+          : `Người dùng hỏi: "${message}". Tìm thấy:\n${itemsInfo}\n\n Hãy viết một câu Mở đầu thân thiện (ví dụ: "Mình tìm thấy vài địa điểm thú vị...") và một câu Kết thúc gợi mở (ví dụ: "Bạn có muốn xem khách sạn gần đó không?").\nTrả lời CHỈ bằng JSON: {"opening": "...", "closing": "..."}`;
+
+        const response = await this.performModelCall(
+          (model) => model.generateContent({
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              generationConfig: { responseMimeType: 'application/json' }
+          }),
+          this.modelName,
+        );
+        
+        const raw = this.extractText(response);
         const json = JSON.parse(raw);
         opening = json.opening;
         closing = json.closing;
       } catch (e) {
-        opening = preferredLang === 'en' ? "Here are the results I found:" : "Đây là các kết quả mình tìm được:";
-        closing = preferredLang === 'en' ? "Let me know if you need more info!" : "Bạn cần thêm thông tin gì không?";
+        // FALLBACK: Static text if AI fails
+        console.warn('AI Summary failed, using fallback:', e.message);
+        opening = preferredLang === 'en' ? "Here are the top places I found for you:" : "Dưới đây là những địa điểm hàng đầu mình tìm được cho bạn:";
+        closing = preferredLang === 'en' ? "Do you want to see details for any of them?" : "Bạn có muốn xem chi tiết địa điểm nào không?";
       }
     } else {
        opening = preferredLang === 'en' 
@@ -1402,88 +1405,81 @@ export class ChatService {
     }));
   }
 
-  private async generateConversationalReply(
+  /* Generates a friendly, possibly witty, reply */
+  async generateConversationalReply(
     message: string,
     lang: ChatLanguage,
     intent: ChatIntent,
-    options: {
+    context: {
       history?: Content[];
       profileSummary?: string;
-      attachments?: NormalizedImageAttachment[];
       databaseMiss?: boolean;
       textOverride?: string;
+      attachments?: NormalizedImageAttachment[];
     } = {},
   ): Promise<ChatResponse> {
-    const systemPrompt =
-      lang === 'en'
-        ? 'You are a friendly Vietnamese travel consultant. Provide concise and helpful answers in English.'
-        : 'Ban la tro ly du lich Viet Nam, hay tra loi chan thanh, ngan gon va huu ich.';
-
-    const profileInstruction = options.profileSummary
-      ? `\nUser preferences: ${options.profileSummary}.`
-      : '';
-    const intentInstruction = `\nCurrent intent: ${intent}.`;
-
-    const userPrompt =
-      (options.databaseMiss
-        ? `${message}\n\nNo direct match was found in our database. Please offer a generic but useful travel tip.`
-        : message) +
-      profileInstruction +
-      intentInstruction;
-
-    const history = options.history ?? [];
-    const parts = [
-      ...(options.attachments?.map((attachment) => ({
-        inlineData: { data: attachment.base64, mimeType: attachment.mimeType },
-      })) ?? []),
-      { text: userPrompt },
-    ];
-
-    if (options.textOverride) {
-      return { source: 'ai', text: options.textOverride };
+    if (context.textOverride) {
+      if (typeof context.textOverride === 'string') {
+        return { source: 'ai', text: context.textOverride };
+      }
+      return { source: 'ai', text: context.textOverride };
+    }
+    
+    // Quick fallback checks
+    if (intent === 'greeting' && this.isSimpleGreeting(message)) {
+       const greetings = lang === 'en' 
+         ? ["Hello! How can I help you today?", "Hi there! Planning a trip?", "Greetings! where do you want to go?"]
+         : ["Xin chào! Mình có thể giúp gì cho bạn?", "Chào bạn! Bạn đang lên kế hoạch đi đâu thế?", "Chào bạn! Hôm nay bạn muốn tìm địa điểm nào?"];
+       return { source: 'ai', text: greetings[Math.floor(Math.random() * greetings.length)] };
     }
 
-    try {
-      const response = await this.performModelCall(
-        (model) =>
-          model.generateContent({
-            systemInstruction: {
-              role: 'system',
-              parts: [{ text: systemPrompt }],
-            },
-            contents: [...history, { role: 'user', parts }],
-          }),
-        this.modelName,
-      );
-      const text =
-        this.extractText(response) ||
-        (lang === 'en'
-          ? 'Sorry, I could not generate an answer just yet.'
-          : 'Xin lỗi, hiện tại tôi chưa thể phản hồi.');
-      return { source: 'ai', text };
-    } catch (error) {
-      // Quota fallback
-      const isGreeting = this.isSimpleGreeting(message);
-      if (isGreeting) {
-        const fallbacks = lang === 'en' 
-          ? [
-              "Hello! My system is currently a bit busy, but I'm still here to help you with your travel needs!",
-              "Nice to meet you! I'm experiencing some high traffic right now. Please ask me about specific destinations."
-            ]
-          : [
-              "Chào bạn! Hiện tại hệ thống của mình đang bận một chút, nhưng mình vẫn luôn sẵn sàng hỗ trợ bạn tìm kiếm các địa điểm du lịch nhé!",
-              "Rất vui được gặp bạn! Có vẻ như mình đang cần nghỉ ngơi một tí, bạn hãy hỏi mình về các địa điểm cụ thể nha."
-            ];
-        return { 
-          source: 'ai', 
-          text: fallbacks[Math.floor(Math.random() * fallbacks.length)] 
-        };
-      }
+    if (intent === 'other' || context.databaseMiss) {
+       // If standard processing failed or intent is unknown
+       // try AI generation but with heavy fallback protection
+    } else {
+       // specific intent (destination/restaurant etc) but no db results found -> generate conversational "Sorry"
+    }
 
-      const fallbackMsg = lang === 'en'
-        ? "I'm sorry, I'm currently over capacity. Please try again in a few minutes."
-        : "Thành thật xin lỗi, hiện tại mình đang bị quá tải. Bạn vui lòng thử lại sau ít phút nhé.";
-      return { source: 'ai', text: fallbackMsg };
+    const history = context.history || [];
+    const profileSummary = context.profileSummary || '';
+    
+    const prompt = lang === 'en'
+      ? `You are an intelligent travel assistant. The user said: "${message}". Context: Intent=${intent}. ${profileSummary ? `User Profile: ${profileSummary}` : ''}. Respond naturally, concisely, and helpfully. Max 2 sentences.`
+      : `Bạn là trợ lý du lịch thông minh. Người dùng nói: "${message}". Intent=${intent}. ${profileSummary ? `Hồ sơ người dùng: ${profileSummary}` : ''}. Hãy trả lời tự nhiên, ngắn gọn và hữu ích. Tối đa 2 câu.`;
+
+    try {
+        const response = await this.performModelCall(
+        (model) => model.generateContent({
+            systemInstruction: {
+            role: 'system',
+            parts: [{ text: prompt }],
+            },
+            contents: [
+            ...history,
+            { role: 'user', parts: [{ text: message }] },
+            ],
+        }),
+        this.modelName,
+        );
+        return { source: 'ai', text: this.extractText(response) };
+    } catch (error) {
+        console.warn('Conversational AI failed, using fallback:', error.message);
+        
+        let staticText = lang === 'en' 
+            ? "I'm having trouble connecting to my creative brain right now. Can you try again?" 
+            : "Hiện tại hệ thống AI đang bận, mình chưa thể trả lời chi tiết được.";
+
+        if (intent === 'greeting') {
+            staticText = lang === 'en' ? "Hello! How can I assist you with your travels?" : "Xin chào! Mình có thể giúp gì cho chuyến đi của bạn?";
+        } else if (intent === 'destination') {
+            staticText = lang === 'en'
+                ? "I couldn't find specific details right now, but I can help you search for other places."
+                : "Mình chưa tìm thấy thông tin chi tiết lúc này, bạn thử tìm địa điểm khác xem sao nhé.";
+        } else if (intent === 'my_routes') {
+             staticText = lang === 'en' ? "Here is your route info." : "Thông tin lịch trình của bạn đây.";
+        }
+
+        return { source: 'ai', text: staticText };
     }
   }
 
@@ -1553,16 +1549,39 @@ export class ChatService {
         imageRequested: this.asBoolean(parsedRecord.imageRequested),
       };
     } catch (error) {
-      console.warn('[Chatbot] Classification failed, defaulting to other intent', error.message);
-      return {
+      console.warn('[Chatbot] Classification failed, failing back to keywords:', error.message);
+      return this.simpleKeywordClassification(message);
+    }
+  }
+
+  private simpleKeywordClassification(message: string): Classification {
+    const msgLower = message.toLowerCase();
+    
+    // Quick Keyword Matching
+    if (msgLower.includes('đơn hàng') || msgLower.includes('tour đã đặt') || msgLower.includes('order')) return { intent: 'my_orders', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+    if (msgLower.includes('chuyến đi của tôi') || msgLower.includes('lịch trình của tôi') || msgLower.includes('route')) return { intent: 'my_routes', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+    if (msgLower.includes('thuê xe') || msgLower.includes('car rental') || msgLower.includes('bike')) return { intent: 'search_vehicle', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+    
+    if (msgLower.includes('khách sạn') || msgLower.includes('hotel') || msgLower.includes('nghỉ dưỡng')) return { intent: 'search_hotel', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+    if (msgLower.includes('nhà hàng') || msgLower.includes('quán ăn') || msgLower.includes('restaurant') || msgLower.includes('ăn uống')) return { intent: 'search_restaurant', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+    
+    if (msgLower.includes('tạo lịch trình') || msgLower.includes('plan trip') || msgLower.includes('lập kế hoạch')) return { intent: 'create_route', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+    
+    if (msgLower.includes('xe khách') || msgLower.includes('tàu hỏa') || msgLower.includes('máy bay') || msgLower.includes('vé xe')) return { intent: 'transport_search', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+
+    // Default to destination if looks like a location search, otherwise other
+    if (msgLower.includes('ở đâu') || msgLower.includes('chơi gì') || msgLower.includes('địa điểm') || msgLower.includes('du lịch')) {
+        return { intent: 'destination', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+    }
+
+    return {
         intent: 'other',
         keywords: [],
         regions: [],
         categories: [],
         followUp: false,
         imageRequested: false,
-      };
-    }
+    };
   }
 
   private normalizeIntent(intent?: string): ChatIntent {
