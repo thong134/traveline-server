@@ -1320,12 +1320,12 @@ export class ChatService {
         )
         .join('\n');
     }
-    const header = `Day la mot vai ${kind} ban co the tham khao:`;
+    const header = `Đây là một vài ${kind} bạn có thể tham khảo:`;
     const bullet = items
       .map((item) => {
-        const address = item.address ? `, dia chi: ${item.address}` : '';
+        const address = item.address ? `, địa chỉ: ${item.address}` : '';
         const description = item.description
-          ? `. Goi y: ${item.description}`
+          ? `. gợi ý: ${item.description}`
           : '';
         return `- ${item.name}${address}${description}`;
       })
@@ -1699,7 +1699,7 @@ export class ChatService {
       this.extractText(response) ||
       (lang === 'en'
         ? 'These photos look great. Let me know if you need suggestions related to them.'
-        : 'Day la mot so hinh anh rat dep. Hay cho toi biet ban muon goi y gi them.')
+        : 'Đây là một số hình ảnh rất đẹp. Hãy cho tôi biết bạn muốn gợi ý gì thêm.')
     );
   }
 
@@ -1727,7 +1727,7 @@ export class ChatService {
               text:
                 lang === 'en'
                   ? 'Write a short friendly sentence that introduces a set of travel photos sourced from our recommendation library.'
-                  : 'Viet mot cau ngan gon gioi thieu bo anh du lich tu thu vien goi y.',
+                  : 'Viết một câu ngắn gọn giới thiệu bộ ảnh du lịch từ thư viện gợi ý.',
             },
           ],
         },
@@ -1748,7 +1748,7 @@ export class ChatService {
       this.extractText(response) ||
       (lang === 'en'
         ? 'Here are some photos that match your request.'
-        : 'Day la mot vai hinh anh phu hop voi yeu cau cua ban.')
+        : 'Đây là một số hình ảnh phù hợp với yêu cầu của bạn.')
     );
   }
 
