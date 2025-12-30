@@ -351,6 +351,41 @@ export class RentalBillsService {
       return { payUrl, paymentId };
     }
 
+    if (bill.paymentMethod === 'wallet') {
+      // 1. Transactional check and lock
+      await this.dataSource.transaction(async (manager) => {
+        const user = await manager.findOne(User, { where: { id: bill.userId } });
+        if (!user) throw new NotFoundException('User not found');
+        
+        // 2. Lock funds (Internal balance check included)
+        await this.walletService.lockFunds(bill.userId, totalAmount, `rental:${bill.id}`);
+        this.logger.log(`Locked ${totalAmount} from user ${bill.userId} wallet for rental ${bill.id}`);
+
+        // 3. Deduct Travel Points
+        if (bill.travelPointsUsed > 0) {
+          const deducted = Math.min(user.travelPoint, bill.travelPointsUsed);
+          if (deducted > 0) {
+            await manager.update(User, user.id, { travelPoint: user.travelPoint - deducted });
+            this.logger.log(`Deducted ${deducted} points from user ${user.id} (Wallet pay)`);
+          }
+        }
+
+        // 4. Increment Voucher Usage
+        if (bill.voucherId) {
+          await this.vouchersService.incrementUsage(bill.voucherId);
+          this.logger.log(`Incremented usage for voucher ${bill.voucherId} (Wallet pay)`);
+        }
+
+        // 5. Update Status
+        await manager.update(RentalBill, bill.id, { 
+          status: RentalBillStatus.PAID,
+          rentalStatus: RentalProgressStatus.BOOKED
+        });
+      });
+
+      return { payUrl: 'wallet_success', paymentId: 0 };
+    }
+
     throw new BadRequestException('Unsupported payment method');
   }
 
@@ -833,26 +868,29 @@ export class RentalBillsService {
     });
   }
 
-  private async processWalletPayment(bill: RentalBill, ownerWalletAddress?: string) {
-    const totalAmount = parseFloat(bill.total);
-    if (totalAmount <= 0) return;
-
-    await this.walletService.lockFunds(bill.userId, totalAmount, `rental:${bill.id}`);
-
-    if (ownerWalletAddress) {
-      const amountEth = (totalAmount / VND_TO_ETH_RATE).toFixed(8);
-      await this.blockchainService.adminDepositForRental(bill.id, ownerWalletAddress, amountEth);
-    }
-  }
 
   private async processRefundOrRelease(bill: RentalBill, action: 'release' | 'refund', ownerUserId?: number) {
     const totalAmount = parseFloat(bill.total);
     if (totalAmount <= 0) return;
 
     if (action === 'refund') {
+      // 1. Refund External Payment if exists
       await this.paymentService.refundLatestByRental(bill.id);
+
+      // 2. Refund Travel Points
+      if (bill.travelPointsUsed > 0) {
+        await this.userRepo.increment({ id: bill.userId }, 'travelPoint', bill.travelPointsUsed);
+        this.logger.log(`Refunded ${bill.travelPointsUsed} points to user ${bill.userId} for rental ${bill.id}`);
+      }
+
+      // 3. Decrement Voucher Usage
+      if (bill.voucherId) {
+        await this.vouchersService.decrementUsage(bill.voucherId);
+        this.logger.log(`Decremented usage for voucher ${bill.voucherId} due to refund`);
+      }
     }
 
+    // 4. Release Wallet Funds (Back to user if refund, or to owner if release)
     await this.walletService.releaseFunds(bill.userId, totalAmount, `rental:${bill.id}`, action === 'release' ? ownerUserId : undefined);
 
     const shouldUseBlockchain = bill.requiresEthDeposit && !!bill.ownerEthAddress;
@@ -862,8 +900,6 @@ export class RentalBillsService {
     } else if (action === 'refund' && shouldUseBlockchain) {
       await this.blockchainService.adminRefundForRental(bill.id);
     } else if (action === 'release' && ownerUserId) {
-      // Escrow logic: Money is automatically moved from renter's lockedBalance 
-      // to owner's wallet balance in walletService.releaseFunds() above.
       this.logger.log(`Automatically released funds to owner ${ownerUserId} for bill ${bill.code}`);
     }
 
@@ -871,6 +907,7 @@ export class RentalBillsService {
       const pointsEarned = Math.floor(totalAmount / 100) * 1;
       if (pointsEarned > 0) {
         await this.userRepo.increment({ id: bill.userId }, 'travelPoint', pointsEarned);
+        this.logger.log(`User ${bill.userId} earned ${pointsEarned} points for completed rental ${bill.id}`);
       }
     }
   }
