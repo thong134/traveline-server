@@ -128,8 +128,8 @@ const MAX_RECENT_SEARCHES = 10;
 
 @Injectable()
 export class ChatService {
-  private readonly modelName = 'gemini-2.0-flash';
-  private readonly visionModelName = 'gemini-2.0-flash';
+  private readonly modelName = 'gemini-2.5-flash';
+  private readonly visionModelName = 'gemini-2.5-flash';
   private readonly historyLimit = 6;
   private readonly modelPool = new Map<string, GenerativeModel>();
   private geminiClient: GoogleGenerativeAI | null = null;
@@ -1262,23 +1262,48 @@ export class ChatService {
       return { source: 'ai', text: options.textOverride };
     }
 
-    const response = await this.performModelCall(
-      (model) =>
-        model.generateContent({
-          systemInstruction: {
-            role: 'system',
-            parts: [{ text: systemPrompt }],
-          },
-          contents: [...history, { role: 'user', parts }],
-        }),
-      this.modelName,
-    );
-    const text =
-      this.extractText(response) ||
-      (lang === 'en'
-        ? 'Sorry, I could not generate an answer just yet.'
-        : 'Xin loi, hien tai toi chua the phan hoi.');
-    return { source: 'ai', text };
+    try {
+      const response = await this.performModelCall(
+        (model) =>
+          model.generateContent({
+            systemInstruction: {
+              role: 'system',
+              parts: [{ text: systemPrompt }],
+            },
+            contents: [...history, { role: 'user', parts }],
+          }),
+        this.modelName,
+      );
+      const text =
+        this.extractText(response) ||
+        (lang === 'en'
+          ? 'Sorry, I could not generate an answer just yet.'
+          : 'Xin lỗi, hiện tại tôi chưa thể phản hồi.');
+      return { source: 'ai', text };
+    } catch (error) {
+      // Quota fallback
+      const isGreeting = this.isSimpleGreeting(message);
+      if (isGreeting) {
+        const fallbacks = lang === 'en' 
+          ? [
+              "Hello! My system is currently a bit busy, but I'm still here to help you with your travel needs!",
+              "Nice to meet you! I'm experiencing some high traffic right now. Please ask me about specific destinations."
+            ]
+          : [
+              "Chào bạn! Hiện tại hệ thống của mình đang bận một chút, nhưng mình vẫn luôn sẵn sàng hỗ trợ bạn tìm kiếm các địa điểm du lịch nhé!",
+              "Rất vui được gặp bạn! Có vẻ như mình đang cần nghỉ ngơi một tí, bạn hãy hỏi mình về các địa điểm cụ thể nha."
+            ];
+        return { 
+          source: 'ai', 
+          text: fallbacks[Math.floor(Math.random() * fallbacks.length)] 
+        };
+      }
+
+      const fallbackMsg = lang === 'en'
+        ? "I'm sorry, I'm currently over capacity. Please try again in a few minutes."
+        : "Thành thật xin lỗi, hiện tại mình đang bị quá tải. Bạn vui lòng thử lại sau ít phút nhé.";
+      return { source: 'ai', text: fallbackMsg };
+    }
   }
 
   private async classifyMessage(
@@ -1303,31 +1328,31 @@ export class ChatService {
       ? `\nKnown preferences: ${profileSummary}`
       : '';
 
-    const response = await this.performModelCall((model) =>
-      model.generateContent({
-        systemInstruction: {
-          role: 'system',
-          parts: [
-            {
-              text: 'Classify the travel intent of the user. Valid intents: destination, restaurant, hotel, service, app_guide, booking_help, transport, image_request, profile_update, route_query, route_detail, transport_search, other. Extract up to five keywords, regions, and categories for searching. route_query is for listing trips or asking "where/when is my next trip". route_detail is for asking specific details/itinerary of a trip. transport_search is for searching bus, train, or flight tickets/routes between cities (extract origin and destination as regions). If the question continues a previous turn set followUp to true. If the user requests images set imageRequested to true. Reply ONLY with JSON {"intent":string,"keywords":string[],"regions":string[],"categories":string[],"followUp":boolean,"imageRequested":boolean}.',
-            },
-          ],
-        },
-        contents: [
-          {
-            role: 'user',
+    try {
+      const response = await this.performModelCall((model) =>
+        model.generateContent({
+          systemInstruction: {
+            role: 'system',
             parts: [
               {
-                text: `User query: "${message}".${contextPrompt}${profilePrompt}`,
+                text: 'Classify the travel intent of the user. Valid intents: destination, restaurant, hotel, service, app_guide, booking_help, transport, image_request, profile_update, route_query, route_detail, transport_search, other. Extract up to five keywords, regions, and categories for searching. route_query is for listing trips or asking "where/when is my next trip". route_detail is for asking specific details/itinerary of a trip. transport_search is for searching bus, train, or flight tickets/routes between cities (extract origin and destination as regions). If the question continues a previous turn set followUp to true. If the user requests images set imageRequested to true. Reply ONLY with JSON {"intent":string,"keywords":string[],"regions":string[],"categories":string[],"followUp":boolean,"imageRequested":boolean}.',
               },
             ],
           },
-        ],
-      }),
-    );
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: `User query: "${message}".${contextPrompt}${profilePrompt}`,
+                },
+              ],
+            },
+          ],
+        }),
+      );
 
-    const raw = this.extractText(response);
-    try {
+      const raw = this.extractText(response);
       const parsedValue: unknown = raw ? JSON.parse(raw) : null;
       if (!this.isRecord(parsedValue)) {
         throw new Error('Invalid classification payload');
@@ -1343,7 +1368,8 @@ export class ChatService {
         followUp: this.asBoolean(parsedRecord.followUp),
         imageRequested: this.asBoolean(parsedRecord.imageRequested),
       };
-    } catch {
+    } catch (error) {
+      console.warn('[Chatbot] Classification failed, defaulting to other intent', error.message);
       return {
         intent: 'other',
         keywords: [],
@@ -1898,13 +1924,12 @@ export class ChatService {
   ): Promise<GenerateContentResult> {
     try {
       const model = this.getModel(modelName);
-      return await call(model);
+      const result = await call(model);
+      return result;
     } catch (error) {
       console.error('[Gemini Error]', error);
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new ServiceUnavailableException('Gemini service is unavailable.');
+      // Re-throw to be caught by specific intent handlers or generateConversationalReply fallbacks
+      throw error;
     }
   }
 
