@@ -39,7 +39,7 @@ export interface DestinationTranslationResult {
     baseSpecificAddress: string;
   };
   parsing: {
-    wardCandidate: string;
+    wardCandidate?: string;
     existingDistrictSegment?: string | null;
   };
   legacy: {
@@ -47,8 +47,8 @@ export interface DestinationTranslationResult {
     provinceName: string | null;
     districtCode: string | null;
     districtName: string | null;
-    wardCode: string;
-    wardName: string;
+    wardCode?: string;
+    wardName?: string;
   };
   reform: {
     provinceCode: string;
@@ -73,7 +73,7 @@ type EnrichmentPreview = {
   destinationId: number;
   legacyDistrictName: string | null;
   legacyDistrictCode: string | null;
-  legacyWardCode: string;
+  legacyWardCode?: string;
   originalSpecificAddress: string | null;
   suggestedSpecificAddress: string;
   finalSpecificAddress: string | null;
@@ -128,7 +128,7 @@ export class AdministrativeMappingService {
       await this.resolveMappingForLegacyWard(legacyWard);
 
     // FIX: Extract segments from specificAddress to avoid duplication
-    const segments = this.extractAddressSegments(specificAddress);
+    const segments = await this.extractAddressSegments(specificAddress, provinceName);
     const baseSpecificAddress = this.buildBaseSpecificAddress(
       specificAddress,
       segments,
@@ -282,23 +282,25 @@ export class AdministrativeMappingService {
       );
     }
 
-    const segments = this.extractAddressSegments(specificAddressRaw);
-    const wardCandidate = segments.wardCandidate?.trim();
+    const segments = await this.extractAddressSegments(specificAddressRaw, provinceRaw);
+    let wardCandidate = segments.wardCandidate?.trim();
 
-    if (!wardCandidate) {
-      throw new NotFoundException(
-        `Không xác định được tên xã/phường từ specificAddress của địa điểm #${destination.id}.`,
-      );
+    let legacyWard = wardCandidate
+      ? await this.findLegacyWardByName(wardCandidate, provinceRaw)
+      : undefined;
+
+    // Fallback: If no ward found by segments, search whole string for a ward name
+    if (!legacyWard) {
+      legacyWard = await this.searchWardInString(specificAddressRaw, provinceRaw);
+      if (legacyWard) {
+         // If found via fallback, we need to rebuild base parts
+         // This is tricky, but let's just keep the original as base for now
+      }
     }
-
-    const legacyWard = await this.findLegacyWardByName(
-      wardCandidate,
-      provinceRaw,
-    );
 
     if (!legacyWard) {
       throw new NotFoundException(
-        `Không tìm thấy xã/phường "${wardCandidate}" trong dữ liệu legacy với ngữ cảnh tỉnh "${provinceRaw}".`,
+        `Không tìm thấy xã/phường hợp lệ trong "${specificAddressRaw}" (Tỉnh: ${provinceRaw}).`,
       );
     }
 
@@ -362,8 +364,8 @@ export class AdministrativeMappingService {
         provinceName: legacyProvinceName,
         districtCode: legacyDistrictCode,
         districtName: legacyDistrictName,
-        wardCode: legacyWard.code,
-        wardName: legacyWard.fullName ?? legacyWard.name,
+        wardCode: legacyWard.code ?? undefined,
+        wardName: (legacyWard.fullName ?? legacyWard.name) ?? undefined,
       },
       reform: {
         provinceCode: province.code,
@@ -485,7 +487,10 @@ export class AdministrativeMappingService {
     return null;
   }
 
-  private extractAddressSegments(raw?: string | null): AddressSegments {
+  private async extractAddressSegments(
+    raw: string | null,
+    provinceName: string,
+  ): Promise<AddressSegments> {
     if (!raw) {
       return { baseParts: [] };
     }
@@ -504,16 +509,19 @@ export class AdministrativeMappingService {
       if (this.looksLikeWardName(single)) {
         return { baseParts: [], wardCandidate: single };
       }
+      // Check if it's a known district name in this province
+      if (await this.isKnownDistrict(single, provinceName)) {
+        return { baseParts: [], districtCandidate: single };
+      }
       return { baseParts: segments };
     }
 
     const lastSegment = segments[segments.length - 1];
-    if (this.looksLikeDistrictName(lastSegment)) {
-      const wardCandidate =
-        segments.length >= 2 ? segments[segments.length - 2] : undefined;
-      const baseParts = wardCandidate
-        ? segments.slice(0, -2)
-        : segments.slice(0, -1);
+
+    // Priority 1: Last segment is a District
+    if (this.looksLikeDistrictName(lastSegment) || await this.isKnownDistrict(lastSegment, provinceName)) {
+      const wardCandidate = segments.length >= 2 ? segments[segments.length - 2] : undefined;
+      const baseParts = wardCandidate ? segments.slice(0, -2) : segments.slice(0, -1);
       return {
         baseParts,
         wardCandidate,
@@ -521,6 +529,7 @@ export class AdministrativeMappingService {
       };
     }
 
+    // Priority 2: Last segment is a Ward
     const wardCandidate = segments[segments.length - 1];
     const baseParts = segments.slice(0, -1);
 
@@ -621,7 +630,47 @@ export class AdministrativeMappingService {
       return false;
     }
 
-    return /\b(phuong|xa|thi tran)\b/.test(normalized);
+    return /\b(phuong|xa|commune|ward|thi tran)\b/.test(normalized);
+  }
+
+  private async isKnownDistrict(name: string, provinceName: string): Promise<boolean> {
+    const normalizedName = this.normalizeText(name);
+    const normalizedProvince = this.normalizeText(provinceName);
+    const wards = await this.ensureLegacyWardCache();
+    
+    return wards.some(w => 
+      this.normalizeText(w.district?.province?.name) === normalizedProvince &&
+      (this.normalizeText(w.district?.name) === normalizedName || 
+       this.normalizeText(w.district?.fullName) === normalizedName)
+    );
+  }
+
+  private async searchWardInString(text: string, provinceName: string): Promise<LegacyWardWithContext | undefined> {
+    const normalizedText = this.normalizeText(text);
+    const normalizedProvince = this.normalizeText(provinceName);
+    const wards = await this.ensureLegacyWardCache();
+
+    // Filter wards by province first
+    const provinceWards = wards.filter(w => 
+      this.normalizeText(w.district?.province?.name) === normalizedProvince ||
+      this.normalizeText(w.district?.province?.fullName) === normalizedProvince
+    );
+
+    // Sort by name length descending to match longest name first (e.g. "Hòa Hiệp Bắc" before "Hòa Hiệp")
+    provinceWards.sort((a, b) => (b.fullName || b.name).length - (a.fullName || a.name).length);
+
+    for (const ward of provinceWards) {
+      const names = [
+        this.normalizeText(ward.fullName),
+        this.normalizeText(ward.name)
+      ].filter(n => n.length > 2); // Avoid matching too short names
+
+      if (names.some(n => normalizedText.includes(n))) {
+        return ward;
+      }
+    }
+    
+    return undefined;
   }
 
   async findByOldWard(code: string): Promise<AdminUnitMapping[]> {

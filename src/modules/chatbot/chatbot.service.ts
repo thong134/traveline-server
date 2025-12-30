@@ -24,6 +24,11 @@ import { ChatCache } from './entities/chat-cache.entity';
 import { ChatUserProfile } from './entities/chat-user-profile.entity';
 import { ChatMessage } from './entities/chat-message.entity';
 import { User } from '../user/entities/user.entity';
+import { TravelRoute } from '../travel-route/entities/travel-route.entity';
+import { RouteStop } from '../travel-route/entities/route-stop.entity';
+import { BusType } from '../bus/bus/entities/bus-type.entity';
+import { TrainRoute } from '../train/train/entities/train-route.entity';
+import { Flight } from '../flight/flight/entities/flight.entity';
 import { ChatImageAttachmentDto } from './dto/chat-request.dto';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 
@@ -38,6 +43,9 @@ type ChatIntent =
   | 'image_request'
   | 'image_classify'
   | 'profile_update'
+  | 'route_query'
+  | 'route_detail'
+  | 'transport_search'
   | 'other';
 
 type ChatLanguage = 'vi' | 'en';
@@ -142,6 +150,16 @@ export class ChatService {
     private readonly messageRepo: Repository<ChatMessage>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(TravelRoute)
+    private readonly routeRepo: Repository<TravelRoute>,
+    @InjectRepository(RouteStop)
+    private readonly stopRepo: Repository<RouteStop>,
+    @InjectRepository(BusType)
+    private readonly busRepo: Repository<BusType>,
+    @InjectRepository(TrainRoute)
+    private readonly trainRepo: Repository<TrainRoute>,
+    @InjectRepository(Flight)
+    private readonly flightRepo: Repository<Flight>,
   ) {}
 
   async handleChat(
@@ -336,11 +354,38 @@ export class ChatService {
           preferredLang,
           context,
         );
-      case 'booking_help':
-      case 'service':
-      case 'app_guide':
-      case 'transport':
       case 'profile_update':
+        return this.generateConversationalReply(
+          message,
+          preferredLang,
+          classification.intent,
+          {
+            history: context.history,
+            profileSummary: context.profileSummary,
+            attachments: context.attachments,
+          },
+        );
+      case 'route_query':
+        return this.handleRouteQuery(
+          classification,
+          message,
+          preferredLang,
+          context,
+        );
+      case 'route_detail':
+        return this.handleRouteDetail(
+          classification,
+          message,
+          preferredLang,
+          context,
+        );
+      case 'transport_search':
+        return this.handleTransportSearch(
+          classification,
+          message,
+          preferredLang,
+          context,
+        );
       case 'other':
       default:
         return this.generateConversationalReply(
@@ -744,6 +789,216 @@ export class ChatService {
     }
   }
 
+  private async handleRouteQuery(
+    classification: Classification,
+    message: string,
+    lang: ChatLanguage,
+    context: ChatRuntimeContext,
+  ): Promise<ChatResponse> {
+    if (!context.userId) {
+      return this.generateConversationalReply(message, lang, 'route_query', {
+        history: context.history,
+        textOverride: lang === 'en' 
+          ? 'Please log in to view your travel routes.' 
+          : 'Vui lòng đăng nhập để xem lịch trình cá nhân của bạn.',
+      });
+    }
+
+    // Find upcoming or in_progress routes for the user
+    const routes = await this.routeRepo.find({
+      where: {
+        user: { id: context.userId },
+        isPublic: false,
+      },
+      order: { startDate: 'ASC', createdAt: 'DESC' },
+      take: 5,
+    });
+
+    if (!routes.length) {
+      return this.generateConversationalReply(message, lang, 'route_query', {
+        history: context.history,
+        databaseMiss: true,
+      });
+    }
+
+    // Generate a summary using Gemini
+    const routesInfo = routes
+      .map((r, i) => `${i + 1}. ${r.name} (${r.startDate ? r.startDate.toLocaleDateString() : 'N/A'} - ${r.endDate ? r.endDate.toLocaleDateString() : 'N/A'}) - Status: ${r.status}`)
+      .join('\n');
+
+    const prompt = lang === 'en'
+      ? `User is asking about their travel plans: "${message}"\nHere are their recent trips:\n${routesInfo}\n\nSummarize these trips naturally. If they have an upcoming one, highlight it.`
+      : `Người dùng đang hỏi về lịch trình: "${message}"\nĐây là các chuyến đi gần đây:\n${routesInfo}\n\nHãy tóm tắt các chuyến đi này một cách tự nhiên. Nếu có chuyến đi sắp tới, hãy nhấn mạnh nó.`;
+
+    const response = await this.performModelCall(
+      (model) => model.generateContent(prompt),
+      this.modelName,
+    );
+
+    return {
+      source: 'ai',
+      text: this.extractText(response),
+    };
+  }
+
+  private async handleRouteDetail(
+    classification: Classification,
+    message: string,
+    lang: ChatLanguage,
+    context: ChatRuntimeContext,
+  ): Promise<ChatResponse> {
+    if (!context.userId) {
+      return this.generateConversationalReply(message, lang, 'route_detail', {
+        history: context.history,
+        textOverride: lang === 'en' 
+          ? 'Please log in to view trip details.' 
+          : 'Vui lòng đăng nhập để xem chi tiết chuyến đi.',
+      });
+    }
+
+    // Attempt to find the specific route mentioned or the most relevant one
+    let targetRoute: TravelRoute | null = null;
+    
+    if (classification.keywords.length > 0) {
+      // Search by name keywords
+      const qb = this.routeRepo.createQueryBuilder('route')
+        .where('route.user_id = :userId', { userId: context.userId })
+        .andWhere('route.isPublic = :isPublic', { isPublic: false });
+      
+      const subClauses: string[] = [];
+      classification.keywords.forEach((kw, i) => {
+        subClauses.push(`route.name ILIKE :kw${i}`);
+        qb.setParameter(`kw${i}`, `%${kw}%`);
+      });
+      qb.andWhere(`(${subClauses.join(' OR ')})`);
+      
+      targetRoute = await qb.orderBy('route.startDate', 'ASC').getOne();
+    }
+
+    if (!targetRoute) {
+      // Fallback: Get the most recent/upcoming route
+      targetRoute = await this.routeRepo.findOne({
+        where: { user: { id: context.userId }, isPublic: false },
+        order: { startDate: 'ASC', createdAt: 'DESC' },
+      });
+    }
+
+    if (!targetRoute) {
+      return this.generateConversationalReply(message, lang, 'route_detail', {
+        history: context.history,
+        databaseMiss: true,
+      });
+    }
+
+    // Fetch full details with stops
+    const fullRoute = await this.routeRepo.findOne({
+      where: { id: targetRoute.id },
+      relations: { stops: { destination: true } },
+      order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
+    });
+
+    if (!fullRoute || !fullRoute.stops?.length) {
+      const emptyText = lang === 'en'
+        ? `I found your trip "${targetRoute.name}" but it doesn't have any stops planned yet.`
+        : `Tôi đã tìm thấy chuyến đi "${targetRoute.name}" của bạn nhưng hiện chưa có điểm dừng nào trong lịch trình.`;
+      return { source: 'ai', text: emptyText };
+    }
+
+    // Summarize the itinerary
+    const stopsInfo = fullRoute.stops
+      .map(s => {
+        const destName = s.destination?.name || 'Unknown';
+        const time = s.startTime ? ` at ${s.startTime}` : '';
+        return `- Day ${s.dayOrder}: ${destName}${time}${s.notes ? ` (${s.notes})` : ''}`;
+      })
+      .join('\n');
+
+    const prompt = lang === 'en'
+      ? `User wants details for trip: "${fullRoute.name}"\nItinerary:\n${stopsInfo}\n\nPresent this itinerary to the user in a helpful, friendly way. Highlight the start date: ${fullRoute.startDate?.toLocaleDateString()}.`
+      : `Người dùng muốn xem chi tiết chuyến đi: "${fullRoute.name}"\nLịch trình:\n${stopsInfo}\n\nHãy trình bày lịch trình này cho người dùng một cách hữu ích và thân thiện. Nhấn mạnh ngày bắt đầu: ${fullRoute.startDate?.toLocaleDateString()}.`;
+
+    const response = await this.performModelCall(
+      (model) => model.generateContent(prompt),
+      this.modelName,
+    );
+
+    return {
+      source: 'ai',
+      text: this.extractText(response),
+    };
+  }
+
+  private async handleTransportSearch(
+    classification: Classification,
+    message: string,
+    lang: ChatLanguage,
+    context: ChatRuntimeContext,
+  ): Promise<ChatResponse> {
+    const { regions, keywords } = classification;
+    
+    // Attempt to extract origin and destination from regions
+    // prompt instructed to put origin/destination in regions
+    let origin = regions[0] || '';
+    let destination = regions[1] || '';
+
+    // If keywords contain likely cities but regions is empty, try to use keywords
+    if (!origin && keywords.length > 0) origin = keywords[0];
+    if (!destination && keywords.length > 1) destination = keywords[1];
+
+    if (!origin && !destination) {
+      return this.generateConversationalReply(message, lang, 'transport_search', {
+        history: context.history,
+        textOverride: lang === 'en'
+          ? 'Where would you like to travel from and to? Please specify cities like "from Saigon to Hanoi".'
+          : 'Bạn muốn đi từ đâu đến đâu? Vui lòng cho tôi biết địa điểm cụ thể nhé (ví dụ: "từ Sài Gòn đi Hà Nội").',
+      });
+    }
+
+    // 1. Search Buses
+    const busQb = this.busRepo.createQueryBuilder('bus');
+    if (origin) busQb.andWhere('bus.route ILIKE :origin', { origin: `%${origin}%` });
+    if (destination) busQb.andWhere('bus.route ILIKE :dest', { dest: `%${destination}%` });
+    const buses = await busQb.take(5).getMany();
+
+    // 2. Search Trains
+    const trainQb = this.trainRepo.createQueryBuilder('train');
+    if (origin) trainQb.andWhere('train.departureStation ILIKE :origin', { origin: `%${origin}%` });
+    if (destination) trainQb.andWhere('train.arrivalStation ILIKE :dest', { dest: `%${destination}%` });
+    const trains = await trainQb.take(5).getMany();
+
+    // 3. Search Flights
+    const flightQb = this.flightRepo.createQueryBuilder('flight');
+    if (origin) flightQb.andWhere('flight.departureAirport ILIKE :origin', { origin: `%${origin}%` });
+    if (destination) flightQb.andWhere('flight.arrivalAirport ILIKE :dest', { dest: `%${destination}%` });
+    const flights = await flightQb.take(5).getMany();
+
+    if (!buses.length && !trains.length && !flights.length) {
+      return this.generateConversationalReply(message, lang, 'transport_search', {
+        history: context.history,
+        databaseMiss: true,
+      });
+    }
+
+    // Format data for Gemini
+    const busData = buses.map(b => `- Bus: ${b.name}, Price: ${b.price}, Route: ${b.route}`).join('\n');
+    const trainData = trains.map(t => `- Train: ${t.name}, From ${t.departureStation} to ${t.arrivalStation}, Price: ${t.basePrice}, Departure: ${t.departureTime}`).join('\n');
+    const flightData = flights.map(f => `- Flight: ${f.airline} ${f.flightNumber}, From ${f.departureAirport} to ${f.arrivalAirport}, Price: ${f.basePrice}, Time: ${f.departureTime}`).join('\n');
+
+    const prompt = lang === 'en'
+      ? `User wants to find transport: "${message}"\nDetected Origin: "${origin}", Destination: "${destination}"\n\nResults:\nBUSES:\n${busData || 'None found'}\n\nTRAINS:\n${trainData || 'None found'}\n\nFLIGHTS:\n${flightData || 'None found'}\n\nPresent these options clearly. Group them by type. Suggest the best or cheapest if obvious. Ask if they want to book any of these.`
+      : `Người dùng muốn tìm phương tiện di chuyển: "${message}"\nĐiểm đi: "${origin}", Điểm đến: "${destination}"\n\nKết quả:\nXE KHÁCH:\n${busData || 'Không tìm thấy'}\n\nTÀU HỎA:\n${trainData || 'Không tìm thấy'}\n\nMÁY BAY:\n${flightData || 'Không tìm thấy'}\n\nHãy trình bày các lựa chọn này một cách rõ ràng theo từng loại. Gợi ý phương án tốt nhất hoặc rẻ nhất nếu có thể. Hỏi xem họ có muốn đặt vé nào không.`;
+
+    const response = await this.performModelCall(
+      (model) => model.generateContent(prompt),
+      this.modelName,
+    );
+
+    return {
+      source: 'ai',
+      text: this.extractText(response),
+    };
+  }
+
   private async findDestinationsByCategories(
     categories: string[],
     profile?: ChatUserProfile | null,
@@ -975,6 +1230,7 @@ export class ChatService {
       profileSummary?: string;
       attachments?: NormalizedImageAttachment[];
       databaseMiss?: boolean;
+      textOverride?: string;
     } = {},
   ): Promise<ChatResponse> {
     const systemPrompt =
@@ -1001,6 +1257,10 @@ export class ChatService {
       })) ?? []),
       { text: userPrompt },
     ];
+
+    if (options.textOverride) {
+      return { source: 'ai', text: options.textOverride };
+    }
 
     const response = await this.performModelCall(
       (model) =>
@@ -1049,7 +1309,7 @@ export class ChatService {
           role: 'system',
           parts: [
             {
-              text: 'Classify the travel intent of the user. Valid intents: destination, restaurant, hotel, service, app_guide, booking_help, transport, image_request, profile_update, other. Extract up to five keywords, regions, and categories for searching. If the question continues a previous turn set followUp to true. If the user requests images set imageRequested to true. Reply ONLY with JSON {"intent":string,"keywords":string[],"regions":string[],"categories":string[],"followUp":boolean,"imageRequested":boolean}.',
+              text: 'Classify the travel intent of the user. Valid intents: destination, restaurant, hotel, service, app_guide, booking_help, transport, image_request, profile_update, route_query, route_detail, transport_search, other. Extract up to five keywords, regions, and categories for searching. route_query is for listing trips or asking "where/when is my next trip". route_detail is for asking specific details/itinerary of a trip. transport_search is for searching bus, train, or flight tickets/routes between cities (extract origin and destination as regions). If the question continues a previous turn set followUp to true. If the user requests images set imageRequested to true. Reply ONLY with JSON {"intent":string,"keywords":string[],"regions":string[],"categories":string[],"followUp":boolean,"imageRequested":boolean}.',
             },
           ],
         },
@@ -1107,6 +1367,9 @@ export class ChatService {
       case 'image_request':
       case 'image_classify':
       case 'profile_update':
+      case 'route_query':
+      case 'route_detail':
+      case 'transport_search':
         return intent;
       default:
         return 'other';

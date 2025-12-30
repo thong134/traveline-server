@@ -46,6 +46,9 @@ import { assertImageFile } from '../../common/upload/image-upload.utils';
 
 const VND_TO_ETH_RATE = 80_000_000;
 
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../notification/entities/notification.entity';
+
 @Injectable()
 export class RentalBillsService {
   private readonly logger = new Logger(RentalBillsService.name);
@@ -65,6 +68,7 @@ export class RentalBillsService {
     private readonly dataSource: DataSource,
     private readonly paymentService: PaymentService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   private validatePackageDates(pkg: string, start: Date, end: Date) {
@@ -399,22 +403,39 @@ export class RentalBillsService {
   // --- WORKFLOW ACTIONS ---
 
   async ownerDelivering(id: number, userId: number): Promise<RentalBill> {
-    const bill = await this.findOne(id, userId);
-    // Note: In real app, check if user is the OWNER of the vehicles
+    const bill = await this.billRepo.findOne({
+      where: { id },
+      relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
+    });
+    if (!bill) throw new NotFoundException('Bill not found');
+    
+    // Authorization: Must be customer or owner
+    const ownerId = bill.details?.[0]?.vehicle?.contract?.user?.id;
+    if (bill.userId !== userId && ownerId !== userId) {
+      throw new ForbiddenException('You do not have access to this bill');
+    }
+
     if (bill.status !== RentalBillStatus.PAID) {
       throw new BadRequestException('Chỉ có thể giao xe sau khi khách đã thanh toán');
     }
     
-    // Enforce flow: Must be BOOKED before DELIVERING
     if (bill.rentalStatus !== RentalProgressStatus.BOOKED) {
-       // Allow if logic was skipped, but ideally strict:
-       // If it is PENDING, it means PaymentService didn't update it?
-       // Let's assume strict flow.
        throw new BadRequestException('Đơn hàng chưa ở trạng thái ĐÃ ĐẶT (BOOKED)');
     }
 
     bill.rentalStatus = RentalProgressStatus.DELIVERING;
-    return this.billRepo.save(bill);
+    const saved = await this.billRepo.save(bill);
+
+    // Notify Customer
+    await this.notificationService.createNotification(
+      bill.userId,
+      'Chủ xe đang giao xe!',
+      `Chủ xe đang bắt đầu vận chuyển xe ${bill.code} đến cho bạn. Hãy để ý điện thoại nhé!`,
+      NotificationType.REMINDER,
+      { billId: bill.id.toString(), category: 'rental-vehicle', status: 'delivering' }
+    );
+
+    return saved;
   }
 
   async ownerDelivered(
@@ -423,14 +444,30 @@ export class RentalBillsService {
     dto: DeliveryActionDto,
     photos?: Express.Multer.File[],
   ): Promise<RentalBill> {
-    const bill = await this.findOne(id, userId);
+    const bill = await this.billRepo.findOne({
+      where: { id },
+      relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
+    });
+    if (!bill) throw new NotFoundException('Bill not found');
+
     if (bill.rentalStatus !== RentalProgressStatus.DELIVERING) {
       throw new BadRequestException('Phải bấm đang vận chuyển trước khi xác nhận đã đến');
     }
     const uploadedPhotos = await this.uploadBillImages(photos, id, 'delivery');
     bill.deliveryPhotos = uploadedPhotos.length ? uploadedPhotos : dto.photos;
     bill.rentalStatus = RentalProgressStatus.DELIVERED;
-    return this.billRepo.save(bill);
+    const saved = await this.billRepo.save(bill);
+
+    // Notify Customer
+    await this.notificationService.createNotification(
+      bill.userId,
+      'Xe đã được giao đến!',
+      `Xe cho đơn hàng ${bill.code} đã được giao đến điểm hẹn. Vui lòng kiểm tra và xác nhận nhận xe.`,
+      NotificationType.REMINDER,
+      { billId: bill.id.toString(), category: 'rental-vehicle', status: 'delivered' }
+    );
+
+    return saved;
   }
 
   async userPickup(
@@ -439,14 +476,33 @@ export class RentalBillsService {
     dto: PickupActionDto,
     selfie?: Express.Multer.File,
   ): Promise<RentalBill> {
-    const bill = await this.findOne(id, userId);
+    const bill = await this.billRepo.findOne({
+      where: { id },
+      relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
+    });
+    if (!bill) throw new NotFoundException('Bill not found');
+
     if (bill.rentalStatus !== RentalProgressStatus.DELIVERED) {
       throw new BadRequestException('Chủ xe chưa giao xe đến nơi');
     }
     const uploadedSelfie = await this.uploadBillImage(selfie, id, 'pickup-selfie');
     bill.pickupSelfiePhoto = uploadedSelfie ?? dto.selfiePhoto;
     bill.rentalStatus = RentalProgressStatus.IN_PROGRESS;
-    return this.billRepo.save(bill);
+    const saved = await this.billRepo.save(bill);
+
+    // Notify Owner
+    const ownerId = bill.details?.[0]?.vehicle?.contract?.user?.id;
+    if (ownerId) {
+      await this.notificationService.createNotification(
+        ownerId,
+        'Khách đã nhận xe!',
+        `Khách hàng ${bill.user.fullName || bill.user.username} đã nhận xe ${bill.code} và bắt đầu hành trình.`,
+        NotificationType.REMINDER,
+        { billId: bill.id.toString(), category: 'rental-vehicle', status: 'pickup' }
+      );
+    }
+
+    return saved;
   }
 
   async userReturnRequest(
@@ -455,9 +511,14 @@ export class RentalBillsService {
     dto: ReturnRequestDto,
     photos?: Express.Multer.File[],
   ): Promise<RentalBill> {
-    const bill = await this.findOne(id, userId);
+    const bill = await this.billRepo.findOne({
+      where: { id },
+      relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
+    });
+    if (!bill) throw new NotFoundException('Bill not found');
+
     if (bill.rentalStatus !== RentalProgressStatus.IN_PROGRESS) {
-      throw new BadRequestException('Đơn hàng chưa ở trạng thái đang thuê');
+      throw new BadRequestException('Chưa thể yêu cầu trả xe');
     }
 
     const now = new Date();
@@ -482,7 +543,21 @@ export class RentalBillsService {
       }
     }
 
-    return this.billRepo.save(bill);
+    const saved = await this.billRepo.save(bill);
+
+    // Notify Owner
+    const ownerId = bill.details?.[0]?.vehicle?.contract?.user?.id;
+    if (ownerId) {
+      await this.notificationService.createNotification(
+        ownerId,
+        'Yêu cầu trả xe!',
+        `Khách hàng ${bill.user.fullName || bill.user.username} vừa gửi yêu cầu trả xe cho đơn hàng ${bill.code}.`,
+        NotificationType.REMINDER,
+        { billId: bill.id.toString(), category: 'rental-vehicle', status: 'return_request' }
+      );
+    }
+
+    return saved;
   }
 
   async ownerConfirmReturn(
@@ -491,9 +566,14 @@ export class RentalBillsService {
     dto: ConfirmReturnDto,
     photos?: Express.Multer.File[],
   ): Promise<RentalBill> {
-    const bill = await this.findOne(id, userId);
+    const bill = await this.billRepo.findOne({
+      where: { id },
+      relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
+    });
+    if (!bill) throw new NotFoundException('Bill not found');
+
     if (bill.rentalStatus !== RentalProgressStatus.RETURN_REQUESTED) {
-      throw new BadRequestException('Khách hàng chưa yêu cầu trả xe');
+      throw new BadRequestException('Khách hàng chưa gửi yêu cầu trả xe');
     }
 
     // GPS Validation (< 50m)

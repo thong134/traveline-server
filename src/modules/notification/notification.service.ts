@@ -6,6 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { User } from '../user/entities/user.entity';
+import { NotificationGateway } from './notification.gateway';
 
 @Injectable()
 export class NotificationService implements OnModuleInit {
@@ -19,6 +20,7 @@ export class NotificationService implements OnModuleInit {
     private readonly notificationRepo: Repository<Notification>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly gateway: NotificationGateway,
   ) {}
 
   onModuleInit() {
@@ -119,7 +121,12 @@ export class NotificationService implements OnModuleInit {
       data,
       isRead: false,
     });
-    return this.notificationRepo.save(notification);
+    const saved = await this.notificationRepo.save(notification);
+
+    // Emit real-time notification via WebSocket
+    this.gateway.sendToUser(userId, 'new-notification', saved);
+
+    return saved;
   }
 
   async findMyNotifications(userId: number): Promise<Notification[]> {
