@@ -751,7 +751,7 @@ export class ChatService {
   // AI Image Class to Vietnamese Category mapping
   private readonly aiClassToCategoryMap: Record<string, string[]> = {
     'forest': ['Thiên nhiên', 'Rừng'],
-    'architecture_site': ['Lịch sử', 'Công trình', 'Văn hóa'],
+    'architecture_site': ['Lịch sử', 'Công trình'],
     'urban_life': ['Giải trí', 'Văn hóa', 'Thành phố'],
     'beach': ['Biển'],
     'mountain': ['Núi'],
@@ -1193,7 +1193,11 @@ export class ChatService {
     const clauses: string[] = [];
 
     if (province) {
-        qb.andWhere('destination.province ILIKE :province', { province: `%${province}%` });
+        // Relax filter: check province, district, address, or name for user's region term
+        qb.andWhere(
+          `(destination.province ILIKE :province OR destination.district ILIKE :province OR destination.specificAddress ILIKE :province OR destination.name ILIKE :province)`,
+          { province: `%${province}%` },
+        );
     }
 
     terms.forEach((term, index) => {
@@ -1556,28 +1560,42 @@ export class ChatService {
 
   private simpleKeywordClassification(message: string): Classification {
     const msgLower = message.toLowerCase();
+
+    // Extract common regions (popular Vietnamese destinations)
+    const popularRegions = [
+      'hà nội', 'hồ chí minh', 'đà nẵng', 'đà lạt', 'nha trang',
+      'phú quốc', 'hội an', 'sapa', 'huế', 'vũng tàu', 'quy nhơn',
+      'phan thiết', 'mũi né', 'cần thơ', 'hạ long', 'ninh bình',
+      'tam đảo', 'bà nà', 'cát bà', 'côn đảo',
+    ];
+    const detectedRegions: string[] = [];
+    for (const region of popularRegions) {
+      if (msgLower.includes(region)) {
+        detectedRegions.push(region);
+      }
+    }
     
     // Quick Keyword Matching
-    if (msgLower.includes('đơn hàng') || msgLower.includes('tour đã đặt') || msgLower.includes('order')) return { intent: 'my_orders', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
-    if (msgLower.includes('chuyến đi của tôi') || msgLower.includes('lịch trình của tôi') || msgLower.includes('route')) return { intent: 'my_routes', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
-    if (msgLower.includes('thuê xe') || msgLower.includes('car rental') || msgLower.includes('bike')) return { intent: 'search_vehicle', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+    if (msgLower.includes('đơn hàng') || msgLower.includes('tour đã đặt') || msgLower.includes('order')) return { intent: 'my_orders', keywords: [], regions: detectedRegions, categories: [], followUp: false, imageRequested: false };
+    if (msgLower.includes('chuyến đi của tôi') || msgLower.includes('lịch trình của tôi') || msgLower.includes('route')) return { intent: 'my_routes', keywords: [], regions: detectedRegions, categories: [], followUp: false, imageRequested: false };
+    if (msgLower.includes('thuê xe') || msgLower.includes('car rental') || msgLower.includes('bike')) return { intent: 'search_vehicle', keywords: [], regions: detectedRegions, categories: [], followUp: false, imageRequested: false };
     
-    if (msgLower.includes('khách sạn') || msgLower.includes('hotel') || msgLower.includes('nghỉ dưỡng')) return { intent: 'search_hotel', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
-    if (msgLower.includes('nhà hàng') || msgLower.includes('quán ăn') || msgLower.includes('restaurant') || msgLower.includes('ăn uống')) return { intent: 'search_restaurant', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+    if (msgLower.includes('khách sạn') || msgLower.includes('hotel') || msgLower.includes('nghỉ dưỡng')) return { intent: 'search_hotel', keywords: [], regions: detectedRegions, categories: [], followUp: false, imageRequested: false };
+    if (msgLower.includes('nhà hàng') || msgLower.includes('quán ăn') || msgLower.includes('restaurant') || msgLower.includes('ăn uống')) return { intent: 'search_restaurant', keywords: [], regions: detectedRegions, categories: [], followUp: false, imageRequested: false };
     
-    if (msgLower.includes('tạo lịch trình') || msgLower.includes('plan trip') || msgLower.includes('lập kế hoạch')) return { intent: 'create_route', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+    if (msgLower.includes('tạo lịch trình') || msgLower.includes('plan trip') || msgLower.includes('lập kế hoạch')) return { intent: 'create_route', keywords: [], regions: detectedRegions, categories: [], followUp: false, imageRequested: false };
     
-    if (msgLower.includes('xe khách') || msgLower.includes('tàu hỏa') || msgLower.includes('máy bay') || msgLower.includes('vé xe')) return { intent: 'transport_search', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+    if (msgLower.includes('xe khách') || msgLower.includes('tàu hỏa') || msgLower.includes('máy bay') || msgLower.includes('vé xe')) return { intent: 'transport_search', keywords: [], regions: detectedRegions, categories: [], followUp: false, imageRequested: false };
 
     // Default to destination if looks like a location search, otherwise other
-    if (msgLower.includes('ở đâu') || msgLower.includes('chơi gì') || msgLower.includes('địa điểm') || msgLower.includes('du lịch')) {
-        return { intent: 'destination', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+    if (msgLower.includes('ở đâu') || msgLower.includes('chơi gì') || msgLower.includes('địa điểm') || msgLower.includes('du lịch') || detectedRegions.length > 0) {
+        return { intent: 'destination', keywords: [], regions: detectedRegions, categories: [], followUp: false, imageRequested: false };
     }
 
     return {
         intent: 'other',
         keywords: [],
-        regions: [],
+        regions: detectedRegions,
         categories: [],
         followUp: false,
         imageRequested: false,
