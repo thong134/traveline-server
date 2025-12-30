@@ -1609,7 +1609,8 @@ export class ChatService {
   }
 
   private simpleKeywordClassification(message: string): Classification {
-    const msgLower = message.toLowerCase();
+    // Normalize Unicode (NFC) and lowercase for consistent Vietnamese comparison
+    const msgLower = message.toLowerCase().normalize('NFC');
 
     // Extract common regions (popular Vietnamese destinations)
     const popularRegions = [
@@ -1620,10 +1621,18 @@ export class ChatService {
     ];
     const detectedRegions: string[] = [];
     for (const region of popularRegions) {
-      if (msgLower.includes(region)) {
+      const normalizedRegion = region.normalize('NFC');
+      if (msgLower.includes(normalizedRegion)) {
         detectedRegions.push(region);
       }
     }
+    
+    // DEBUG: Log keyword classification
+    console.log('[Chatbot DEBUG] simpleKeywordClassification:', {
+      originalMessage: message,
+      normalizedMessage: msgLower,
+      detectedRegions,
+    });
     
     // Quick Keyword Matching
     if (msgLower.includes('đơn hàng') || msgLower.includes('tour đã đặt') || msgLower.includes('order')) return { intent: 'my_orders', keywords: [], regions: detectedRegions, categories: [], followUp: false, imageRequested: false };
