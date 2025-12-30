@@ -532,6 +532,17 @@ export class ChatService {
       context.profile,
     );
     const provinceFilter = classification.regions?.[0];
+    
+    // DEBUG: Log classification and search parameters
+    console.log('[Chatbot DEBUG] handleDestinationQuery:', {
+      intent: classification.intent,
+      keywords: classification.keywords,
+      regions: classification.regions,
+      categories: classification.categories,
+      provinceFilter,
+      searchTerms,
+    });
+    
     const results = await this.searchDestinations(searchTerms, provinceFilter);
     if (!results.length) {
       return this.generateConversationalReply(fallback, lang, 'destination', {
@@ -826,6 +837,12 @@ export class ChatService {
       // Step 3: Map to Categories
       const targetCategories = this.aiClassToCategoryMap[classifiedCategory] || ['Thiên nhiên'];
 
+      // DEBUG: Log image classification
+      console.log('[Chatbot DEBUG] handleImageClassification:', {
+        aiClassifiedCategory: classifiedCategory,
+        mappedCategories: targetCategories,
+      });
+
       // Step 4: Search DB
       const destinations = await this.findDestinationsByCategories(
         targetCategories,
@@ -833,11 +850,12 @@ export class ChatService {
       );
 
       if (!destinations.length) {
+        const categoryLabel = targetCategories[0] || classifiedCategory;
         return {
           source: 'ai',
           text: lang === 'en'
-            ? `It looks like a ${classifiedCategory} scene, but I couldn't find similar places nearby.`
-            : `Ảnh này nhìn giống cảnh ${classifiedCategory}, nhưng tiếc là mình chưa tìm thấy địa điểm tương tự trong hệ thống.`,
+            ? `It looks like a ${categoryLabel} scene, but I couldn't find similar places nearby.`
+            : `Ảnh này nhìn giống cảnh ${categoryLabel}, nhưng tiếc là mình chưa tìm thấy địa điểm tương tự trong hệ thống.`,
           images: [{ source: 'user', url: imageUrl }],
         };
       }
@@ -859,9 +877,10 @@ export class ChatService {
       
       try {
           // Attempt AI Generation
+          const categoryLabel = targetCategories[0] || classifiedCategory;
           const prompt = lang === 'en'
-            ? `User uploaded an image of "${classifiedCategory}". Found ${mapped.length} similar places: ${mapped.map(d=>d.name).join(', ')}. Generate Opening (e.g. "Great photo! Here are similar places:") and Closing (e.g. "Want to see more?"). JSON: {"opening": "...", "closing": "..."}`
-            : `Người dùng gửi ảnh cảnh "${classifiedCategory}". Tìm thấy ${mapped.length} nơi tương tự: ${mapped.map(d=>d.name).join(', ')}. Tạo câu Mở đầu (vd: "Ảnh đẹp quá! Đây là mấy chỗ tương tự:") và Kết thúc (vd: "Bạn thích chỗ nào không?"). JSON: {"opening": "...", "closing": "..."}`;
+            ? `User uploaded an image of "${categoryLabel}". Found ${mapped.length} similar places: ${mapped.map(d=>d.name).join(', ')}. Generate Opening (e.g. "Great photo! Here are similar places:") and Closing (e.g. "Want to see more?"). JSON: {"opening": "...", "closing": "..."}`
+            : `Người dùng gửi ảnh cảnh "${categoryLabel}". Tìm thấy ${mapped.length} nơi tương tự: ${mapped.map(d=>d.name).join(', ')}. Tạo câu Mở đầu (vd: "Ảnh đẹp quá! Đây là mấy chỗ tương tự:") và Kết thúc (vd: "Bạn thích chỗ nào không?"). JSON: {"opening": "...", "closing": "..."}`;
             
           const response = await this.performModelCall(
             (model) => model.generateContent({
@@ -875,9 +894,10 @@ export class ChatService {
           closing = json.closing;
       } catch (e) {
           // Fallback if AI fails (Overloaded)
+          const categoryLabel = targetCategories[0] || classifiedCategory;
           opening = lang === 'en' 
-            ? `Your photo looks like a ${classifiedCategory} spot! Here are some similar places:`
-            : `Ảnh của bạn nhìn giống cảnh ${classifiedCategory} quá! Dưới đây là một vài địa điểm tương tự nè:`;
+            ? `Your photo looks like a ${categoryLabel} spot! Here are some similar places:`
+            : `Ảnh của bạn nhìn giống cảnh ${categoryLabel} quá! Dưới đây là một vài địa điểm tương tự nè:`;
           closing = lang === 'en'
             ? "Do you like any of them?"
             : "Bạn thấy mấy chỗ này thế nào?";
@@ -1181,7 +1201,21 @@ export class ChatService {
       .orderBy('destination.favouriteTimes', 'DESC')
       .addOrderBy('destination.rating', 'DESC')
       .take(10)
-      .getMany();
+      .getMany()
+      .then((destinations) => {
+        // DEBUG: Log category search results
+        console.log('[Chatbot DEBUG] findDestinationsByCategories:', {
+          searchCategories: categories,
+          foundCount: destinations.length,
+          results: destinations.map(d => ({
+            id: d.id,
+            name: d.name,
+            province: d.province,
+            categories: d.categories,
+          })),
+        });
+        return destinations;
+      });
   }
 
   private async searchDestinations(terms: string[], province?: string): Promise<Destination[]> {
@@ -1215,7 +1249,23 @@ export class ChatService {
     return qb
       .orderBy('destination.favouriteTimes', 'DESC')
       .take(MAX_SUGGESTION_ITEMS)
-      .getMany();
+      .getMany()
+      .then((destinations) => {
+        // DEBUG: Log search results
+        console.log('[Chatbot DEBUG] searchDestinations:', {
+          searchTerms: terms,
+          provinceFilter: province,
+          foundCount: destinations.length,
+          results: destinations.map(d => ({
+            id: d.id,
+            name: d.name,
+            province: d.province,
+            district: d.district,
+            categories: d.categories,
+          })),
+        });
+        return destinations;
+      });
   }
 
   private async searchCooperations(
