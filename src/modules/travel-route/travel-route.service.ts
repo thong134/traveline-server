@@ -1761,7 +1761,7 @@ export class TravelRoutesService {
       nextRouteStatus = TravelRouteStatus.DRAFT;
     }
 
-    const totalPoints = totalCompleted * 500;
+    const totalPoints = totalCompleted * 200;
     const updates: Partial<TravelRoute> = {};
 
     if (route.totalTravelPoints !== totalPoints) {

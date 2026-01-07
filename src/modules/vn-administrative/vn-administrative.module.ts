@@ -17,9 +17,11 @@ import { LegacyAdministrativeService } from './legacy/legacy.service';
 import { ReformAdministrativeController } from './reform/reform.controller';
 import { ReformAdministrativeService } from './reform/reform.service';
 import { Destination } from '../destination/entities/destinations.entity';
+import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
+    CloudinaryModule,
     TypeOrmModule.forFeature([
       AdminUnitMapping,
       LegacyWard,
