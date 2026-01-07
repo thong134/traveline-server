@@ -1250,7 +1250,7 @@ export class TravelRoutesService {
   }
 
   private resolveTravelPoints(status: RouteStopStatus): number {
-    return status === RouteStopStatus.COMPLETED ? 5000 : 0;
+    return status === RouteStopStatus.COMPLETED ? 200 : 0;
   }
 
   private parseDateInput(input?: string | Date): Date | undefined {
@@ -1688,7 +1688,7 @@ export class TravelRoutesService {
 
     const route = await routeRepo.findOne({
       where: { id: routeId },
-      relations: { stops: true, clonedFromRoute: true },
+      relations: { stops: true, clonedFromRoute: true, user: true },
       order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
     });
     if (!route) {
@@ -1761,7 +1761,7 @@ export class TravelRoutesService {
       nextRouteStatus = TravelRouteStatus.DRAFT;
     }
 
-    const totalPoints = totalCompleted * 5000;
+    const totalPoints = totalCompleted * 500;
     const updates: Partial<TravelRoute> = {};
 
     if (route.totalTravelPoints !== totalPoints) {
