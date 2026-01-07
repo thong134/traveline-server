@@ -86,4 +86,13 @@ export class LegacyAdministrativeService {
     }
     return ward;
   }
+
+  async updateProvince(
+    code: string,
+    dto: Partial<LegacyProvince>,
+  ): Promise<LegacyProvince> {
+    const province = await this.findProvinceByCode(code);
+    Object.assign(province, dto);
+    return this.provinceRepo.save(province);
+  }
 }

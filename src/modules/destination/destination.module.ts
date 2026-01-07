@@ -7,12 +7,14 @@ import { User } from '../user/entities/user.entity';
 
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '@nestjs/config';
+import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Destination, User]),
     HttpModule,
     ConfigModule,
+    CloudinaryModule,
   ],
   controllers: [DestinationsController],
   providers: [DestinationsService],

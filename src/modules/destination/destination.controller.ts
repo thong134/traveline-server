@@ -10,6 +10,8 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -19,7 +21,9 @@ import {
   ApiQuery,
   ApiTags,
   ApiBody,
+  ApiConsumes,
 } from '@nestjs/swagger';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { DestinationsService } from './destination.service';
 import { CreateDestinationDto } from './dto/create-destination.dto';
 import { UpdateDestinationDto } from './dto/update-destination.dto';
@@ -28,6 +32,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { UserRole } from '../user/entities/user-role.enum';
+import type { Express } from 'express';
 
 @ApiTags('destinations')
 @Controller('destinations')
@@ -36,10 +41,20 @@ export class DestinationsController {
 
   @Post()
   @RequireAuth(UserRole.Admin)
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'photos', maxCount: 10 },
+      { name: 'videos', maxCount: 5 },
+    ]),
+  )
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Tạo địa điểm du lịch' })
   @ApiCreatedResponse({ description: 'Destination created' })
-  create(@Body() dto: CreateDestinationDto) {
-    return this.destinationsService.create(dto);
+  create(
+    @Body() dto: CreateDestinationDto,
+    @UploadedFiles() files: { photos?: Express.Multer.File[]; videos?: Express.Multer.File[] },
+  ) {
+    return this.destinationsService.create(dto, files);
   }
 
   @Get()

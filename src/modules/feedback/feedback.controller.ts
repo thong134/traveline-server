@@ -70,6 +70,7 @@ export class FeedbackController {
         travelRouteId: { type: 'integer' },
         licensePlate: { type: 'string' },
         cooperationId: { type: 'integer' },
+        eateryId: { type: 'integer' },
         comment: { type: 'string' },
         photos: {
           type: 'array',
@@ -124,17 +125,20 @@ export class FeedbackController {
   @ApiQuery({ name: 'destinationId', required: false, type: Number })
   @ApiQuery({ name: 'travelRouteId', required: false, type: Number })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
+  @ApiQuery({ name: 'eateryId', required: false, type: Number })
   @ApiQuery({ name: 'licensePlate', required: false, type: String })
   findByObject(
     @Query('destinationId') destinationId?: string,
     @Query('travelRouteId') travelRouteId?: string,
     @Query('cooperationId') cooperationId?: string,
+    @Query('eateryId') eateryId?: string,
     @Query('licensePlate') licensePlate?: string,
   ) {
     return this.feedbackService.findByObject({
       destinationId: destinationId ? Number(destinationId) : undefined,
       travelRouteId: travelRouteId ? Number(travelRouteId) : undefined,
       cooperationId: cooperationId ? Number(cooperationId) : undefined,
+      eateryId: eateryId ? Number(eateryId) : undefined,
       licensePlate: licensePlate || undefined,
     });
   }
@@ -230,6 +234,18 @@ export class FeedbackController {
     type: Number,
   })
   @ApiQuery({
+    name: 'eateryId',
+    required: false,
+    description: 'Filter by eatery id',
+    type: Number,
+  })
+  @ApiQuery({
+    name: 'licensePlate',
+    required: false,
+    description: 'Filter by license plate',
+    type: String,
+  })
+  @ApiQuery({
     name: 'status',
     required: false,
     description: 'Filter by status',
@@ -252,6 +268,8 @@ export class FeedbackController {
     @Query('destinationId') destinationId?: string,
     @Query('travelRouteId') travelRouteId?: string,
     @Query('cooperationId') cooperationId?: string,
+    @Query('eateryId') eateryId?: string,
+    @Query('licensePlate') licensePlate?: string,
     @Query('status') status?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
@@ -261,6 +279,8 @@ export class FeedbackController {
       destinationId: destinationId ? Number(destinationId) : undefined,
       travelRouteId: travelRouteId ? Number(travelRouteId) : undefined,
       cooperationId: cooperationId ? Number(cooperationId) : undefined,
+      eateryId: eateryId ? Number(eateryId) : undefined,
+      licensePlate: licensePlate || undefined,
       status: status || undefined,
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,

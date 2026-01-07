@@ -62,11 +62,22 @@ export class ReformAdministrativeService {
   async findCommuneByCode(code: string): Promise<ReformCommune> {
     const commune = await this.communeRepo.findOne({
       where: { code },
-      relations: { province: true },
+      relations: {
+        province: true,
+      },
     });
     if (!commune) {
       throw new NotFoundException(`Reform commune ${code} not found`);
     }
     return commune;
+  }
+
+  async updateProvince(
+    code: string,
+    dto: Partial<ReformProvince>,
+  ): Promise<ReformProvince> {
+    const province = await this.findProvinceByCode(code);
+    Object.assign(province, dto);
+    return this.provinceRepo.save(province);
   }
 }

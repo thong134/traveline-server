@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
@@ -14,130 +14,89 @@ import {
 } from 'class-validator';
 
 export class CreateDestinationDto {
-  @ApiProperty({ description: 'Destination name' })
+  @ApiProperty({ description: 'Tên địa điểm' })
   @IsString()
   @MinLength(1)
   name: string;
 
-  @ApiPropertyOptional({ description: 'Destination type label' })
+  @ApiPropertyOptional({ description: 'Loại địa điểm' })
   @IsOptional()
   @IsString()
   type?: string;
 
-  @ApiPropertyOptional({ description: 'Vietnamese description' })
+  @ApiPropertyOptional({ description: 'Mô tả tiếng Việt' })
   @IsOptional()
   @IsString()
   descriptionViet?: string;
 
-  @ApiPropertyOptional({ description: 'English description' })
+  @ApiPropertyOptional({ description: 'Mô tả tiếng Anh' })
   @IsOptional()
   @IsString()
   descriptionEng?: string;
 
-  @ApiPropertyOptional({ description: 'Province / city name' })
-  @IsOptional()
+  @ApiProperty({ description: 'Tỉnh/Thành phố' })
   @IsString()
-  province?: string;
+  @MinLength(1)
+  province: string;
 
-  @ApiPropertyOptional({ description: 'Legacy district name' })
+  @ApiPropertyOptional({ description: 'Quận/Huyện' })
   @IsOptional()
   @IsString()
   district?: string;
 
-  @ApiPropertyOptional({ description: 'Legacy district code' })
+  @ApiPropertyOptional({ description: 'Mã Quận/Huyện' })
   @IsOptional()
   @IsString()
   districtCode?: string;
 
-  @ApiPropertyOptional({ description: 'Specific street address' })
+  @ApiPropertyOptional({ description: 'Địa chỉ cụ thể' })
   @IsOptional()
   @IsString()
   specificAddress?: string;
 
-  @ApiPropertyOptional({ description: 'Reform address (normalized new address)' })
+  @ApiPropertyOptional({ description: 'Địa chỉ chuẩn hóa' })
   @IsOptional()
   @IsString()
   reformAddress?: string;
 
-  @ApiProperty({ description: 'Latitude in decimal degrees' })
+  @ApiProperty({ description: 'Vĩ độ' })
   @Type(() => Number)
   @IsNumber()
   latitude: number;
 
-  @ApiProperty({ description: 'Longitude in decimal degrees' })
+  @ApiProperty({ description: 'Kinh độ' })
   @Type(() => Number)
   @IsNumber()
   longitude: number;
 
-  @ApiPropertyOptional({ description: 'Average rating', example: 4.7 })
+  @ApiPropertyOptional({ description: 'Danh mục', type: [String] })
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  rating?: number;
-
-  @ApiPropertyOptional({
-    description: 'How many times favourited',
-    example: 120,
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return value.split(',').filter(v => v.trim() !== '');
+    if (Array.isArray(value)) return value;
+    return value;
   })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  favouriteTimes?: number;
-
-  @ApiPropertyOptional({ description: 'Total user ratings', example: 242 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  userRatingsTotal?: number;
-
-  @ApiPropertyOptional({
-    description: 'Destination categories',
-    type: [String],
-  })
-  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   categories?: string[];
 
-  @ApiPropertyOptional({ description: 'Photo URLs', type: [String] })
+  // Note: photos and videos are files in multipart/form-data, 
+  // but we can define them here for Swagger documentation.
+  @ApiPropertyOptional({ type: 'array', items: { type: 'string', format: 'binary' }, description: 'Ảnh địa điểm (Yêu cầu ít nhất 1 ảnh)' })
   @IsOptional()
-  @IsArray()
-  @IsUrl(undefined, { each: true })
-  photos?: string[];
+  photos?: any[];
 
-  @ApiPropertyOptional({ description: 'Video URLs', type: [String] })
+  @ApiPropertyOptional({ type: 'array', items: { type: 'string', format: 'binary' }, description: 'Video địa điểm' })
   @IsOptional()
-  @IsArray()
-  @IsUrl(undefined, { each: true })
-  videos?: string[];
+  videos?: any[];
 
-  @ApiPropertyOptional({ description: 'Google Places ID' })
-  @IsOptional()
-  @IsString()
-  googlePlaceId?: string;
-
-  @ApiPropertyOptional({
-    description: 'Giờ mở cửa (HH:mm, theo giờ địa phương)',
-    example: '08:00',
-  })
+  @ApiPropertyOptional({ description: 'Giờ mở cửa (HH:mm)', example: '08:00' })
   @IsOptional()
   @Matches(/^\d{2}:\d{2}$/)
   openTime?: string;
 
-  @ApiPropertyOptional({
-    description: 'Giờ đóng cửa (HH:mm, theo giờ địa phương)',
-    example: '21:30',
-  })
+  @ApiPropertyOptional({ description: 'Giờ đóng cửa (HH:mm)', example: '21:30' })
   @IsOptional()
   @Matches(/^\d{2}:\d{2}$/)
   closeTime?: string;
-
-  @ApiPropertyOptional({
-    description: 'Whether destination is available for booking',
-  })
-  @IsOptional()
-  @IsBoolean()
-  available?: boolean;
 }

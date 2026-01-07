@@ -46,6 +46,13 @@ export class CreateFeedbackDto {
   @Min(1)
   cooperationId?: number;
 
+  @ApiPropertyOptional({ description: 'Eatery id' })
+  @IsOptional()
+  @Transform(({ value }) => (value === '' || value === 'null' ? undefined : Number(value)))
+  @IsInt()
+  @Min(1)
+  eateryId?: number;
+
   @ApiPropertyOptional({ description: 'Feedback comment' })
   @IsOptional()
   @Transform(({ value }) => (value === '' || value === 'null' ? undefined : value))

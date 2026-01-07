@@ -26,6 +26,9 @@ export class ReformProvince {
   @Column({ name: 'code_name', type: 'varchar', length: 255, nullable: true })
   codeName?: string | null;
 
+  @Column({ name: 'avatar_url', type: 'varchar', length: 500, nullable: true })
+  avatarUrl?: string | null;
+
   @Column({ name: 'administrative_unit_id', type: 'int', nullable: true })
   administrativeUnitId?: number | null;
 

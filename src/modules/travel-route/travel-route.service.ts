@@ -499,6 +499,7 @@ export class TravelRoutesService {
             route,
             manager.getRepository(Destination),
           );
+          this.resequenceStops(stops);
           await manager.getRepository(RouteStop).save(stops);
           await this.updateRouteAggregates(id, manager);
         } else {
@@ -554,6 +555,14 @@ export class TravelRoutesService {
       }
 
       await manager.getRepository(RouteStop).save(stop);
+
+      // Re-load all stops for the same day to ensure sequence is correct chronologically
+      const allDayStops = await manager.getRepository(RouteStop).find({
+        where: { route: { id: routeId }, dayOrder: stop.dayOrder }
+      });
+      this.resequenceStops(allDayStops);
+      await manager.getRepository(RouteStop).save(allDayStops);
+
       await this.updateRouteAggregates(routeId, manager);
     });
 
@@ -1067,8 +1076,8 @@ export class TravelRoutesService {
     const stops: RouteStop[] = [];
     const sortedDtos = [...dtos].sort((a, b) => {
       if (a.dayOrder === b.dayOrder) {
-        const timeA = a.startTime ? this.parseTimeToMinutes(a.startTime) : 0;
-        const timeB = b.startTime ? this.parseTimeToMinutes(b.startTime) : 0;
+        const timeA = a.startTime ? this.parseTimeToMinutes(a.startTime) : 9999;
+        const timeB = b.startTime ? this.parseTimeToMinutes(b.startTime) : 9999;
         if (timeA !== timeB) return timeA - timeB;
         return a.sequence - b.sequence;
       }
@@ -1870,12 +1879,11 @@ export class TravelRoutesService {
 
     for (const [day, dayStops] of stopsByDay.entries()) {
       dayStops.sort((a, b) => {
-        const timeA = a.startTime ? this.parseTimeToMinutes(a.startTime) : -1;
-        const timeB = b.startTime ? this.parseTimeToMinutes(b.startTime) : -1;
+        // Use a very high value for null/undefined startTime so they go to the end of the day
+        const timeA = a.startTime ? this.parseTimeToMinutes(a.startTime) : 9999;
+        const timeB = b.startTime ? this.parseTimeToMinutes(b.startTime) : 9999;
         
         if (timeA !== timeB) {
-          if (timeA === -1) return 1;
-          if (timeB === -1) return -1;
           return timeA - timeB;
         }
         

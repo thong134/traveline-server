@@ -4,11 +4,23 @@ import { LegacyAdministrativeService } from './legacy.service';
 import { LegacyProvince } from './entities/legacy-province.entity';
 import { LegacyDistrict } from './entities/legacy-district.entity';
 import { LegacyWard } from './entities/legacy-ward.entity';
+import { UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { imageMulterOptions } from '../../../common/upload/image-upload.config';
+import { CloudinaryService } from '../../../common/cloudinary/cloudinary.service';
+import { assertImageFile } from '../../../common/upload/image-upload.utils';
+import type { Express } from 'express';
+import { ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { RequireAuth } from '../../auth/decorators/require-auth.decorator';
+import { Post, Body } from '@nestjs/common';
 
 @ApiTags('legacy-administrative')
 @Controller('vn-admin/legacy')
 export class LegacyAdministrativeController {
-  constructor(private readonly service: LegacyAdministrativeService) {}
+  constructor(
+    private readonly service: LegacyAdministrativeService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   @Get('provinces')
   @ApiOperation({
@@ -22,6 +34,36 @@ export class LegacyAdministrativeController {
   @ApiOkResponse({ type: LegacyProvince, isArray: true })
   listProvinces(@Query('search') search?: string): Promise<LegacyProvince[]> {
     return this.service.findProvinces({ search });
+  }
+
+  @Post('provinces/upload/avatar')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Tải lên avatar cho tỉnh (Code + File)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'Mã của tỉnh (ví dụ: DN, HN)' },
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+      required: ['code', 'file'],
+    },
+  })
+  @UseInterceptors(FileInterceptor('file', imageMulterOptions))
+  async uploadAvatar(
+    @Body('code') code: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    assertImageFile(file, { fieldName: 'file' });
+    const upload = await this.cloudinaryService.uploadImage(file, {
+      folder: 'traveline/legacy/provinces/avatars',
+    });
+    
+    return this.service.updateProvince(code, { avatarUrl: upload.url });
   }
 
   @Get('provinces/:code')

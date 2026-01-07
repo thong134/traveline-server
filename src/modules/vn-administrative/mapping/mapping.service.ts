@@ -15,6 +15,12 @@ import { ReformCommune } from '../reform/entities/reform-commune.entity';
 import { ReformProvince } from '../reform/entities/reform-province.entity';
 import { Destination } from '../../destination/entities/destinations.entity';
 import { EnrichDestinationsDto } from './dto/enrich-destinations.dto';
+import { ConvertAddressDto } from './dto/convert-address.dto';
+import {
+  ConvertNewToOldDetailsDto,
+  ConvertOldToNewDetailsDto,
+} from './dto/convert-details.dto';
+import { ILike } from 'typeorm';
 
 type LegacyWardWithContext = LegacyWard & {
   district?: (LegacyDistrict & { province?: LegacyProvince | null }) | null;
@@ -146,6 +152,208 @@ export class AdministrativeMappingService {
     );
 
     return { oldAddress, newAddress };
+  }
+
+  async convertOldToNewAddress(dto: ConvertAddressDto): Promise<{ newAddress: string }> {
+    const { address } = dto;
+    const parts = address.split(',').map((p) => p.trim()).filter(Boolean);
+    if (parts.length < 3) {
+      throw new BadRequestException('Address too short to parse (expected at least Ward, District, Province)');
+    }
+
+    const provinceName = parts[parts.length - 1];
+    const districtName = parts[parts.length - 2]; 
+    const wardName = parts[parts.length - 3];
+    const specificAddress = parts.slice(0, -3).join(', ');
+
+    // Best effort: find legacy ward by name and context. 
+    // Since district is avail, we can try to find ward matching district context
+    const wards = await this.ensureLegacyWardCache();
+    
+    // Normalize names
+    const nProvince = this.normalizeText(provinceName);
+    const nDistrict = this.normalizeText(districtName);
+    const nWard = this.normalizeText(wardName);
+
+    const match = wards.find(w => 
+      (this.normalizeText(w.district?.province?.name) === nProvince || this.normalizeText(w.district?.province?.fullName) === nProvince) &&
+      (this.normalizeText(w.district?.name) === nDistrict || this.normalizeText(w.district?.fullName) === nDistrict) &&
+      (this.normalizeText(w.name) === nWard || this.normalizeText(w.fullName) === nWard)
+    );
+
+    if (!match) {
+       // Try without district strict match if district naming is tricky
+       // But user request implies reliable conversion.
+       throw new NotFoundException(`Could not parse legacy address: ${address}`);
+    }
+
+    const { commune, province } = await this.resolveMappingForLegacyWard(match);
+    
+    // Construct new address
+    const newAddress = [specificAddress, commune.fullName, province.fullName]
+      .filter(Boolean)
+      .join(', ');
+
+    return { newAddress };
+  }
+
+  async convertNewToOldAddress(dto: ConvertAddressDto): Promise<{ oldAddress: string }> {
+    const { address } = dto;
+    const parts = address.split(',').map((p) => p.trim()).filter(Boolean);
+    if (parts.length < 2) {
+       throw new BadRequestException('Address too short (expected at least Commune, Province)');
+    }
+    
+    const provinceName = parts[parts.length - 1];
+    const communeName = parts[parts.length - 2]; // new "Commune" level
+    const specificAddress = parts.slice(0, -2).join(', ');
+
+    const nProvince = this.normalizeText(provinceName);
+    const nCommune = this.normalizeText(communeName);
+
+    // Find Reform Commune
+    const commune = await this.reformCommuneRepo.findOne({
+      where: [
+        { name: ILike(communeName) },
+        { fullName: ILike(communeName) }
+      ],
+      relations: { province: true }
+    });
+    
+    // Filter by province if validation needed, but simple name match might be enough if unique, or filter after
+    let validCommune: ReformCommune | null | undefined = commune;
+    if (commune && nProvince) {
+       const pName = this.normalizeText(commune.province?.name);
+       const pFullName = this.normalizeText(commune.province?.fullName);
+       if (pName !== nProvince && pFullName !== nProvince) {
+          // If ILike returned wrong province one, try to find explicitly with query builder if strict needed
+          // For now, let's assume specific enough or simplistic
+          validCommune = undefined;
+       }
+    }
+
+    if (!validCommune) {
+        // use query builder for strict match
+        const qb = this.reformCommuneRepo.createQueryBuilder('commune')
+          .leftJoinAndSelect('commune.province', 'province')
+          .where('(LOWER(commune.name) = :cName OR LOWER(commune.fullName) = :cName)', { cName: nCommune })
+          .andWhere('(LOWER(province.name) = :pName OR LOWER(province.fullName) = :pName)', { pName: nProvince });
+        
+        validCommune = await qb.getOne();
+    }
+
+    if (!validCommune) {
+      throw new NotFoundException(`Could not parse reform address: ${address}`);
+    }
+
+    const mapping = await this.findByNewCommune(validCommune.code);
+    // There can be multiple old units mapped to one new unit. 
+    // We pick the first one as representative or try to find best fit?
+    // "Convert address" implies getting A OLD address.
+    const primaryMapping = mapping[0]; // Naive strategy
+
+    // Need to resolve old names. Mapping has old codes.
+    // We need to look up legacy ward.
+    if (!primaryMapping.oldWardCode) {
+       throw new NotFoundException(`No legacy ward code for mapping ${primaryMapping.id}`);
+    }
+
+    const legacyWard = await this.legacyWardRepo.findOne({
+      where: { code: primaryMapping.oldWardCode },
+      relations: { district: { province: true } }
+    });
+
+    if (!legacyWard) {
+      throw new NotFoundException(`Legacy unit for ${primaryMapping.oldWardCode} not found`);
+    }
+
+    const oldAddress = [
+      specificAddress, 
+      legacyWard.fullName, 
+      legacyWard.district?.fullName, 
+      legacyWard.district?.province?.fullName
+    ].filter(Boolean).join(', ');
+
+    return { oldAddress };
+  }
+
+  async convertOldToNewDetails(dto: ConvertOldToNewDetailsDto) {
+    const { province, district, ward } = dto;
+    const nProvince = this.normalizeText(province);
+    const nDistrict = this.normalizeText(district);
+    const nWard = this.normalizeText(ward);
+
+    const wards = await this.ensureLegacyWardCache();
+    const match = wards.find(w => {
+       const pMatch = this.normalizeText(w.district?.province?.name) === nProvince || this.normalizeText(w.district?.province?.fullName) === nProvince;
+       if (!pMatch) return false;
+
+       if (nDistrict) {
+         const dMatch = this.normalizeText(w.district?.name) === nDistrict || this.normalizeText(w.district?.fullName) === nDistrict;
+         if (!dMatch) return false;
+       }
+
+       if (nWard) {
+         const wMatch = this.normalizeText(w.name) === nWard || this.normalizeText(w.fullName) === nWard;
+         if (!wMatch) return false;
+       }
+       return true;
+    });
+
+    if (!match) {
+      throw new NotFoundException('Legacy unit not found with provided details');
+    }
+
+    const { commune, province: newProvince } = await this.resolveMappingForLegacyWard(match);
+    return {
+      province: newProvince,
+      commune: commune
+    };
+  }
+
+  async convertNewToOldDetails(dto: ConvertNewToOldDetailsDto) {
+    const { province, commune } = dto;
+    const nProvince = this.normalizeText(province);
+    const nCommune = this.normalizeText(commune);
+
+    const qb = this.reformCommuneRepo.createQueryBuilder('commune')
+      .leftJoinAndSelect('commune.province', 'province')
+      .where('(LOWER(commune.name) = :cName OR LOWER(commune.fullName) = :cName)', { cName: nCommune })
+      .andWhere('(LOWER(province.name) = :pName OR LOWER(province.fullName) = :pName)', { pName: nProvince });
+        
+    const validCommune = await qb.getOne();
+
+    if (!validCommune) {
+      throw new NotFoundException('Reform unit not found');
+    }
+
+    const mappings = await this.findByNewCommune(validCommune.code);
+    // Resolving potentially multiple legacy sources. 
+    // Returning list or first? The prompt implies singular return "address of old unit".
+    // Or "chi tiết province, district, ward của địa chỉ cũ tương ứng".
+    // If plural, I'd return array. But let's return array of old units since user asked for "những" (implicitly?) or just "địa chỉ cũ".
+    // "kết quả trả về là các chi tiết province, district (nếu có), ward (nếu có) của địa chỉ cũ tương ứng"
+    // "Các chi tiết" could mean "the details" (singular block) or "details" (plural).
+    // Given 1-to-many merge (many old -> 1 new), converting NEW -> OLD is ambiguous. 
+    // "Một api chuyển địa chỉ mới ngược lại địa chỉ cũ ... trả về các chi tiết ..."
+    // Effectively, it expands to 1 or more old units. I will return list of old units.
+
+    const results: any[] = [];
+    for (const m of mappings) {
+      if (m.oldWardCode) {
+        const w = await this.legacyWardRepo.findOne({
+          where: { code: m.oldWardCode },
+          relations: { district: { province: true } }
+        });
+        if (w) results.push({
+           province: w.district?.province,
+           district: w.district,
+           ward: w
+        });
+      }
+    }
+    
+    return results;
   }
 
   async translateDestination(

@@ -3,6 +3,7 @@ import { ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { Roles } from './roles.decorator';
 import { UserRole } from '../../user/entities/user-role.enum';
+import { RolesGuard } from '../guards/roles.guard';
 
 /**
  * Combines the JWT guard with the matching Swagger metadata so protected
@@ -13,7 +14,7 @@ export function RequireAuth(
 ): MethodDecorator & ClassDecorator {
   const decorators: Array<ClassDecorator | MethodDecorator> = [
     ApiBearerAuth(),
-    UseGuards(JwtAuthGuard),
+    UseGuards(JwtAuthGuard, RolesGuard),
   ];
 
   if (roles.length > 0) {

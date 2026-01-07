@@ -8,32 +8,69 @@ import {
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdministrativeMappingService } from './mapping.service';
-import { TranslateAddressTextDto } from './dto/translate-address-text.dto';
 import { AdminUnitMapping } from './admin-reform-mapping.entity';
 import { EnrichDestinationsDto } from './dto/enrich-destinations.dto';
+import { ConvertAddressDto } from './dto/convert-address.dto';
+import {
+  ConvertNewToOldDetailsDto,
+  ConvertOldToNewDetailsDto,
+} from './dto/convert-details.dto';
 
 @ApiTags('mapping-administrative')
 @Controller('vn-admin/mapping')
 export class AdministrativeMappingController {
   constructor(private readonly service: AdministrativeMappingService) {}
 
-  @Post('translate-address-text')
+  @Post('convert/old-to-new-address')
   @ApiOperation({
-    summary: 'Chuyển đổi địa chỉ dạng văn bản sang đơn vị hành chính mới',
+    summary: 'Chuyển đổi địa chỉ cũ sang địa chỉ mới (dạng text)',
+  })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        newAddress: { type: 'string' },
+      },
+    },
+  })
+  convertOldToNewAddress(
+    @Body() dto: ConvertAddressDto,
+  ): Promise<{ newAddress: string }> {
+    return this.service.convertOldToNewAddress(dto);
+  }
+
+  @Post('convert/new-to-old-address')
+  @ApiOperation({
+    summary: 'Chuyển đổi địa chỉ mới sang địa chỉ cũ (dạng text)',
   })
   @ApiOkResponse({
     schema: {
       type: 'object',
       properties: {
         oldAddress: { type: 'string' },
-        newAddress: { type: 'string' },
       },
     },
   })
-  translateAddressText(
-    @Body() dto: TranslateAddressTextDto,
-  ): Promise<{ oldAddress: string; newAddress: string }> {
-    return this.service.translate(dto);
+  convertNewToOldAddress(
+    @Body() dto: ConvertAddressDto,
+  ): Promise<{ oldAddress: string }> {
+    return this.service.convertNewToOldAddress(dto);
+  }
+
+  @Post('convert/old-to-new-details')
+  @ApiOperation({
+    summary: 'Chuyển đổi chi tiết địa chỉ cũ sang mới',
+  })
+  convertOldToNewDetails(@Body() dto: ConvertOldToNewDetailsDto) {
+    return this.service.convertOldToNewDetails(dto);
+  }
+
+  @Post('convert/new-to-old-details')
+  @ApiOperation({
+    summary: 'Chuyển đổi chi tiết địa chỉ mới sang cũ',
+  })
+  convertNewToOldDetails(@Body() dto: ConvertNewToOldDetailsDto) {
+    return this.service.convertNewToOldDetails(dto);
   }
 
   @Get('legacy-wards/:code')
@@ -70,7 +107,7 @@ export class AdministrativeMappingController {
     return this.service.translateDestination(destinationId);
   }
 
-  @Post('destinations/enrich')
+  @Post('destinations/enrich-address')
   @ApiOperation({
     summary:
       'Bổ sung thông tin quận/huyện cho toàn bộ địa điểm dựa trên dữ liệu hành chính',

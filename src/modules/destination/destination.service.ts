@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository, In, DataSource } from 'typeorm';
 import { Destination } from './entities/destinations.entity';
 import { CreateDestinationDto } from './dto/create-destination.dto';
 import { UpdateDestinationDto } from './dto/update-destination.dto';
@@ -8,6 +8,8 @@ import { User } from '../user/entities/user.entity';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
+import type { Express } from 'express';
 
 @Injectable()
 export class DestinationsService {
@@ -18,18 +20,46 @@ export class DestinationsService {
     private readonly usersRepo: Repository<User>,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
-  async create(dto: CreateDestinationDto): Promise<Destination> {
+  async create(
+    dto: CreateDestinationDto,
+    files?: { photos?: Express.Multer.File[]; videos?: Express.Multer.File[] },
+  ): Promise<Destination> {
+    const photoUrls: string[] = [];
+    const videoUrls: string[] = [];
+
+    // 1. Upload Photos
+    if (files?.photos && files.photos.length > 0) {
+      const uploadPromises = files.photos.map((file) =>
+        this.cloudinaryService.uploadImage(file, { folder: 'traveline/destinations/photos' }),
+      );
+      const results = await Promise.all(uploadPromises);
+      photoUrls.push(...results.map((r) => r.url));
+    } else {
+      // User said photos is required
+      throw new BadRequestException('At least one photo is required');
+    }
+
+    // 2. Upload Videos
+    if (files?.videos && files.videos.length > 0) {
+      const uploadPromises = files.videos.map((file) =>
+        this.cloudinaryService.uploadVideo(file, { folder: 'traveline/destinations/videos' }),
+      );
+      const results = await Promise.all(uploadPromises);
+      videoUrls.push(...results.map((r) => r.url));
+    }
+
+    // 3. Create Entity
     const destination = this.repo.create({
       ...dto,
       categories: dto.categories ?? [],
-      photos: dto.photos ?? [],
-      videos: dto.videos ?? [],
-      favouriteTimes: dto.favouriteTimes ?? 0,
-      userRatingsTotal: dto.userRatingsTotal ?? 0,
-      available: dto.available ?? true,
+      photos: photoUrls,
+      videos: videoUrls,
+      available: true,
     });
+
     return this.repo.save(destination);
   }
 
@@ -86,9 +116,6 @@ export class DestinationsService {
       categories,
       photos,
       videos,
-      favouriteTimes,
-      userRatingsTotal,
-      available,
       ...rest
     } = dto;
 
@@ -103,20 +130,8 @@ export class DestinationsService {
     if (categories !== undefined) {
       destination.categories = categories;
     }
-    if (photos !== undefined) {
-      destination.photos = photos;
-    }
     if (videos !== undefined) {
       destination.videos = videos;
-    }
-    if (favouriteTimes !== undefined) {
-      destination.favouriteTimes = favouriteTimes;
-    }
-    if (userRatingsTotal !== undefined) {
-      destination.userRatingsTotal = userRatingsTotal;
-    }
-    if (available !== undefined) {
-      destination.available = available;
     }
 
     return this.repo.save(destination);

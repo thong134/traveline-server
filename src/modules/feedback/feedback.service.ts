@@ -12,6 +12,7 @@ import { Destination } from '../destination/entities/destinations.entity';
 import { TravelRoute } from '../travel-route/entities/travel-route.entity';
 import { RentalVehicle } from '../rental-vehicle/entities/rental-vehicle.entity';
 import { Cooperation } from '../cooperation/entities/cooperation.entity';
+import { Eatery } from '../eatery/entities/eatery.entity';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
@@ -27,6 +28,8 @@ interface FeedbackQueryOptions {
   destinationId?: number;
   travelRouteId?: number;
   cooperationId?: number;
+  eateryId?: number;
+  licensePlate?: string;
   status?: string;
   limit?: number;
   offset?: number;
@@ -49,6 +52,8 @@ export class FeedbackService {
     private readonly rentalVehicleRepo: Repository<RentalVehicle>,
     @InjectRepository(Cooperation)
     private readonly cooperationRepo: Repository<Cooperation>,
+    @InjectRepository(Eatery)
+    private readonly eateryRepo: Repository<Eatery>,
     @InjectRepository(FeedbackReply)
     private readonly replyRepo: Repository<FeedbackReply>,
     @InjectRepository(FeedbackReaction)
@@ -111,6 +116,7 @@ export class FeedbackService {
     await this.recalculateDestinationRating(saved.destination?.id);
     await this.recalculateTravelRouteRating(saved.travelRoute?.id);
     await this.recalculateCooperationRating(saved.cooperation?.id);
+    await this.recalculateEateryRating(saved.eatery?.id);
     return this.findOne(saved.id);
   }
 
@@ -134,6 +140,8 @@ export class FeedbackService {
       destinationId,
       travelRouteId,
       cooperationId,
+      eateryId,
+      licensePlate,
       status, // This param might be redundant now if we don't have status col, but let's see logic
       limit = 50,
       offset = 0,
@@ -169,6 +177,14 @@ export class FeedbackService {
       qb.andWhere('feedback.cooperationId = :cooperationId', {
         cooperationId,
       });
+    }
+    
+    if (eateryId) {
+      qb.andWhere('feedback.eateryId = :eateryId', { eateryId });
+    }
+
+    if (licensePlate) {
+      qb.andWhere('feedback.licensePlate = :licensePlate', { licensePlate });
     }
 
     // if (status) { ... } -> Status column removed, so filter is invalid. Removing logic.
@@ -207,6 +223,7 @@ export class FeedbackService {
     const destinationId = feedback.destination?.id;
     const travelRouteId = feedback.travelRoute?.id;
     const cooperationId = feedback.cooperation?.id;
+    const eateryId = feedback.eatery?.id;
     await this.feedbackRepo.remove(feedback);
     if (destinationId) {
       await this.recalculateDestinationRating(destinationId);
@@ -216,6 +233,9 @@ export class FeedbackService {
     }
     if (cooperationId) {
       await this.recalculateCooperationRating(cooperationId);
+    }
+    if (eateryId) {
+      await this.recalculateEateryRating(eateryId);
     }
     return { id, message: 'Feedback deleted' };
   }
@@ -307,8 +327,20 @@ export class FeedbackService {
         );
       }
       feedback.cooperation = cooperation;
-    } else if (dto.cooperationId === null) {
+    } else    if (dto.cooperationId === null) {
       feedback.cooperation = undefined;
+    }
+
+    if (dto.eateryId) {
+      const eatery = await this.eateryRepo.findOne({
+        where: { id: dto.eateryId },
+      });
+      if (!eatery) {
+        throw new NotFoundException(`Eatery ${dto.eateryId} not found`);
+      }
+      feedback.eatery = eatery;
+    } else if (dto.eateryId === null) {
+      feedback.eatery = undefined;
     }
 
     if (dto.star !== undefined) {
@@ -331,6 +363,7 @@ export class FeedbackService {
     destinationId?: number;
     travelRouteId?: number;
     cooperationId?: number;
+    eateryId?: number;
     licensePlate?: string;
     status?: string;
   }): Promise<Feedback[]> {
@@ -521,6 +554,28 @@ export class FeedbackService {
     // The user didn't specify userRatingsTotal for cooperation but requested it for destinations.
     // Let's check cooperation entity again.
     await this.cooperationRepo.save(cooperation);
+  }
+
+  private async recalculateEateryRating(eateryId?: number): Promise<void> {
+    if (!eateryId) return;
+
+    const aggregation = await this.feedbackRepo
+      .createQueryBuilder('feedback')
+      .select('COUNT(feedback.id)', 'count')
+      .addSelect('COALESCE(SUM(feedback.star), 0)', 'sum')
+      .where('feedback.eateryId = :eateryId', { eateryId })
+      .getRawOne<{ count: string; sum: string }>();
+
+    const count = Number(aggregation?.count ?? 0);
+    const sum = Number(aggregation?.sum ?? 0);
+
+    const eatery = await this.eateryRepo.findOne({
+      where: { id: eateryId },
+    });
+    if (!eatery) return;
+
+    eatery.averageRating = count > 0 ? Number((sum / count).toFixed(2)) : 0;
+    await this.eateryRepo.save(eatery);
   }
 
   // moderateComment removed or replaced by coordinateModeration

@@ -29,6 +29,9 @@ export class Eatery {
   @Column({ nullable: true })
   imageUrl?: string;
 
+  @Column({ type: 'float', default: 0 })
+  averageRating: number;
+
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 
