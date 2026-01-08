@@ -64,7 +64,7 @@ export class FptAiService {
       }
 
       const response = await firstValueFrom(
-        this.httpService.post(`${this.baseUrl}/facematch/vmn`, form, {
+        this.httpService.post('https://api.fpt.ai/dmp/checkface/v1', form, {
           headers: {
             ...form.getHeaders(),
             'api-key': this.apiKey,
