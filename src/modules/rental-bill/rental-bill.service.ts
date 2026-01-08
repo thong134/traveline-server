@@ -41,6 +41,8 @@ import { BlockchainService } from '../blockchain/blockchain.service';
 import { parse, isValid } from 'date-fns';
 import { PaymentService } from '../payment/payment.service';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
+import { FptAiService } from '../../common/fpt-ai/fpt-ai.service';
+import axios from 'axios';
 import type { Express } from 'express';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
 
@@ -69,6 +71,7 @@ export class RentalBillsService {
     private readonly paymentService: PaymentService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly notificationService: NotificationService,
+    private readonly fptAiService: FptAiService,
   ) {}
 
   private validatePackageDates(pkg: string, start: Date, end: Date) {
@@ -506,6 +509,30 @@ export class RentalBillsService {
     if (bill.rentalStatus !== RentalProgressStatus.DELIVERED) {
       throw new BadRequestException('Chủ xe chưa giao xe đến nơi');
     }
+
+    // --- FaceMatch Implementation ---
+    if (!selfie) {
+        throw new BadRequestException('Bạn cần chụp ảnh selfie để xác nhận nhận xe');
+    }
+    const renter = bill.user;
+    if (!renter.citizenFrontImageUrl) {
+        throw new BadRequestException('Bạn chưa cập nhật ảnh CCCD. Vui lòng xác thực tài khoản trước.');
+    }
+
+    try {
+        const frontImageBuffer = await axios.get(renter.citizenFrontImageUrl, { responseType: 'arraybuffer' }).then(res => Buffer.from(res.data));
+        const similarity = await this.fptAiService.faceMatch(selfie.buffer, frontImageBuffer);
+        // Requirement > 80% or 90%. Let's use 80% for pickup flexibility or match auth (90%). User requested strict.
+        if (similarity < 90) {
+             throw new BadRequestException(`Xác thực khuôn mặt thất bại (${similarity.toFixed(2)}%). Vui lòng thử lại.`);
+        }
+    } catch (e) {
+        this.logger.error(`FaceMatch error`, e);
+        if (e instanceof BadRequestException) throw e;
+        throw new BadRequestException('Lỗi hệ thống khi xác thực khuôn mặt.');
+    }
+    // --------------------------------
+
     const uploadedSelfie = await this.uploadBillImage(selfie, id, 'pickup-selfie');
     bill.pickupSelfiePhoto = uploadedSelfie ?? dto.selfiePhoto;
     bill.rentalStatus = RentalProgressStatus.IN_PROGRESS;

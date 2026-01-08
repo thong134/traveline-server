@@ -13,7 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { compare, hash } from 'bcrypt';
-import { addDays, addMinutes } from 'date-fns';
+import { addDays, addMinutes, format, parse } from 'date-fns';
 import { Repository } from 'typeorm';
 import { sendEmailVerificationEmail, sendResetEmail } from './utils/mail.util';
 import { UsersService } from '../user/user.service';
@@ -28,6 +28,7 @@ import type { ProfileUpdateInput } from '../user/user.service';
 import { EateriesService } from '../eatery/eatery.service';
 import { CooperationsService } from '../cooperation/cooperation.service';
 import { WalletService } from '../wallet/wallet.service';
+import { FptAiService } from '../../common/fpt-ai/fpt-ai.service';
 import type { AuthTokens } from './dto/auth-tokens.dto';
 import type { Express } from 'express';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
@@ -73,6 +74,7 @@ export class AuthService implements OnModuleInit {
     private readonly eateriesService: EateriesService,
     private readonly cooperationsService: CooperationsService,
     private readonly walletService: WalletService,
+    private readonly fptAiService: FptAiService,
   ) {}
 
   private readonly rateBuckets = new Map<
@@ -387,7 +389,7 @@ export class AuthService implements OnModuleInit {
 
   async startPhoneVerification(
     userId: number,
-    recaptchaToken: string,
+    recaptchaToken?: string,
   ): Promise<{ ok: boolean; sessionInfo: string; expiresAt: Date }> {
     const user = await this.usersService.findOne(userId);
     const phone = user.phone;
@@ -399,16 +401,13 @@ export class AuthService implements OnModuleInit {
     if (!apiKey) {
       throw new BadRequestException('FIREBASE_API_KEY is not configured');
     }
-    if (!recaptchaToken) {
-      throw new BadRequestException('recaptchaToken is required');
-    }
 
     try {
       const response = await axios.post<FirebaseSendVerificationResponse>(
         `https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=${apiKey}`,
         {
           phoneNumber: phone,
-          recaptchaToken,
+          ...(recaptchaToken ? { recaptchaToken } : {}),
         },
       );
 
@@ -566,7 +565,7 @@ export class AuthService implements OnModuleInit {
       fullName,
     });
     if (email?.trim()) {
-      await this.usersService.updateVerificationInfo(admin.id, {
+      await this.usersService.update(admin.id, {
         email: email.trim(),
       });
       await this.usersService.markEmailVerified(admin.id);
@@ -646,36 +645,103 @@ export class AuthService implements OnModuleInit {
     userId: number,
     files: {
       citizenFrontPhoto?: Express.Multer.File[];
-      citizenBackPhoto?: Express.Multer.File[];
+      selfiePhoto?: Express.Multer.File[];
     },
-  ): Promise<{ ok: boolean; message: string }> {
+  ): Promise<{ ok: boolean; message: string; ocrData?: any; similarity?: number }> {
     const front = files.citizenFrontPhoto?.[0];
-    const back = files.citizenBackPhoto?.[0];
+    const selfie = files.selfiePhoto?.[0];
 
-    if (!front || !back) {
-      throw new BadRequestException('Vui lòng gửi ảnh mặt trước và mặt sau CCCD');
+    if (!front || !selfie) {
+      throw new BadRequestException('Vui lòng gửi 1 ảnh CCCD mặt trước và 1 ảnh Selfie khuôn mặt.');
     }
 
     assertImageFile(front, { fieldName: 'citizenFrontPhoto' });
-    assertImageFile(back, { fieldName: 'citizenBackPhoto' });
+    assertImageFile(selfie, { fieldName: 'selfiePhoto' });
 
-    const [frontUpload, backUpload] = await Promise.all([
+    // 1. FaceMatch Verification
+    // We can do this BEFORE upload to save storage if it fails?
+    // User requirement: "báo lỗi ảnh mặt không trùng khớp yêu cầu chụp lại... các thông tin bạn lấy được từ api quét căn cước công dân sẽ lấy ra các trường cần thiết của user mà lưu vào profile"
+    // So if face matches, we process OCR and update.
+    
+    // Call FaceMatch directly with buffers
+    const similarity = await this.fptAiService.faceMatch(selfie.buffer, front.buffer);
+    const THRESHOLD = 90; // User implied strict match.
+
+    if (similarity < THRESHOLD) {
+         throw new BadRequestException(`Khuôn mặt không trùng khớp (Độ tin cậy: ${similarity?.toFixed(2)}%). Vui lòng chụp lại rõ hơn.`);
+    }
+
+    // 2. Upload images (Only if FaceMatch passed)
+    // 2. Upload images (Only if FaceMatch passed)
+    const [frontUpload, selfieUpload] = await Promise.all([
       this.cloudinaryService.uploadImage(front, {
         folder: `traveline/users/${userId}/citizen-id`,
         publicId: 'front',
       }),
-      this.cloudinaryService.uploadImage(back, {
+      this.cloudinaryService.uploadImage(selfie, {
         folder: `traveline/users/${userId}/citizen-id`,
-        publicId: 'back',
+        publicId: 'selfie',
       }),
     ]);
 
-    await this.usersService.verifyCitizenIdWithImages(
-      userId,
-      frontUpload.url,
-      backUpload.url,
-    );
+    // 3. OCR Extraction
+    let ocrResult: any;
+    try {
+        const ocrResponse = await this.fptAiService.recognizeIdCard(front.buffer);
+        if (Array.isArray(ocrResponse) && ocrResponse.length > 0) {
+            ocrResult = ocrResponse[0];
+        } else {
+            throw new Error('No OCR data found');
+        }
+    } catch (e) {
+        this.logger.error('OCR failed', e);
+        // Even if OCR fails, FaceMatch passed. But we need OCR to update profile. 
+        throw new BadRequestException('Nhận diện khuôn mặt thành công nhưng không thể đọc thông tin trên thẻ. Vui lòng thử lại với ảnh rõ nét hơn.');
+    }
 
-    return { ok: true, message: 'Căn cước công dân đã được xác thực' };
+    // 4. Parse & Auto-Update Profile
+    const profileUpdate: any = {
+        fullName: ocrResult.name ? this.capitalizeName(ocrResult.name) : undefined,
+        citizenId: ocrResult.id,
+        address: ocrResult.address,
+        nationality: ocrResult.nationality ? this.capitalizeName(ocrResult.nationality) : undefined, // Usually "VIỆT NAM"
+    };
+
+    // Date Parsing (dd/MM/yyyy)
+    if (ocrResult.dob) {
+        try {
+            profileUpdate.dateOfBirth = parse(ocrResult.dob, 'dd/MM/yyyy', new Date());
+        } catch (e) {
+            this.logger.warn(`Failed to parse DOB: ${ocrResult.dob}`);
+        }
+    }
+
+    // Gender Parsing
+    if (ocrResult.sex) {
+        const sex = ocrResult.sex.toUpperCase();
+        if (sex === 'NAM') profileUpdate.gender = 'male';
+        if (sex === 'NỮ' || sex === 'NU') profileUpdate.gender = 'female';
+    }
+    
+    // Update User
+    await this.usersService.update(userId, profileUpdate);
+    
+    // Save Image URL (Front only, Back is null/undefined)
+    await this.usersService.updateCitizenImages(userId, frontUpload.url, null); 
+    
+    // Mark Verified
+    await this.usersService.markCitizenIdVerified(userId);
+
+    return { 
+        ok: true, 
+        message: 'Xác thực thành công. Thông tin đã được cập nhật.', 
+        ocrData: ocrResult,
+        similarity 
+    };
+  }
+
+  private capitalizeName(name: string): string {
+      // "TRẦN TRUNG THÔNG" -> "Trần Trung Thông"
+      return name.toLowerCase().replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
   }
 }

@@ -12,8 +12,4 @@ export class UpdateVerificationInfoDto {
   @IsMobilePhone()
   phone?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  citizenId?: string;
 }

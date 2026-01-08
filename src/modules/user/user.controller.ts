@@ -20,18 +20,18 @@ import { UsersService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateInitialProfileDto } from './dto/update-initial-profile.dto';
-import { UpdateVerificationInfoDto } from './dto/update-verification-info.dto';
 import { UpdateHobbiesDto } from './dto/update-hobbies.dto';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
-import { UseInterceptors, UploadedFile } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { UseInterceptors, UploadedFile, UploadedFiles } from '@nestjs/common';
+import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { imageMulterOptions } from '../../common/upload/image-upload.config';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
 import type { Express } from 'express';
 
+import { FptAiService } from '../../common/fpt-ai/fpt-ai.service';
 import { UpdateFcmTokenDto } from './dto/update-fcm-token.dto';
 
 @ApiTags('users')
@@ -41,6 +41,7 @@ export class UsersController {
   constructor(
     private readonly usersService: UsersService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly fptAiService: FptAiService,
   ) {}
 
   @Patch('profile/fcm-token')
@@ -70,15 +71,6 @@ export class UsersController {
     return this.usersService.updateInitialProfile(user.userId, dto);
   }
 
-  @Patch('profile/verification-info')
-  @ApiOperation({ summary: 'Cập nhật thông tin xác thực (Email, Phone, Citizen ID)' })
-  @ApiOkResponse({ description: 'Updated user, verification flags reset' })
-  updateVerification(
-    @CurrentUser() user: RequestUser,
-    @Body() dto: UpdateVerificationInfoDto,
-  ) {
-    return this.usersService.updateVerificationInfo(user.userId, dto);
-  }
 
   @Patch('profile/hobbies')
   @ApiOperation({ summary: 'Cập nhật sở thích/categories du lịch' })

@@ -1,10 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
 export class PhoneStartDto {
   @ApiProperty({
-    description: 'reCAPTCHA token lấy từ Firebase client SDK (app/web) sau khi render reCAPTCHA)',
+    description: 'reCAPTCHA token (Optional if using Test Phone Numbers in Firebase Console)',
+    required: false,
   })
+  @IsOptional()
   @IsString()
-  recaptchaToken: string;
+  recaptchaToken?: string;
 }

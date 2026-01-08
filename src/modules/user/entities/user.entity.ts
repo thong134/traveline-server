@@ -115,25 +115,25 @@ export class User {
   @Column({ nullable: true })
   citizenId: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   idCardImageUrl?: string;
 
-  @Column({ nullable: true })
-  citizenFrontImageUrl?: string;
+  @Column({ type: 'text', nullable: true })
+  citizenFrontImageUrl: string | null;
 
-  @Column({ nullable: true })
-  citizenBackImageUrl?: string;
+  @Column({ type: 'text', nullable: true })
+  citizenBackImageUrl: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   bankName?: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   bankAccountNumber?: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   bankAccountName?: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   ethAddress?: string;
 
   @Column('text', { array: true, default: '{}' })

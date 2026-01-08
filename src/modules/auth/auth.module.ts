@@ -15,6 +15,7 @@ import { EateriesModule } from '../eatery/eatery.module';
 import { CooperationsModule } from '../cooperation/cooperation.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { RolesGuard } from './guards/roles.guard';
+import { FptAiModule } from '../../common/fpt-ai/fpt-ai.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { RolesGuard } from './guards/roles.guard';
     TypeOrmModule.forFeature([PasswordReset]),
     TypeOrmModule.forFeature([PhoneOtp]),
     CloudinaryModule,
+    FptAiModule,
   ],
   providers: [
     AuthService,

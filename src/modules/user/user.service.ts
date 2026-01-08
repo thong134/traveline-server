@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -134,6 +134,18 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
+  async updateCitizenImages(
+    userId: number,
+    frontUrl: string | null,
+    backUrl: string | null,
+  ): Promise<User> {
+    const user = await this.findOne(userId);
+    user.citizenFrontImageUrl = frontUrl;
+    user.citizenBackImageUrl = backUrl;
+    return this.usersRepository.save(user);
+  }
+
+
   async updateFcmToken(userId: number, token: string): Promise<User> {
     const user = await this.findOne(userId);
     user.fcmToken = token;
@@ -143,51 +155,57 @@ export class UsersService {
   async updateInitialProfile(
     userId: number,
     data: {
+      email?: string;
+      phone?: string;
+      citizenId?: string;
       fullName?: string;
       gender?: string;
       address?: string;
       nationality?: string;
-      dateOfBirth?: string | Date | null;
-    },
-  ): Promise<User> {
-    const user = await this.findOne(userId);
-    if (data.dateOfBirth !== undefined) {
-      user.dateOfBirth = data.dateOfBirth instanceof Date ? data.dateOfBirth : (data.dateOfBirth ? new Date(data.dateOfBirth) : null);
-    }
-    assignDefined(user, {
-      fullName: data.fullName,
-      gender: data.gender,
-      address: data.address,
-      nationality: data.nationality,
-    });
-    return this.usersRepository.save(user);
-  }
-
-  async updateVerificationInfo(
-    userId: number,
-    data: {
-      email?: string;
-      phone?: string;
-      citizenId?: string;
+      dateOfBirth?: Date;
     },
   ): Promise<User> {
     const user = await this.findOne(userId);
 
-    if (data.email && data.email !== user.email) {
+    // Email update logic
+    if (data.email !== undefined && data.email !== user.email) {
+      const existing = await this.usersRepository.findOne({
+        where: { email: data.email },
+      });
+      if (existing)
+        throw new ConflictException('Email đã được sử dụng bởi tài khoản khác');
       user.email = data.email;
       user.isEmailVerified = false;
     }
-    if (data.phone && data.phone !== user.phone) {
+
+    // Phone update logic
+    if (data.phone !== undefined && data.phone !== user.phone) {
+      const existing = await this.usersRepository.findOne({
+        where: { phone: data.phone },
+      });
+      if (existing)
+        throw new ConflictException(
+          'Số điện thoại đã được sử dụng bởi tài khoản khác',
+        );
       user.phone = data.phone;
       user.isPhoneVerified = false;
     }
-    if (data.citizenId && data.citizenId !== user.citizenId) {
+
+    // CitizenID logic
+    if (data.citizenId !== undefined && data.citizenId !== user.citizenId) {
       user.citizenId = data.citizenId;
       user.isCitizenIdVerified = false;
     }
 
+    if (data.dateOfBirth !== undefined) user.dateOfBirth = data.dateOfBirth;
+    if (data.fullName !== undefined) user.fullName = data.fullName;
+    if (data.gender !== undefined) user.gender = data.gender;
+    if (data.address !== undefined) user.address = data.address;
+    if (data.nationality !== undefined) user.nationality = data.nationality;
+
     return this.usersRepository.save(user);
   }
+
 
   async updateHobbies(userId: number, hobbies: string[]): Promise<User> {
     const user = await this.findOne(userId);

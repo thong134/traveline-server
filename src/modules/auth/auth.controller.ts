@@ -6,6 +6,7 @@ import {
   Post,
   Request,
   UnauthorizedException,
+  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -32,7 +33,7 @@ import { RequestResetDto } from './dto/request-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import type { AuthTokens } from './dto/auth-tokens.dto';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { RequireAuth } from './decorators/require-auth.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -195,8 +196,9 @@ export class AuthController {
   @Post('citizen-id/verify')
   @RequireAuth()
   @ApiOperation({
-    summary: 'Xác thực căn cước công dân',
-    description: 'Upload mặt trước/mặt sau CCCD qua form-data, lưu Cloudinary và đánh dấu đã xác thực.',
+    summary: 'Xác thực căn cước công dân (Face Match Auto-Update)',
+    description:
+      'Upload 1 ảnh CCCD mặt trước + 1 ảnh Selfie. Hệ thống so khớp khuôn mặt. Nếu trùng khớp -> Tự động OCR và cập nhật Profile người dùng.',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -204,27 +206,27 @@ export class AuthController {
       type: 'object',
       properties: {
         citizenFrontPhoto: { type: 'string', format: 'binary' },
-        citizenBackPhoto: { type: 'string', format: 'binary' },
+        selfiePhoto: { type: 'string', format: 'binary' },
       },
-      required: ['citizenFrontPhoto', 'citizenBackPhoto'],
+      required: ['citizenFrontPhoto', 'selfiePhoto'],
     },
   })
   @UseInterceptors(
     FileFieldsInterceptor(
       [
         { name: 'citizenFrontPhoto', maxCount: 1 },
-        { name: 'citizenBackPhoto', maxCount: 1 },
+        { name: 'selfiePhoto', maxCount: 1 },
       ],
       imageMulterOptions,
     ),
   )
-  @ApiOkResponse({ description: 'Xác thực thành công' })
+  @ApiOkResponse({ description: 'Xác thực thành công, trả về thông tin OCR đã cập nhật' })
   async verifyCitizenId(
     @CurrentUser() user: RequestUser,
     @UploadedFiles()
     files: {
       citizenFrontPhoto?: Express.Multer.File[];
-      citizenBackPhoto?: Express.Multer.File[];
+      selfiePhoto?: Express.Multer.File[];
     },
   ) {
     return this.authService.verifyCitizenIdWithImages(user.userId, files);
