@@ -109,4 +109,12 @@ export class CreateRentalContractDto {
   )
   @IsBoolean()
   termsAccepted: boolean;
+
+  @ApiPropertyOptional({ description: 'Business latitude' })
+  @IsOptional()
+  businessLatitude?: number;
+
+  @ApiPropertyOptional({ description: 'Business longitude' })
+  @IsOptional()
+  businessLongitude?: number;
 }
