@@ -31,6 +31,7 @@ import { assignDefined } from '../../common/utils/object.util';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import type { Express } from 'express';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
+import { MapService } from '../../common/map/map.service';
 
 type VehicleImageFiles = {
   vehicleRegistrationFront?: Express.Multer.File;
@@ -55,6 +56,7 @@ export class RentalVehiclesService {
     @InjectRepository(RentalVehicleMaintenance)
     private readonly maintenanceRepo: Repository<RentalVehicleMaintenance>,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly mapService: MapService,
   ) {}
 
   private ensurePrice(value?: number | string): string {
@@ -287,12 +289,7 @@ export class RentalVehiclesService {
       contractStatus: RentalContractStatus.APPROVED,
     });
 
-    // Filter by province (businessProvince from contract)
-    if (province) {
-      qb.andWhere('LOWER(contract.businessProvince) LIKE LOWER(:province)', {
-        province: `%${province}%`,
-      });
-    }
+    // Province filter removed as requested
 
     if (vehicleType) {
       qb.andWhere('vehicle.vehicleType = :vehicleType', { vehicleType });
@@ -380,11 +377,47 @@ export class RentalVehiclesService {
       qb.setParameters({ ...qb.getParameters(), ...maintenanceSubQuery.getParameters() });
     }
 
-    return qb
+    const vehicles = await qb
       .leftJoinAndSelect('vehicle.vehicleCatalog', 'vehicleCatalog')
       .leftJoinAndSelect('vehicle.contract', 'contractSelect')
       .orderBy('vehicle.createdAt', 'DESC')
       .getMany();
+
+    if (params.latitude !== undefined && params.longitude !== undefined) {
+      const userLat = params.latitude;
+      const userLon = params.longitude;
+      const filteredVehicles: RentalVehicle[] = [];
+
+      for (const vehicle of vehicles) {
+        const businessLat = Number(vehicle.contract?.businessLatitude);
+        const businessLon = Number(vehicle.contract?.businessLongitude);
+
+        if (!businessLat || !businessLon) continue;
+
+        const airDistance = this.mapService.calculateHaversineDistance(
+          userLat,
+          userLon,
+          businessLat,
+          businessLon,
+        );
+        if (airDistance > 25) continue;
+
+        const roadDistance = await this.mapService.getDistance(
+          userLat,
+          userLon,
+          businessLat,
+          businessLon,
+        );
+
+        if (roadDistance <= 20) {
+          (vehicle as any).distance = roadDistance;
+          filteredVehicles.push(vehicle);
+        }
+      }
+      return filteredVehicles;
+    }
+
+    return vehicles;
   }
 
   async findOne(licensePlate: string): Promise<RentalVehicle> {

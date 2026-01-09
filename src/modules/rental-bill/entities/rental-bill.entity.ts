@@ -174,6 +174,18 @@ export class RentalBill {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   overtimeFee: string;
 
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  pickupLatitude?: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  pickupLongitude?: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  shippingFee: string;
+
+  @Column({ type: 'boolean', default: false })
+  isShippingFeeNegotiable: boolean;
+
   @OneToMany(
     () => RentalBillDetail,
     (detail: RentalBillDetail) => detail.bill,

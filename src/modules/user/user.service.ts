@@ -169,24 +169,12 @@ export class UsersService {
 
     // Email update logic
     if (data.email !== undefined && data.email !== user.email) {
-      const existing = await this.usersRepository.findOne({
-        where: { email: data.email },
-      });
-      if (existing)
-        throw new ConflictException('Email đã được sử dụng bởi tài khoản khác');
       user.email = data.email;
       user.isEmailVerified = false;
     }
 
     // Phone update logic
     if (data.phone !== undefined && data.phone !== user.phone) {
-      const existing = await this.usersRepository.findOne({
-        where: { phone: data.phone },
-      });
-      if (existing)
-        throw new ConflictException(
-          'Số điện thoại đã được sử dụng bởi tài khoản khác',
-        );
       user.phone = data.phone;
       user.isPhoneVerified = false;
     }

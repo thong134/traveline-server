@@ -6,6 +6,7 @@ import {
   IsDate,
   IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
@@ -51,4 +52,16 @@ export class CreateRentalBillDto {
   @ValidateNested({ each: true })
   @Type(() => RentalBillDetailDto)
   details: RentalBillDetailDto[];
+
+  @ApiPropertyOptional({ description: 'Vĩ độ của vị trí nhận xe' })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  pickupLatitude?: number;
+
+  @ApiPropertyOptional({ description: 'Kinh độ của vị trí nhận xe' })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  pickupLongitude?: number;
 }

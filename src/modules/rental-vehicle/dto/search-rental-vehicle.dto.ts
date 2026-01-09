@@ -76,4 +76,16 @@ export class SearchRentalVehicleDto {
   @IsOptional()
   @IsString()
   province?: string;
+
+  @ApiPropertyOptional({ description: 'Vĩ độ của vị trí nhận xe' })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @ApiPropertyOptional({ description: 'Kinh độ của vị trí nhận xe' })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
 }

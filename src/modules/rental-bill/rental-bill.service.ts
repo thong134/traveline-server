@@ -45,6 +45,8 @@ import { FptAiService } from '../../common/fpt-ai/fpt-ai.service';
 import axios from 'axios';
 import type { Express } from 'express';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
+import { MapService } from '../../common/map/map.service';
+import { RentalVehicleType } from '../rental-vehicle/enums/rental-vehicle.enum';
 
 const VND_TO_ETH_RATE = 80_000_000;
 
@@ -72,6 +74,7 @@ export class RentalBillsService {
     private readonly cloudinaryService: CloudinaryService,
     private readonly notificationService: NotificationService,
     private readonly fptAiService: FptAiService,
+    private readonly mapService: MapService,
   ) {}
 
   private validatePackageDates(pkg: string, start: Date, end: Date) {
@@ -211,6 +214,8 @@ export class RentalBillsService {
       startDate,
       endDate,
       location: dto.location,
+      pickupLatitude: dto.pickupLatitude,
+      pickupLongitude: dto.pickupLongitude,
       status: RentalBillStatus.PENDING,
       travelPointsUsed: 0,
     });
@@ -263,7 +268,17 @@ export class RentalBillsService {
       contactPhone: dto.contactPhone,
       notes: dto.notes,
       paymentMethod: dto.paymentMethod,
+      location: dto.location,
+      pickupLatitude: dto.pickupLatitude,
+      pickupLongitude: dto.pickupLongitude,
     });
+
+    // Recalculate shipping fee if coordinates change
+    if (dto.pickupLatitude !== undefined || dto.pickupLongitude !== undefined) {
+       const { fee, isNegotiable } = await this.calculateShippingFee(bill);
+       bill.shippingFee = fee.toString();
+       bill.isShippingFeeNegotiable = isNegotiable;
+    }
 
     if (dto.voucherCode !== undefined) {
       if (!dto.voucherCode) {
@@ -774,7 +789,16 @@ export class RentalBillsService {
     await this.detailRepo.save(detail);
 
     // Refresh details for calculation
-    bill.details = await this.detailRepo.find({ where: { billId: bill.id } });
+    bill.details = await this.detailRepo.find({ 
+      where: { billId: bill.id },
+      relations: ['vehicle', 'vehicle.contract'] 
+    });
+
+    // Calculate shipping fee on first vehicle added
+    const { fee, isNegotiable } = await this.calculateShippingFee(bill);
+    bill.shippingFee = fee.toString();
+    bill.isShippingFeeNegotiable = isNegotiable;
+
     this.calculateTotal(bill);
     await this.billRepo.save(bill);
 
@@ -818,9 +842,50 @@ export class RentalBillsService {
       finalAmount = Math.max(0, finalAmount - bill.travelPointsUsed);
     }
 
+    // 3. Shipping Fee
+    const shipping = parseFloat(bill.shippingFee || '0');
+    finalAmount += shipping;
+
     bill.total = this.formatMoney(finalAmount);
   }
 
+  async calculateShippingFee(
+    bill: RentalBill,
+  ): Promise<{ fee: number; isNegotiable: boolean }> {
+    if (!bill.pickupLatitude || !bill.pickupLongitude || !bill.details?.length) {
+      return { fee: 0, isNegotiable: false };
+    }
+
+    const firstVehicle = bill.details[0].vehicle;
+    if (!firstVehicle?.contract) return { fee: 0, isNegotiable: false };
+
+    const businessLat = Number(firstVehicle.contract.businessLatitude);
+    const businessLon = Number(firstVehicle.contract.businessLongitude);
+
+    if (!businessLat || !businessLon) return { fee: 0, isNegotiable: false };
+
+    const distance = await this.mapService.getDistance(
+      bill.pickupLatitude,
+      bill.pickupLongitude,
+      businessLat,
+      businessLon,
+    );
+
+    const isCar = bill.vehicleType === RentalVehicleType.CAR;
+
+    if (isCar) {
+      if (distance <= 5) return { fee: 20000, isNegotiable: false };
+      if (distance <= 10) return { fee: 40000, isNegotiable: false };
+      if (distance <= 20) return { fee: 60000, isNegotiable: false };
+      return { fee: 0, isNegotiable: true };
+    } else {
+      // Bike/Motorcycle
+      if (distance <= 3) return { fee: 10000, isNegotiable: false };
+      if (distance <= 7) return { fee: 20000, isNegotiable: false };
+      if (distance <= 15) return { fee: 30000, isNegotiable: false };
+      return { fee: 0, isNegotiable: true };
+    }
+  }
   async ownerCancel(id: number, ownerUserId: number, reason: string): Promise<RentalBill> {
     const bill = await this.billRepo.findOne({
       where: { id },

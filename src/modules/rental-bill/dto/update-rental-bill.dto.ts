@@ -33,4 +33,21 @@ export class UpdateRentalBillDto {
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 0 })
   travelPointsUsed?: number;
+
+  @ApiPropertyOptional({ description: 'Địa chỉ nhận xe' })
+  @IsOptional()
+  @IsString()
+  location?: string;
+
+  @ApiPropertyOptional({ description: 'Vĩ độ của vị trí nhận xe' })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  pickupLatitude?: number;
+
+  @ApiPropertyOptional({ description: 'Kinh độ của vị trí nhận xe' })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  pickupLongitude?: number;
 }

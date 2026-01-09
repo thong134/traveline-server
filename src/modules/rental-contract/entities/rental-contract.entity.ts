@@ -39,8 +39,6 @@ export class RentalContract {
   @Column({ nullable: true })
   businessName?: string;
 
-  @Column({ nullable: true })
-  businessProvince?: string;
 
   @Column({ nullable: true })
   businessAddress?: string;
@@ -102,6 +100,12 @@ export class RentalContract {
 
   @Column({ type: 'decimal', precision: 4, scale: 2, default: 0 })
   averageRating: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  businessLatitude?: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  businessLongitude?: number;
 
   @OneToMany(() => RentalVehicle, (vehicle: RentalVehicle) => vehicle.contract)
   vehicles: RentalVehicle[];
