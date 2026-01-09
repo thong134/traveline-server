@@ -47,6 +47,7 @@ import type { Express } from 'express';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
 import { MapService } from '../../common/map/map.service';
 import { RentalVehicleType } from '../rental-vehicle/enums/rental-vehicle.enum';
+import { calculateShippingFee as calcShippingFee } from '../../common/utils/shipping-fee.util';
 import { v4 as uuidv4 } from 'uuid';
 
 const VND_TO_ETH_RATE = 80_000_000;
@@ -872,20 +873,7 @@ export class RentalBillsService {
       businessLon,
     );
 
-    const isCar = bill.vehicleType === RentalVehicleType.CAR;
-
-    if (isCar) {
-      if (distance <= 5) return { fee: 20000, isNegotiable: false };
-      if (distance <= 10) return { fee: 40000, isNegotiable: false };
-      if (distance <= 20) return { fee: 60000, isNegotiable: false };
-      return { fee: 0, isNegotiable: true };
-    } else {
-      // Bike/Motorcycle
-      if (distance <= 3) return { fee: 10000, isNegotiable: false };
-      if (distance <= 7) return { fee: 20000, isNegotiable: false };
-      if (distance <= 15) return { fee: 30000, isNegotiable: false };
-      return { fee: 0, isNegotiable: true };
-    }
+    return calcShippingFee(distance, bill.vehicleType);
   }
   async ownerCancel(id: number, ownerUserId: number, reason: string): Promise<RentalBill> {
     const bill = await this.billRepo.findOne({

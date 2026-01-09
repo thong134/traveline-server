@@ -32,6 +32,8 @@ import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import type { Express } from 'express';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
 import { MapService } from '../../common/map/map.service';
+import { calculateShippingFee } from '../../common/utils/shipping-fee.util';
+
 
 type VehicleImageFiles = {
   vehicleRegistrationFront?: Express.Multer.File;
@@ -409,6 +411,12 @@ export class RentalVehiclesService {
 
         if (roadDistance <= 20) {
           (vehicle as any).distance = roadDistance;
+          
+          // Calculate shipping fee exactly as in RentalBillsService
+          const { fee, isNegotiable } = calculateShippingFee(roadDistance, vehicle.vehicleType);
+          (vehicle as any).shippingFee = fee;
+          (vehicle as any).isShippingFeeNegotiable = isNegotiable;
+          
           filteredVehicles.push(vehicle);
         }
       }
