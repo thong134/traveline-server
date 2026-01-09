@@ -2391,7 +2391,6 @@ export class ChatService {
     const results = await this.rentalVehiclesService.search({
       startDate: new Date(params.startDate),
       endDate: new Date(params.endDate),
-      province: params.location,
       vehicleType: params.vehicleType, 
       rentalType: RentalType.DAILY // default or extract?
     });

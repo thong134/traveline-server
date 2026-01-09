@@ -10,6 +10,7 @@ import {
   UploadedFile,
   UploadedFiles,
   UseInterceptors,
+  Req,
 } from '@nestjs/common';
 import {
   ApiOkResponse,
@@ -38,6 +39,7 @@ import { RequireVerification } from '../auth/decorators/require-verification.dec
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import type { Express } from 'express';
 import { imageMulterOptions } from '../../common/upload/image-upload.config';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('rental-bills')
 @RequireAuth()
@@ -131,6 +133,35 @@ export class RentalBillsController {
     @Body() dto: RentalOwnerCancelDto,
   ) {
     return this.service.ownerCancel(id, user.userId, dto.reason);
+  }
+
+  @Post(':id/guest-link')
+  @ApiOperation({ summary: 'Generate shareable guest link for vehicle handover' })
+  async generateGuestLink(@Param('id') id: string, @Req() req: any) {
+    return this.service.generateGuestLink(+id, req.user.userId);
+  }
+
+  @Public()
+  @Get('guest/:token')
+  @ApiOperation({ summary: 'Lấy thông tin đơn hàng bằng guest token' })
+  getBillByGuestToken(@Param('token') token: string) {
+    return this.service.getBillByGuestToken(token);
+  }
+
+  @Public()
+  @Post('guest/:token/evidence')
+  @ApiOperation({ summary: 'Guest upload bằng chứng giao/nhận xe' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'photos', maxCount: 10 }], imageMulterOptions),
+  )
+  submitGuestEvidence(
+    @Param('token') token: string,
+    @Body() dto: DeliveryActionDto,
+    @UploadedFiles() files?: Record<string, Express.Multer.File[]>,
+  ) {
+    const gps = { lat: dto.latitude, lon: dto.longitude };
+    return this.service.submitGuestEvidence(token, files?.photos || [], gps);
   }
 
   @Patch(':id/vehicles/add')

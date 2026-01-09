@@ -69,13 +69,6 @@ export class SearchRentalVehicleDto {
   @IsDate()
   endDate?: Date;
 
-  @ApiPropertyOptional({
-    description: 'Tỉnh/thành phố để lọc xe theo địa điểm kinh doanh của chủ xe',
-    example: 'Hồ Chí Minh',
-  })
-  @IsOptional()
-  @IsString()
-  province?: string;
 
   @ApiPropertyOptional({ description: 'Vĩ độ của vị trí nhận xe' })
   @Type(() => Number)

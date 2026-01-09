@@ -271,7 +271,7 @@ export class RentalVehiclesService {
   }
 
   async search(params: SearchRentalVehicleDto): Promise<RentalVehicle[]> {
-    const { rentalType, minPrice, maxPrice, startDate, endDate, province, vehicleType } = params;
+    const { rentalType, minPrice, maxPrice, startDate, endDate, vehicleType } = params;
 
     const qb = this.repo.createQueryBuilder('vehicle');
 
@@ -283,13 +283,11 @@ export class RentalVehiclesService {
       availability: RentalVehicleAvailabilityStatus.AVAILABLE,
     });
 
-    // Join with contract to get province info
+    // Join with contract to get status info
     qb.innerJoin('vehicle.contract', 'contract');
     qb.andWhere('contract.status = :contractStatus', {
       contractStatus: RentalContractStatus.APPROVED,
     });
-
-    // Province filter removed as requested
 
     if (vehicleType) {
       qb.andWhere('vehicle.vehicleType = :vehicleType', { vehicleType });

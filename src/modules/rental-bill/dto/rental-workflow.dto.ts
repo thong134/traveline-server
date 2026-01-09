@@ -6,6 +6,16 @@ export class DeliveryActionDto {
   @ApiProperty({ description: 'Danh sách ảnh bàn giao xe' })
   @IsOptional()
   photos: string[];
+
+  @ApiProperty({ description: 'Vĩ độ vị trí giao xe' })
+  @IsNumber()
+  @Type(() => Number)
+  latitude: number;
+
+  @ApiProperty({ description: 'Kinh độ vị trí giao xe' })
+  @IsNumber()
+  @Type(() => Number)
+  longitude: number;
 }
 
 export class PickupActionDto {

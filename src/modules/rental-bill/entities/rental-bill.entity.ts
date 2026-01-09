@@ -171,6 +171,18 @@ export class RentalBill {
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   returnLongitudeOwner?: number;
 
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  deliveryLatitudeOwner?: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  deliveryLongitudeOwner?: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  deliveryDate?: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  returnDate?: Date;
+
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   overtimeFee: string;
 
@@ -185,6 +197,12 @@ export class RentalBill {
 
   @Column({ type: 'boolean', default: false })
   isShippingFeeNegotiable: boolean;
+
+  @Column({ nullable: true })
+  guestToken?: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  guestTokenExpiresAt?: Date;
 
   @OneToMany(
     () => RentalBillDetail,

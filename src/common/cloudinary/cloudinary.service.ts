@@ -141,6 +141,17 @@ export class CloudinaryService {
     }
   }
 
+  async uploadMultipleFiles(
+    files: Express.Multer.File[],
+    folder: string = 'traveline/uploads',
+  ): Promise<UploadMediaResult[]> {
+    if (!files || files.length === 0) return [];
+    
+    // Upload in parallel
+    const promises = files.map(file => this.uploadImage(file, { folder }));
+    return Promise.all(promises);
+  }
+
   async uploadImage(
     file: Express.Multer.File,
     options: UploadMediaOptions = {},

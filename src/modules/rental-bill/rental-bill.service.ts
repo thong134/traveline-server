@@ -47,6 +47,7 @@ import type { Express } from 'express';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
 import { MapService } from '../../common/map/map.service';
 import { RentalVehicleType } from '../rental-vehicle/enums/rental-vehicle.enum';
+import { v4 as uuidv4 } from 'uuid';
 
 const VND_TO_ETH_RATE = 80_000_000;
 
@@ -1058,5 +1059,174 @@ export class RentalBillsService {
     }
 
     return qb.orderBy('bill.createdAt', 'DESC').getMany();
+  }
+
+  async generateGuestLink(id: number, userId: number): Promise<{ token: string; expiresAt: Date }> {
+    const bill = await this.findOne(id, userId);
+    
+    // Ensure caller is the owner (only owner can generate links)
+    if (bill.details?.[0]?.vehicle?.contract?.user?.id !== userId) {
+      throw new ForbiddenException('Only vehicle owner can generate guest links');
+    }
+
+    if (bill.status !== RentalBillStatus.PAID && bill.status !== RentalBillStatus.PENDING) {
+       // Ideally links are for delivery (PENDING/PAID) or return (RENTING)
+       // Let's allow it generally but keep in mind validation later
+    }
+
+    // Generate token
+    const token = uuidv4();
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // Token valid for 24h
+
+    bill.guestToken = token;
+    bill.guestTokenExpiresAt = expiresAt;
+
+    await this.billRepo.save(bill);
+
+    return { token, expiresAt };
+  }
+
+  async getBillByGuestToken(token: string): Promise<any> {
+    const bill = await this.billRepo.findOne({
+      where: {
+        guestToken: token,
+        // guestTokenExpiresAt: MoreThan(new Date()) // TypeORM MoreThan import needed if used strictly, but let's do manual check
+      },
+      relations: ['details', 'details.vehicle', 'user'],
+    });
+
+    if (!bill) {
+      throw new NotFoundException('Invalid or expired token');
+    }
+
+    if (bill.guestTokenExpiresAt && new Date() > bill.guestTokenExpiresAt) {
+      throw new ForbiddenException('Token expired');
+    }
+
+    // Return restricted info
+    return {
+      billId: bill.id,
+      code: bill.code,
+      status: bill.status,
+      customerName: bill.contactName || bill.user?.fullName,
+      customerPhone: bill.contactPhone,
+      startDate: bill.startDate,
+      endDate: bill.endDate,
+      licensePlate: bill.details?.[0]?.licensePlate,
+      vehicleName: bill.details?.[0]?.vehicle?.vehicleCatalog ? `${bill.details[0].vehicle.vehicleCatalog.brand} ${bill.details[0].vehicle.vehicleCatalog.model}` : 'Unknown Vehicle',
+      location: bill.location,
+    };
+  }
+
+  async submitGuestEvidence(
+    token: string,
+    files: Express.Multer.File[],
+    gps: { lat: number; lon: number },
+  ): Promise<void> {
+    const bill = await this.billRepo.findOne({
+      where: { guestToken: token },
+      relations: ['details', 'details.vehicle', 'details.vehicle.contract'],
+    });
+
+    if (!bill) throw new NotFoundException('Invalid token');
+    if (bill.guestTokenExpiresAt && new Date() > bill.guestTokenExpiresAt) {
+      throw new ForbiddenException('Token expired');
+    }
+
+    const isDelivery = bill.status === RentalBillStatus.PENDING || bill.status === RentalBillStatus.PAID;
+    const isReturn = bill.rentalStatus === RentalProgressStatus.IN_PROGRESS || bill.rentalStatus === RentalProgressStatus.RETURN_REQUESTED;
+
+    if (!isDelivery && !isReturn) {
+      throw new BadRequestException('Not in a state to receive evidence');
+    }
+
+    // Owner ID for context (even though done by guest)
+    const ownerId = bill.details?.[0]?.vehicle?.contract?.user?.id;
+    if (!ownerId) throw new BadRequestException('Owner not found');
+
+    if (isDelivery) {
+        // Reuse ownerDelivered logic but bypass auth checks on ownership
+        // We simulate the owner action
+        const dto = new DeliveryActionDto();
+        dto.latitude = gps.lat;
+        dto.longitude = gps.lon;
+        
+        // We need to implement a "force" or "system" version of ownerDelivered 
+        // OR just duplicate the logic here to be safe and avoid modifying guarded methods.
+        // Let's duplicate core logic for safety and clarity.
+        
+        // Logic from ownerDelivered:
+        if (files?.length > 0) {
+            const uploaded = await this.cloudinaryService.uploadMultipleFiles(files, 'rentals/delivery');
+            bill.deliveryPhotos = uploaded.map(f => f.url);
+        }
+        
+        bill.deliveryLatitudeOwner = gps.lat;
+        bill.deliveryLongitudeOwner = gps.lon;
+        bill.status = RentalBillStatus.PAID; // Still PAID, but progress is DELIVERED
+        bill.rentalStatus = RentalProgressStatus.DELIVERED;
+        bill.deliveryDate = new Date();
+
+        await this.billRepo.save(bill);
+
+        // Notify user
+        await this.notificationService.createNotification(
+            bill.userId,
+            'Xe đã đến điểm giao',
+            `Nhân viên đã giao xe ${bill.details[0].licensePlate} đến điểm hẹn. Vui lòng kiểm tra và nhận xe.`,
+            NotificationType.REMINDER,
+            { billId: bill.id.toString(), category: 'rental-vehicle' }
+        );
+
+    } else if (isReturn) {
+        // Reuse ownerConfirmReturn logic
+        // But wait, "guest" usually implies the delivery guy.
+        // For RETURN, the guest (delivery guy) is picking up the car from the user.
+        // So this action is equivalent to "Owner Confirm Return".
+        
+        const dto = new ConfirmReturnDto();
+        dto.latitude = gps.lat;
+        dto.longitude = gps.lon;
+        // dto.returnCondition... defaulting to 'good' or we need frontend input.
+        // For simplicity, assume good or existing condition.
+
+        // Verify distance (copy logic)
+        const userLat = Number(bill.returnLatitudeUser);
+        const userLon = Number(bill.returnLongitudeUser);
+        if (!userLat || !userLon) {
+             // If user hasn't requested return yet, we can't confirm return?
+             // Actually, owner/guest can confirm return directly sometimes.
+             // But traditionally flow is User Request -> Owner Confirm.
+             // If User hasn't requested, maybe we allow forcing it?
+             // Let's assume standard flow: User must have requested return first.
+             if (bill.rentalStatus !== RentalProgressStatus.RETURN_REQUESTED) {
+                 throw new BadRequestException('User has not requested return yet');
+             }
+        }
+        
+        if (files?.length > 0) {
+            const uploaded = await this.cloudinaryService.uploadMultipleFiles(files, 'rentals/return_owner');
+            bill.returnPhotosOwner = uploaded.map(f => f.url);
+        }
+
+        bill.returnLatitudeOwner = gps.lat;
+        bill.returnLongitudeOwner = gps.lon;
+
+        // Calculate distance check
+        if (userLat && userLon) {
+             const dist = this.mapService.calculateHaversineDistance(userLat, userLon, gps.lat, gps.lon);
+             if (dist > 0.05) { // 50m
+                 throw new BadRequestException(`Vi trí quá xa so với khách hàng (${(dist*1000).toFixed(0)}m)`);
+             }
+        }
+
+        bill.status = RentalBillStatus.COMPLETED;
+        bill.rentalStatus = RentalProgressStatus.RETURN_CONFIRMED;
+        bill.returnDate = new Date(); // Actual return time
+
+        await this.processRefundOrRelease(bill, 'release', ownerId);
+        await this.billRepo.save(bill);
+    }
   }
 }
