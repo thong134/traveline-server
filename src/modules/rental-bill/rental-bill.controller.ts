@@ -25,7 +25,7 @@ import { UpdateRentalBillDto } from './dto/update-rental-bill.dto';
 import { ManageRentalBillVehicleDto } from './dto/manage-rental-bill-vehicle.dto';
 import { RentalOwnerCancelDto } from './dto/owner-cancel-bill.dto';
 import { PaymentResponseDto, QRCodeResponseDto } from './dto/payment-response.dto';
-import { RentalBillStatus, RentalProgressStatus } from './entities/rental-bill.entity';
+import { RentalBill, RentalBillStatus, RentalProgressStatus } from './entities/rental-bill.entity';
 import {
   DeliveryActionDto,
   PickupActionDto,
@@ -59,6 +59,7 @@ export class RentalBillsController {
 
   @Get('me')
   @ApiOperation({ summary: 'Danh sách hóa đơn của tôi' })
+  @ApiOkResponse({ type: [RentalBill] })
   @ApiQuery({ name: 'status', required: false, enum: RentalBillStatus })
   findMyBills(
     @CurrentUser() user: RequestUser,
@@ -69,6 +70,7 @@ export class RentalBillsController {
 
   @Get('owner/me')
   @ApiOperation({ summary: 'Danh sách hóa đơn cho xe của tôi (Chủ xe)' })
+  @ApiOkResponse({ type: [RentalBill] })
   @ApiQuery({ name: 'status', required: false, enum: RentalBillStatus })
   findOwnerBills(
     @CurrentUser() user: RequestUser,
@@ -79,6 +81,7 @@ export class RentalBillsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Chi tiết hóa đơn thuê xe' })
+  @ApiOkResponse({ type: RentalBill })
   findOne(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,

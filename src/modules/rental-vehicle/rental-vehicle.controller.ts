@@ -10,6 +10,7 @@ import {
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
+import { RentalVehicle } from './entities/rental-vehicle.entity';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import {
   ApiCreatedResponse,
@@ -87,7 +88,7 @@ export class RentalVehiclesController {
     required: false,
     enum: RentalVehicleApprovalStatus,
   })
-  @ApiOkResponse({ description: 'Danh sách xe của user' })
+  @ApiOkResponse({ type: [RentalVehicle] })
   findMyVehicles(
     @CurrentUser() user: RequestUser,
     @Query('status') status?: RentalVehicleApprovalStatus,
@@ -98,7 +99,7 @@ export class RentalVehiclesController {
   @Get('favorites')
   @RequireAuth()
   @ApiOperation({ summary: 'Danh sách xe cho thuê yêu thích của tôi' })
-  @ApiOkResponse({ description: 'Danh sách xe được yêu thích' })
+  @ApiOkResponse({ type: [RentalVehicle] })
   findFavorites(@CurrentUser() user: RequestUser) {
     return this.service.findFavoritesByUser(user.userId);
   }  @Post(':licensePlate/favorite')
@@ -125,7 +126,7 @@ export class RentalVehiclesController {
 
   @Get('search')
   @ApiOperation({ summary: 'Tìm kiếm xe cho thuê với bộ lọc' })
-  @ApiOkResponse({ description: 'Danh sách xe thỏa điều kiện' })
+  @ApiOkResponse({ type: [RentalVehicle] })
   search(@Query() dto: SearchRentalVehicleDto) {
     return this.service.search(dto);
   }
@@ -143,7 +144,7 @@ export class RentalVehiclesController {
     required: false,
     enum: RentalVehicleAvailabilityStatus,
   })
-  @ApiOkResponse({ description: 'Danh sách xe' })
+  @ApiOkResponse({ type: [RentalVehicle] })
   findAll(
     @Query('contractId') contractId?: string,
     @Query('status') status?: RentalVehicleApprovalStatus,
@@ -158,7 +159,7 @@ export class RentalVehiclesController {
 
   @Get(':licensePlate')
   @ApiOperation({ summary: 'Chi tiết xe cho thuê' })
-  @ApiOkResponse({ description: 'Chi tiết xe' })
+  @ApiOkResponse({ type: RentalVehicle })
   findOne(@Param('licensePlate') licensePlate: string) {
     return this.service.findOne(licensePlate);
   }
