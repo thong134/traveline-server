@@ -97,14 +97,44 @@ export class RentalVehiclesService {
     });
 
     if (!vehicle) {
-      throw new NotFoundException(`Vehicle ${licensePlate} not found`);
+      throw new NotFoundException('Không tìm thấy phương tiện này');
     }
 
     if (vehicle.contract?.user?.id !== userId) {
-      throw new ForbiddenException('You do not have access to this vehicle');
+      throw new ForbiddenException('Bạn không có quyền truy cập vào phương tiện này');
     }
 
     return vehicle;
+  }
+
+  validateRentalTimes(startDate: Date, endDate: Date): void {
+    const startHour = startDate.getHours();
+    const startMinute = startDate.getMinutes();
+    const endHour = endDate.getHours();
+    const endMinute = endDate.getMinutes();
+
+    // Helper to check if time is within 05:00 - 22:00
+    const isValidTime = (h: number, m: number) => {
+      // Before 5:00
+      if (h < 5) return false;
+      // After 22:00 (strict > 22:00 is invalid, so 22:01 is invalid)
+      if (h > 22) return false;
+      // If exactly 22:00, minute must be 0
+      if (h === 22 && m > 0) return false;
+      return true;
+    };
+
+    if (!isValidTime(startHour, startMinute)) {
+      throw new BadRequestException(
+        'Giờ nhận xe phải nằm trong khoảng từ 05:00 đến 22:00',
+      );
+    }
+
+    if (!isValidTime(endHour, endMinute)) {
+      throw new BadRequestException(
+        'Giờ trả xe phải nằm trong khoảng từ 05:00 đến 22:00. Vui lòng chọn giờ nhận xe khác phù hợp hơn.',
+      );
+    }
   }
 
   async create(
@@ -123,23 +153,23 @@ export class RentalVehiclesService {
       relations: { user: true },
     });
     if (!contract) {
-      throw new NotFoundException(`Contract ${dto.contractId} not found`);
+      throw new NotFoundException('Không tìm thấy hợp đồng này');
     }
 
     if (!contract.user) {
       throw new NotFoundException(
-        `Contract ${dto.contractId} does not have an owner`,
+        'Hợp đồng chưa có chủ sở hữu',
       );
     }
 
     // Verify the user owns this contract
     if (contract.user.id !== userId) {
-      throw new ForbiddenException('You do not have access to this contract');
+      throw new ForbiddenException('Bạn không có quyền truy cập vào hợp đồng này');
     }
 
     if (contract.status !== RentalContractStatus.APPROVED) {
       throw new BadRequestException(
-        'Contract must be approved before registering vehicles',
+        'Hợp đồng phải được phê duyệt trước khi đăng ký xe',
       );
     }
 
@@ -148,7 +178,7 @@ export class RentalVehiclesService {
     });
     if (!owner) {
       throw new NotFoundException(
-        `Contract owner ${contract.user?.id} not found`,
+        'Không tìm thấy chủ sở hữu hợp đồng',
       );
     }
 
@@ -157,7 +187,7 @@ export class RentalVehiclesService {
     });
     if (!vehicleCatalog) {
       throw new NotFoundException(
-        `Vehicle catalog ${dto.vehicleCatalogId} not found`,
+        'Không tìm thấy dòng xe này trong danh mục',
       );
     }
 
@@ -511,7 +541,7 @@ export class RentalVehiclesService {
 
   async reject(licensePlate: string, reason: string): Promise<RentalVehicle> {
     if (!reason) {
-      throw new BadRequestException('Rejected vehicles require a reason');
+      throw new BadRequestException('Phương tiện bị từ chối cần có lý do cụ thể');
     }
 
     const vehicle = await this.findOne(licensePlate);
@@ -544,13 +574,13 @@ export class RentalVehiclesService {
 
     if (vehicle.status !== RentalVehicleApprovalStatus.APPROVED) {
       throw new BadRequestException(
-        'Only approved vehicles can be enabled',
+        'Chỉ có thể kích hoạt các phương tiện đã được duyệt',
       );
     }
 
     if (vehicle.availability !== RentalVehicleAvailabilityStatus.MAINTENANCE) {
       throw new BadRequestException(
-        'Vehicle is not in maintenance mode',
+        'Phương tiện hiện không ở trạng thái bảo trì',
       );
     }
 
@@ -651,7 +681,7 @@ export class RentalVehiclesService {
   async findFavoritesByUser(userId: number): Promise<RentalVehicle[]> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException(`User ${userId} not found`);
+      throw new NotFoundException('Không tìm thấy người dùng này');
     }
 
     if (!user.favoriteRentalVehicleIds?.length) {
@@ -676,11 +706,11 @@ export class RentalVehiclesService {
   async favorite(licensePlate: string, userId: number): Promise<void> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException(`User ${userId} not found`);
+      throw new NotFoundException('Không tìm thấy người dùng này');
     }
     const vehicle = await this.repo.findOne({ where: { licensePlate } });
     if (!vehicle) {
-      throw new NotFoundException(`Vehicle ${licensePlate} not found`);
+      throw new NotFoundException('Không tìm thấy phương tiện này');
     }
 
     const current = user.favoriteRentalVehicleIds ?? [];
@@ -693,7 +723,7 @@ export class RentalVehiclesService {
   async unfavorite(licensePlate: string, userId: number): Promise<void> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException(`User ${userId} not found`);
+      throw new NotFoundException('Không tìm thấy người dùng này');
     }
 
     const current = user.favoriteRentalVehicleIds ?? [];

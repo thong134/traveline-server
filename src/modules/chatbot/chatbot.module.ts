@@ -20,6 +20,7 @@ import { RentalVehiclesModule } from '../rental-vehicle/rental-vehicle.module';
 import { TravelRoutesModule } from '../travel-route/travel-route.module';
 import { CooperationsModule } from '../cooperation/cooperation.module';
 import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
+import { FeedbackModule } from '../feedback/feedback.module';
 
 @Module({
   imports: [
@@ -32,7 +33,9 @@ import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
     RentalBillsModule,
     RentalVehiclesModule,
     TravelRoutesModule,
+    TravelRoutesModule,
     CooperationsModule,
+    FeedbackModule,
     TypeOrmModule.forFeature([
       Destination,
       Cooperation,

@@ -13,6 +13,7 @@ import { BlockchainModule } from '../blockchain/blockchain.module';
 import { PaymentModule } from '../payment/payment.module';
 import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 import { FptAiModule } from '../../common/fpt-ai/fpt-ai.module';
+import { RentalVehiclesModule } from '../rental-vehicle/rental-vehicle.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { FptAiModule } from '../../common/fpt-ai/fpt-ai.module';
     PaymentModule,
     CloudinaryModule,
     FptAiModule,
+    RentalVehiclesModule,
   ],
   providers: [RentalBillsService],
   controllers: [RentalBillsController],

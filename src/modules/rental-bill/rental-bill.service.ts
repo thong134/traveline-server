@@ -27,6 +27,7 @@ import {
   ReturnRequestDto,
   ConfirmReturnDto,
 } from './dto/rental-workflow.dto';
+import { RentalVehiclesService } from '../rental-vehicle/rental-vehicle.service';
 import { RentalVehicle } from '../rental-vehicle/entities/rental-vehicle.entity';
 import {
   RentalVehicleApprovalStatus,
@@ -77,6 +78,7 @@ export class RentalBillsService {
     private readonly notificationService: NotificationService,
     private readonly fptAiService: FptAiService,
     private readonly mapService: MapService,
+    private readonly rentalVehiclesService: RentalVehiclesService,
   ) {}
 
   private validatePackageDates(pkg: string, start: Date, end: Date) {
@@ -91,34 +93,34 @@ export class RentalBillsService {
 
     switch (pkg) {
       case '1h':
-        if (Math.abs(diffHours - 1) > 0.01) throw new BadRequestException('Package 1h must be exactly 1 hour');
+        if (Math.abs(diffHours - 1) > 0.01) throw new BadRequestException('Gói 1h phải đúng 1 giờ');
         break;
       case '4h':
-        if (Math.abs(diffHours - 4) > 0.01) throw new BadRequestException('Package 4h must be exactly 4 hours');
+        if (Math.abs(diffHours - 4) > 0.01) throw new BadRequestException('Gói 4h phải đúng 4 giờ');
         break;
       case '8h':
-        if (Math.abs(diffHours - 8) > 0.01) throw new BadRequestException('Package 8h must be exactly 8 hours');
+        if (Math.abs(diffHours - 8) > 0.01) throw new BadRequestException('Gói 8h phải đúng 8 giờ');
         break;
       case '12h':
-        if (Math.abs(diffHours - 12) > 0.01) throw new BadRequestException('Package 12h must be exactly 12 hours');
+        if (Math.abs(diffHours - 12) > 0.01) throw new BadRequestException('Gói 12h phải đúng 12 giờ');
         break;
       case '1d':
-        if (diffDays !== 1 || !sameTime) throw new BadRequestException('Package 1d must be exactly 1 day with matching time');
+        if (diffDays !== 1 || !sameTime) throw new BadRequestException('Gói 1 ngày phải đảm bảo đúng 24 giờ trùng giờ nhận trả');
         break;
       case '2d':
-        if (diffDays !== 2 || !sameTime) throw new BadRequestException('Package 2d must be exactly 2 days with matching time');
+        if (diffDays !== 2 || !sameTime) throw new BadRequestException('Gói 2 ngày phải đảm bảo đúng 2 ngày trùng giờ nhận trả');
         break;
       case '3d':
-        if (diffDays !== 3 || !sameTime) throw new BadRequestException('Package 3d must be exactly 3 days with matching time');
+        if (diffDays !== 3 || !sameTime) throw new BadRequestException('Gói 3 ngày phải đảm bảo đúng 3 ngày trùng giờ nhận trả');
         break;
       case '5d':
-        if (diffDays !== 5 || !sameTime) throw new BadRequestException('Package 5d must be exactly 5 days with matching time');
+        if (diffDays !== 5 || !sameTime) throw new BadRequestException('Gói 5 ngày phải đảm bảo đúng 5 ngày trùng giờ nhận trả');
         break;
       case '7d':
-        if (diffDays !== 7 || !sameTime) throw new BadRequestException('Package 7d must be exactly 7 days with matching time');
+        if (diffDays !== 7 || !sameTime) throw new BadRequestException('Gói 7 ngày phải đảm bảo đúng 7 ngày trùng giờ nhận trả');
         break;
       default:
-        throw new BadRequestException(`Invalid package: ${pkg}`);
+        throw new BadRequestException(`Gói thuê không hợp lệ (${pkg})`);
     }
   }
 
@@ -199,13 +201,14 @@ export class RentalBillsService {
   async create(userId: number, dto: CreateRentalBillDto): Promise<RentalBill> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException(`User ${userId} not found`);
+      throw new NotFoundException('Không tìm thấy người dùng này');
     }
 
     const startDate = dto.startDate;
     const endDate = dto.endDate;
 
     this.validatePackageDates(dto.durationPackage, startDate, endDate);
+    this.rentalVehiclesService.validateRentalTimes(startDate, endDate);
 
     const bill = this.billRepo.create({
       code: this.generateBillCode(),
@@ -246,13 +249,13 @@ export class RentalBillsService {
       ],
     });
     if (!bill) {
-      throw new NotFoundException(`Rental bill ${id} not found`);
+      throw new NotFoundException('Không tìm thấy đơn hàng này');
     }
 
     // Authorization: Must be renter or owner
     const ownerId = bill.details?.[0]?.vehicle?.contract?.user?.id;
     if (bill.userId !== userId && ownerId !== userId) {
-      throw new ForbiddenException('You do not have access to this rental bill');
+      throw new ForbiddenException('Bạn không có quyền truy cập vào đơn hàng này');
     }
 
     return bill;
@@ -262,7 +265,7 @@ export class RentalBillsService {
     const bill = await this.findOne(id, userId);
 
     if (bill.status !== RentalBillStatus.PENDING) {
-      throw new BadRequestException(`Cannot update bill in ${bill.status} status`);
+      throw new BadRequestException(`Không thể cập nhật đơn hàng ở trạng thái ${bill.status}`);
     }
 
     assignDefined(bill, {
@@ -288,7 +291,7 @@ export class RentalBillsService {
         bill.voucherId = undefined;
       } else {
         const voucher = await this.vouchersService.findByCode(dto.voucherCode);
-        if (!voucher) throw new NotFoundException('Voucher not found');
+        if (!voucher) throw new NotFoundException('Không tìm thấy mã giảm giá');
 
         // Reuse VouchersService validation
         const totalFromDetails = bill.details.reduce((sum, d) => sum + parseFloat(d.price), 0);
@@ -302,7 +305,7 @@ export class RentalBillsService {
     if (dto.travelPointsUsed !== undefined) {
       const points = Number(dto.travelPointsUsed);
       if (Number.isNaN(points) || points < 0) {
-        throw new BadRequestException('travelPointsUsed must be a non-negative number');
+        throw new BadRequestException('Điểm du lịch sử dụng phải là số không âm');
       }
 
       // Check if user has enough points
@@ -324,11 +327,11 @@ export class RentalBillsService {
   async pay(id: number, userId: number): Promise<{ payUrl: string; paymentId: number }> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== RentalBillStatus.PENDING) {
-      throw new BadRequestException('Only PENDING bills can be paid');
+      throw new BadRequestException('Chỉ có thể thanh toán các đơn hàng đang chờ (PENDING)');
     }
 
     if (!bill.paymentMethod) {
-      throw new BadRequestException('paymentMethod is required (Confirm before paying)');
+      throw new BadRequestException('Cần chọn phương thức thanh toán trước khi thanh toán');
     }
 
     const totalAmount = parseFloat(bill.total);
@@ -375,13 +378,13 @@ export class RentalBillsService {
       return { payUrl, paymentId };
     }
 
-    throw new BadRequestException('Unsupported payment method');
+    throw new BadRequestException('Phương thức thanh toán không được hỗ trợ');
   }
 
   async complete(id: number, userId: number): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== RentalBillStatus.PAID) {
-      throw new BadRequestException('Only PAID bills can be completed');
+      throw new BadRequestException('Chỉ có thể hoàn thành các đơn hàng đã thanh toán (PAID)');
     }
 
     bill.status = RentalBillStatus.COMPLETED;
@@ -435,12 +438,12 @@ export class RentalBillsService {
       where: { id },
       relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
     });
-    if (!bill) throw new NotFoundException('Bill not found');
+    if (!bill) throw new NotFoundException('Không tìm thấy đơn hàng');
     
     // Authorization: Must be customer or owner
     const ownerId = bill.details?.[0]?.vehicle?.contract?.user?.id;
     if (bill.userId !== userId && ownerId !== userId) {
-      throw new ForbiddenException('You do not have access to this bill');
+      throw new ForbiddenException('Bạn không có quyền truy cập vào đơn hàng này');
     }
 
     if (bill.status !== RentalBillStatus.PAID) {
@@ -482,7 +485,7 @@ export class RentalBillsService {
       where: { id },
       relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
     });
-    if (!bill) throw new NotFoundException('Bill not found');
+    if (!bill) throw new NotFoundException('Không tìm thấy đơn hàng');
 
     if (bill.rentalStatus !== RentalProgressStatus.DELIVERING) {
       throw new BadRequestException('Phải bấm đang vận chuyển trước khi xác nhận đã đến');
@@ -521,7 +524,7 @@ export class RentalBillsService {
       where: { id },
       relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
     });
-    if (!bill) throw new NotFoundException('Bill not found');
+    if (!bill) throw new NotFoundException('Không tìm thấy đơn hàng');
 
     if (bill.rentalStatus !== RentalProgressStatus.DELIVERED) {
       throw new BadRequestException('Chủ xe chưa giao xe đến nơi');
@@ -580,7 +583,7 @@ export class RentalBillsService {
       where: { id },
       relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
     });
-    if (!bill) throw new NotFoundException('Bill not found');
+    if (!bill) throw new NotFoundException('Không tìm thấy đơn hàng');
 
     if (bill.rentalStatus !== RentalProgressStatus.IN_PROGRESS) {
       throw new BadRequestException('Chỉ được phép yêu cầu trả xe khi đang trong quá trình hành trình (IN_PROGRESS)');
@@ -640,7 +643,7 @@ export class RentalBillsService {
       where: { id },
       relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
     });
-    if (!bill) throw new NotFoundException('Bill not found');
+    if (!bill) throw new NotFoundException('Không tìm thấy đơn hàng');
 
     if (bill.rentalStatus !== RentalProgressStatus.RETURN_REQUESTED) {
       throw new BadRequestException('Khách hàng chưa gửi yêu cầu trả xe');
@@ -653,7 +656,7 @@ export class RentalBillsService {
             Number(bill.returnLatitudeUser), Number(bill.returnLongitudeUser)
         );
         if (distance > 0.05) { // 0.05 km = 50m
-            throw new BadRequestException(`Vị trí xác nhận của bạn quá xa vị trí khách trả xe (${Math.round(distance * 1000)}m > 50m)`);
+            throw new BadRequestException(`Vị trí xác nhận quá xa điểm trả xe của khách (${Math.round(distance * 1000)}m > 50m)`);
         }
     }
 
@@ -737,7 +740,7 @@ export class RentalBillsService {
   async addVehicleToBill(id: number, userId: number, dto: ManageRentalBillVehicleDto): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== RentalBillStatus.PENDING) {
-      throw new BadRequestException('Can only add vehicles to PENDING bills');
+      throw new BadRequestException('Chỉ có thể thêm xe vào đơn hàng đang chờ (PENDING)');
     }
 
     const vehicle = await this.vehicleRepo.findOne({
@@ -745,9 +748,9 @@ export class RentalBillsService {
       relations: ['contract'],
     });
 
-    if (!vehicle) throw new NotFoundException('Vehicle not found');
+    if (!vehicle) throw new NotFoundException('Không tìm thấy phương tiện');
     if (vehicle.status !== RentalVehicleApprovalStatus.APPROVED || vehicle.availability !== RentalVehicleAvailabilityStatus.AVAILABLE) {
-      throw new BadRequestException('Vehicle is not available for rental');
+      throw new BadRequestException('Phương tiện không khả dụng để cho thuê');
     }
 
     // Check if same owner
@@ -757,7 +760,7 @@ export class RentalBillsService {
         relations: ['vehicle'],
       });
       if (firstDetail?.vehicle?.contractId !== vehicle.contractId) {
-        throw new BadRequestException('All vehicles must belong to the same owner');
+        throw new BadRequestException('Tất cả xe trong đơn hàng phải thuộc cùng một chủ sở hữu');
       }
     }
 
@@ -779,7 +782,7 @@ export class RentalBillsService {
     }
 
     if (price <= 0) {
-      throw new BadRequestException(`Vehicle does not have a price for package ${pkg}`);
+      throw new BadRequestException(`Phương tiện không có giá cho gói ${pkg}`);
     }
 
     const detail = this.detailRepo.create({
