@@ -12,7 +12,7 @@ export class PhoneVerifyDto {
   code: string;
 
   @ApiProperty({
-    description: 'sessionInfo returned by Firebase sendVerificationCode',
+    description: 'Bắt buộc: sessionInfo trả về từ bước /auth/phone/start (Firebase yêu cầu để định danh phiên gửi mã)',
   })
   @IsString()
   sessionInfo: string;

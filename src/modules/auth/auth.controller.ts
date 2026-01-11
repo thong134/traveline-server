@@ -130,7 +130,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Bắt đầu xác thực số điện thoại',
     description:
-      'Cần recaptchaToken từ Firebase client SDK (render reCAPTCHA trên web/app). Swagger không tự tạo token này.',
+      'Gửi yêu cầu xác thực số điện thoại đến Firebase (Test Mode). Trả về sessionInfo để verify.',
   })
   @ApiOkResponse({
     description:
@@ -142,7 +142,6 @@ export class AuthController {
   ) {
     return this.authService.startPhoneVerification(
       user.userId,
-      dto.recaptchaToken,
     );
   }
 

@@ -389,7 +389,6 @@ export class AuthService implements OnModuleInit {
 
   async startPhoneVerification(
     userId: number,
-    recaptchaToken?: string,
   ): Promise<{ ok: boolean; sessionInfo: string; expiresAt: Date }> {
     const user = await this.usersService.findOne(userId);
     const phone = user.phone;
@@ -407,7 +406,6 @@ export class AuthService implements OnModuleInit {
         `https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=${apiKey}`,
         {
           phoneNumber: phone,
-          ...(recaptchaToken ? { recaptchaToken } : {}),
         },
       );
 

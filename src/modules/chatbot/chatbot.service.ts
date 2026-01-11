@@ -1276,14 +1276,35 @@ export class ChatService {
     lang: ChatLanguage,
     context: { history?: Content[] },
   ): Promise<ChatResponse> {
-    // 1. Extract Target Name from Message
-    // Regex again to extract the part after keywords
-    const feedbackRegex = /(?:review|đánh giá|nhận xét|có nên đi|thấy sao về)\s+(.+)/i;
-    const match = message.match(feedbackRegex);
-    let rawTarget = match ? match[1].trim() : message;
+    
+    // 1. AI Extraction (Re-enabled for better natural language handling)
+    // We call AI to extract interpret the target name, removing fillers like "không ta", "nhỉ".
+    const extractionPrompt = `
+      Extract the exact place/location name from this Vietnamese question: "${message}"
+      Remove conversational fillers like "có nên đi", "không ta", "review", "thấy sao về", "nhỉ".
+      Correct spelling if obvious (e.g. "Da Lat" -> "Đà Lạt").
+      Return JSON with field "name".
+    `;
 
-    // Remove punctuation
-    rawTarget = rawTarget.replace(/[?!.,]/g, '').trim();
+    let rawTarget = '';
+    try {
+        const extractionResult = await this.performModelCall(
+            (model) => model.generateContent({
+                contents: [{ role: 'user', parts: [{ text: extractionPrompt }] }],
+                generationConfig: { responseMimeType: 'application/json' }
+            }),
+            this.modelName,
+        );
+        const parsed = JSON.parse(this.extractText(extractionResult));
+        rawTarget = parsed.name || '';
+    } catch (e) {
+        console.warn('[FeedbackSummary] AI Extraction failed, falling back to Regex', e);
+        // Fallback to regex if AI fails
+        const feedbackRegex = /(?:review|đánh giá|nhận xét|có nên đi|thấy sao về)\s+(.+)/i;
+        const match = message.match(feedbackRegex);
+        rawTarget = match ? match[1].trim() : message;
+        rawTarget = rawTarget.replace(/[?!.,]/g, '').trim();
+    }
 
     if (!rawTarget || rawTarget.length < 2) {
          return this.generateConversationalReply(message, lang, 'feedback_summary', context);
@@ -1319,13 +1340,6 @@ export class ChatService {
     if (cooperation) {
         return this.generateFeedbackSummary(cooperation.id, 'cooperation', cooperation.name, lang);
     }
-
-    // 3c. Search Eatery (Optional, if eatery entity is used separately)
-    // Assuming eateryRepo exists and is injected
-    /*
-    const eatery = await this.eateryRepo.findOne({ where: { name: ILike(`%${normalizedTarget}%`) } });
-    if (eatery) { ... } 
-    */
 
     // 4. Not Found Fallback
     const fallbackText = lang === 'en'
