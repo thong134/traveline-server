@@ -73,6 +73,7 @@ type Classification = {
   followUp: boolean;
   imageRequested: boolean;
   aiResponse?: string;
+  aiFailed?: boolean;
 };
 
 type ChatResultItem = {
@@ -126,6 +127,7 @@ type ChatRuntimeContext = {
   history: Content[];
   historyEntities: ChatMessage[];
   attachments: NormalizedImageAttachment[];
+  aiFailed?: boolean;
 };
 
 type RecordMessagePayload = {
@@ -171,12 +173,21 @@ const LOCATION_ALIASES: Record<string, string> = {
   'hl': 'Hạ Long',
   'hạ long': 'Hạ Long',
   'tv': 'Trà Vinh',
+  'hp': 'Hải Phòng',
+  'ct': 'Cần Thơ',
+  'lx': 'Long Xuyên',
+  'bt': 'Bến Tre',
+  'tn': 'Tây Ninh',
+  'hy': 'Hưng Yên',
+  'bn': 'Bắc Ninh',
+  'bg': 'Bắc Giang',
+  'nb': 'Ninh Bình',
 };
 
 @Injectable()
 export class ChatService {
-  private readonly modelName = 'gemini-1.5-flash';
-  private readonly visionModelName = 'gemini-1.5-flash';
+  private readonly modelName = 'gemini-2.5-flash';
+  private readonly visionModelName = 'gemini-2.5-flash';
   private readonly historyLimit = 6;
   private readonly modelPool = new Map<string, GenerativeModel>();
   private geminiClients: GoogleGenerativeAI[] = [];
@@ -404,6 +415,9 @@ export class ChatService {
       historyEntities,
     );
 
+    // Flag if the AI classification failed
+    const aiFailed = (classification as any).aiFailed === true;
+
     await this.recordMessage({
       role: 'user',
       content: message,
@@ -421,6 +435,7 @@ export class ChatService {
       history,
       historyEntities,
       attachments,
+      aiFailed, // Pass failure state to router
     };
 
     const response = await this.routeIntent(
@@ -467,47 +482,84 @@ export class ChatService {
   }
 
   private simpleKeywordClassification(message: string): Classification {
-    const lower = message.toLowerCase();
+    const lower = message.toLowerCase().trim();
 
-    // 0. Feedback Summary (Regex-based to skip initial AI call)
-    // Matches: "review abc", "đánh giá xyz", "có nên đi abc", "cho xin review"
+    // 0. Feedback Summary (Regex-based)
     const feedbackRegex = /(?:review|đánh giá|nhận xét|có nên đi|thấy sao về)\s+(.+)/i;
-    // Also match simple "review" at start
     if (feedbackRegex.test(message)) {
-       return {
-        intent: 'feedback_summary',
-        keywords: [],
-        regions: [],
-        categories: [],
-        followUp: false,
-        imageRequested: false,
-      };
+       return { intent: 'feedback_summary', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
     }
 
-    // 1. App Guide
-    if (
-      lower.includes('hướng dẫn') ||
-      lower.includes('sử dụng app') ||
-      lower.includes('cách dùng')
-    ) {
-      return {
-        intent: 'app_guide',
-        keywords: [],
-        regions: [],
-        categories: [],
-        followUp: false,
-        imageRequested: false,
-      };
+    // Identify Regions first
+    const regions: string[] = [];
+    const provinces = [
+      'Đà Nẵng', 'Hồ Chí Minh', 'Hà Nội', 'Vũng Tàu', 'Đà Lạt', 'Nha Trang', 'Phú Quốc', 
+      'Sapa', 'Hạ Long', 'Trà Vinh', 'Huế', 'Cần Thơ', 'Hải Phòng', 'Phan Thiết', 'Mũi Né',
+      'Ninh Bình', 'Hải Dương', 'Quảng Ninh', 'Quảng Nam', 'Hội An', 'Đồng Nai', 'Bình Dương'
+    ];
+    
+    for (const [alias, full] of Object.entries(LOCATION_ALIASES)) {
+       if (lower.includes(alias.toLowerCase())) {
+         if (!regions.includes(full)) regions.push(full);
+       }
+    }
+    for (const prov of provinces) {
+      if (lower.includes(prov.toLowerCase())) {
+        if (!regions.includes(prov)) regions.push(prov);
+      }
+    }
+
+    // 1. App Guide / Help
+    if (lower.includes('hướng dẫn') || lower.includes('sử dụng app') || lower.includes('cách dùng')) {
+      return { intent: 'app_guide', keywords: [], regions, categories: [], followUp: false, imageRequested: false };
     }
     
-    // ... existing logic ...
-    // Copy remaining logic to ensure function is complete
     if (lower.includes('đặt') && (lower.includes('vé') || lower.includes('phòng'))) {
-        return { intent: 'booking_help', keywords: [], regions: [], categories: [], followUp: true, imageRequested: false };
+      return { intent: 'booking_help', keywords: [], regions, categories: [], followUp: true, imageRequested: false };
     }
-    
-    // Other simple checks... (Keep basic simple checks)
-    
+
+    // 2. SEARCH INTENTS (Destination, Restaurant, Hotel, Vehicle)
+    const isSearch = lower.includes('tìm') || lower.includes('gợi ý') || lower.includes('địa điểm') || 
+                     lower.includes('chỗ') || lower.includes('đâu') || lower.includes('nào') ||
+                     lower.includes('list') || lower.includes('danh sách');
+
+    if (isSearch || regions.length > 0) {
+      // Destination Check
+      if (lower.includes('địa điểm') || lower.includes('chỗ chơi') || lower.includes('du lịch') || 
+          lower.includes('thắng cảnh') || lower.includes('đi đâu') || lower.includes('chơi gì')) {
+        return { intent: 'destination', keywords: [], regions, categories: [], followUp: false, imageRequested: false };
+      }
+      
+      // Restaurant Check
+      if (lower.includes('ăn gì') || lower.includes('quán ăn') || lower.includes('nhà hàng') || 
+          lower.includes('ẩm thực') || lower.includes('đặc sản')) {
+         return { intent: 'search_restaurant', keywords: [], regions, categories: [], followUp: false, imageRequested: false };
+      }
+
+      // Hotel Check
+      if (lower.includes('khách sạn') || lower.includes('chỗ ở') || lower.includes('homestay') || 
+          lower.includes('nghỉ ngơi') || lower.includes('ở đâu')) {
+         return { intent: 'search_hotel', keywords: [], regions, categories: [], followUp: false, imageRequested: false };
+      }
+
+      // Vehicle Check
+      if (lower.includes('xe') || lower.includes('thuê xe') || lower.includes('di chuyển') || 
+          lower.includes('bike') || lower.includes('car')) {
+         return { intent: 'search_vehicle', keywords: [], regions, categories: [], followUp: false, imageRequested: false };
+      }
+
+      // Fallback: If region is present but no specific intent, assume destination
+      if (regions.length > 0) {
+          // If message is very short like "Đà Nẵng" or "SG", also consider destination search
+          return { intent: 'destination', keywords: [], regions, categories: [], followUp: false, imageRequested: false };
+      }
+    }
+
+    // 3. Image Request (local)
+    if (lower.includes('hình ảnh') || lower.includes('ảnh đẹp') || lower.includes('photo') || lower.includes('pic')) {
+      return { intent: 'image_request', keywords: [], regions, categories: [], followUp: false, imageRequested: true };
+    }
+
     return {
       intent: 'other',
       keywords: [],
@@ -627,6 +679,7 @@ export class ChatService {
             profileSummary: context.profileSummary,
             attachments: context.attachments,
             textOverride: classification.aiResponse,
+            aiFailed: classification.aiFailed,
           },
         );
     }
@@ -1399,16 +1452,26 @@ export class ChatService {
         const raw = this.extractText(response);
         summaryData = JSON.parse(raw);
       } catch (e) {
-         console.error('Feedback Summary AI Failed', e);
-         // Fallback manual summary
-         const avgRating = feedbacks.reduce((acc, curr) => acc + curr.star, 0) / feedbacks.length;
-         return {
-             source: 'ai',
-             text: lang === 'en'
-                ? `I couldn't analyze the details, but users rated "${targetName}" ${avgRating.toFixed(1)}/5 stars on average.`
-                : `Mình gặp chút lỗi khi đọc chi tiết, nhưng trung bình mọi người chấm "${targetName}" ${avgRating.toFixed(1)}/5 sao.`
-         }
-      }
+       console.error('Feedback Summary AI Failed', e);
+       // Fallback manual summary - Provide value even without AI
+       const avgRating = feedbacks.reduce((acc, curr) => acc + curr.star, 0) / feedbacks.length;
+       const sampleReviews = feedbacks.slice(0, 3).map(f => `- ${f.comment} (${f.star}⭐)`).join('\n');
+       
+       let verdict = '';
+       if (avgRating >= 4.5) verdict = lang === 'en' ? 'Excellent! Highly recommended.' : 'Tuyệt vời! Rất đáng để bạn ghé thăm.';
+       else if (avgRating >= 4) verdict = lang === 'en' ? 'Good quality, mostly positive feedback.' : 'Chất lượng tốt, hầu hết khách hàng đều hài lòng.';
+       else if (avgRating >= 3) verdict = lang === 'en' ? 'Average experience, worth a visit if you are nearby.' : 'Trải nghiệm ở mức ổn, có thể ghé qua nếu tiện đường.';
+       else verdict = lang === 'en' ? 'Consider carefully as there are Mixed reviews.' : 'Nên cân nhắc kỹ vì có nhiều ý kiến trái chiều.';
+
+       const fallbackText = lang === 'en'
+          ? `**User Reviews for ${targetName} (Manual Sync)**\n\nAverage: ${avgRating.toFixed(1)}/5⭐ (${feedbacks.length} reviews)\n\n**Top Comments:**\n${sampleReviews}\n\n**Verdict:** ${verdict}`
+          : `**Đánh giá người dùng về ${targetName} (Tóm tắt thủ công)**\n\nTrung bình: ${avgRating.toFixed(1)}/5⭐ (${feedbacks.length} đánh giá)\n\n**Nhận xét tiêu biểu:**\n${sampleReviews}\n\n**💡 Lời khuyên:** ${verdict}`;
+
+       return {
+           source: 'ai',
+           text: fallbackText
+       };
+    }
 
       // 3. Format Response
       const formattedText = lang === 'en'
@@ -1729,6 +1792,7 @@ export class ChatService {
       databaseMiss?: boolean;
       textOverride?: string;
       attachments?: NormalizedImageAttachment[];
+      aiFailed?: boolean;
     } = {},
   ): Promise<ChatResponse> {
     if (context.textOverride) {
@@ -1736,6 +1800,13 @@ export class ChatService {
         return { source: 'ai', text: context.textOverride };
       }
       return { source: 'ai', text: context.textOverride };
+    }
+
+    if (context.aiFailed) {
+        const staticText = lang === 'en' 
+            ? "AI service is currently busy. Please try again in a few moments."
+            : "Hệ thống AI hiện đang bận hoặc quá tải. Bạn chờ vài giây rồi thử lại nhé!";
+         return { source: 'ai', text: staticText };
     }
     
     // Quick fallback checks
@@ -1869,7 +1940,8 @@ export class ChatService {
       console.warn('[Chatbot] Classification failed, falling back to keywords:', error.message);
       return {
           ...this.simpleKeywordClassification(message),
-          aiResponse: undefined
+          aiResponse: undefined,
+          aiFailed: true
       };
     }
   }
