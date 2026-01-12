@@ -9,9 +9,19 @@ import { CooperationPaymentService } from './cooperation-payment.service';
 import { BookingTransaction } from '../payment/entities/booking-transaction.entity';
 import { User } from '../user/entities/user.entity';
 import { UsersModule } from '../user/user.module';
+import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Cooperation, CooperationContract, User, BookingTransaction]), UsersModule],
+  imports: [
+    TypeOrmModule.forFeature([
+      Cooperation,
+      CooperationContract,
+      User,
+      BookingTransaction,
+    ]),
+    UsersModule,
+    CloudinaryModule,
+  ],
   controllers: [CooperationsController],
   providers: [CooperationsService, PartnerCatalogService, CooperationPaymentService],
   exports: [CooperationsService, PartnerCatalogService, CooperationPaymentService],
