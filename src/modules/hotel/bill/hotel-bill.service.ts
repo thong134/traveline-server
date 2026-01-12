@@ -22,6 +22,8 @@ import { VouchersService } from '../../voucher/voucher.service';
 import { assignDefined } from '../../../common/utils/object.util';
 import { WalletService } from '../../wallet/wallet.service';
 import { BlockchainService } from '../../blockchain/blockchain.service';
+import { CooperationPaymentService } from '../../cooperation/cooperation-payment.service';
+import { ServiceType } from '../../payment/entities/booking-transaction.entity';
 import { parse, isValid } from 'date-fns';
 
 
@@ -57,6 +59,7 @@ export class HotelBillsService {
     private readonly vouchersService: VouchersService,
     private readonly walletService: WalletService,
     private readonly blockchainService: BlockchainService,
+    private readonly cooperationPaymentService: CooperationPaymentService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -271,6 +274,19 @@ export class HotelBillsService {
 
 
     bill.status = HotelBillStatus.PAID;
+
+    // Log transaction for cooperation
+    try {
+      await this.cooperationPaymentService.logTransaction({
+        cooperationId: bill.cooperation.id,
+        userId: bill.user.id,
+        serviceType: ServiceType.HOTEL,
+        bookingId: bill.code,
+        totalAmount: parseFloat(bill.total),
+      });
+    } catch (err) {
+      this.logger.error(`Failed to log cooperation transaction for bill ${bill.id}: ${err.message}`);
+    }
     
     // Points deduction
     if (bill.travelPointsUsed > 0 && bill.user) {

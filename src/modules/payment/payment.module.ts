@@ -6,13 +6,14 @@ import { PaymentController } from './payment.controller';
 import { RentalBill } from '../rental-bill/entities/rental-bill.entity';
 import { User } from '../user/entities/user.entity';
 import { Payout } from './entities/payout.entity';
+import { BookingTransaction } from './entities/booking-transaction.entity';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { WalletModule } from '../wallet/wallet.module';
 import { VouchersModule } from '../voucher/voucher.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Payment, RentalBill, User, Payout]),
+    TypeOrmModule.forFeature([Payment, RentalBill, User, Payout, BookingTransaction]),
     WalletModule,
     VouchersModule,
   ],

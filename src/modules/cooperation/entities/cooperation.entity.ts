@@ -21,6 +21,8 @@ import { TrainRoute } from '../../train/train/entities/train-route.entity';
 import { TrainBill } from '../../train/bill/entities/train-bill.entity';
 import { Flight } from '../../flight/flight/entities/flight.entity';
 import { FlightBill } from '../../flight/bill/entities/flight-bill.entity';
+import { CommissionType, CooperationStatus } from './cooperation-enums';
+import { CooperationContract } from './cooperation-contract.entity';
 
 @Entity('cooperations')
 export class Cooperation {
@@ -72,6 +74,38 @@ export class Cooperation {
   @Column({ type: 'text', nullable: true })
   introduction?: string;
 
+  @Column({
+    type: 'enum',
+    enum: CooperationStatus,
+    default: CooperationStatus.PENDING,
+  })
+  status: CooperationStatus;
+
+  @Column({
+    type: 'enum',
+    enum: CommissionType,
+    nullable: true,
+  })
+  commissionType?: CommissionType;
+
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true })
+  commissionValue?: string;
+
+  @Column({ nullable: true })
+  taxId?: string;
+
+  @Column({ nullable: true })
+  representativeName?: string;
+
+  @Column({ nullable: true })
+  representativePhone?: string;
+
+  @Column({ nullable: true })
+  representativeEmail?: string;
+
+  @Column({ nullable: true })
+  currentContractUrl?: string;
+
   @Column({ type: 'date', nullable: true })
   contractDate?: Date;
 
@@ -96,6 +130,9 @@ export class Cooperation {
   @Column({ type: 'decimal', precision: 4, scale: 2, default: 0 })
   averageRating: string;
 
+  /**
+   * @deprecated logic shifted to status
+   */
   @Column({ default: true })
   active: boolean;
 
@@ -144,6 +181,9 @@ export class Cooperation {
 
   @OneToMany(() => FlightBill, (bill) => bill.cooperation)
   flightBills: FlightBill[];
+
+  @OneToMany(() => CooperationContract, (contract) => contract.cooperation)
+  contracts: CooperationContract[];
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;

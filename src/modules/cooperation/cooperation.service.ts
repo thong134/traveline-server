@@ -2,7 +2,12 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Cooperation } from './entities/cooperation.entity';
+import { CooperationContract } from './entities/cooperation-contract.entity';
+import { CooperationStatus } from './entities/cooperation-enums';
 import { CreateCooperationDto } from './dto/create-cooperation.dto';
+import { RegisterCooperationDto } from './dto/register-cooperation.dto';
+import { ApproveCooperationDto } from './dto/approve-cooperation.dto';
+import { UploadContractDto } from './dto/upload-contract.dto';
 import { UpdateCooperationDto } from './dto/update-cooperation.dto';
 import { User } from '../user/entities/user.entity';
 import { assignDefined } from '../../common/utils/object.util';
@@ -15,6 +20,8 @@ export class CooperationsService {
     private readonly cooperationRepo: Repository<Cooperation>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(CooperationContract)
+    private readonly contractRepo: Repository<CooperationContract>,
     private readonly usersService: UsersService,
   ) {}
 
@@ -52,6 +59,14 @@ export class CooperationsService {
       bankAccountName: dto.bankAccountName,
       bankName: dto.bankName,
       active: dto.active ?? true,
+      status: dto.status ?? CooperationStatus.PENDING,
+      commissionType: dto.commissionType,
+      commissionValue: dto.commissionValue,
+      taxId: dto.taxId,
+      representativeName: dto.representativeName,
+      representativePhone: dto.representativePhone,
+      representativeEmail: dto.representativeEmail,
+      currentContractUrl: dto.currentContractUrl,
       bookingTimes: 0,
       revenue: '0.00',
       averageRating: '0.00',
@@ -77,9 +92,10 @@ export class CooperationsService {
       city?: string;
       province?: string;
       active?: boolean;
+      status?: CooperationStatus;
     } = {},
   ): Promise<Cooperation[]> {
-    const { q, type, city, province, active } = params;
+    const { q, type, city, province, active, status } = params;
     const qb = this.cooperationRepo
       .createQueryBuilder('cooperation')
       .leftJoinAndSelect('cooperation.manager', 'manager');
@@ -102,6 +118,10 @@ export class CooperationsService {
 
     if (typeof active === 'boolean') {
       qb.andWhere('cooperation.active = :active', { active });
+    }
+
+    if (status) {
+      qb.andWhere('cooperation.status = :status', { status });
     }
 
     return qb.orderBy('cooperation.createdAt', 'DESC').getMany();
@@ -142,6 +162,14 @@ export class CooperationsService {
       bankAccountName: dto.bankAccountName,
       bankName: dto.bankName,
       active: dto.active,
+      status: dto.status,
+      commissionType: dto.commissionType,
+      commissionValue: dto.commissionValue,
+      taxId: dto.taxId,
+      representativeName: dto.representativeName,
+      representativePhone: dto.representativePhone,
+      representativeEmail: dto.representativeEmail,
+      currentContractUrl: dto.currentContractUrl,
     });
 
     if (dto.contractDate !== undefined) {
@@ -254,5 +282,63 @@ export class CooperationsService {
       user.favoriteCooperationIds = current.filter((id) => id !== cooperationId.toString());
       await this.userRepo.save(user);
     }
+  }
+
+  async register(dto: RegisterCooperationDto, userId: number): Promise<Cooperation> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const cooperation = this.cooperationRepo.create({
+      ...dto,
+      manager: user,
+      status: CooperationStatus.PENDING,
+      active: true, // legacy compatibility
+    });
+
+    return this.cooperationRepo.save(cooperation);
+  }
+
+  async approve(id: number, dto: ApproveCooperationDto): Promise<Cooperation> {
+    const cooperation = await this.findOne(id);
+    cooperation.status = CooperationStatus.APPROVED;
+    cooperation.commissionType = dto.commissionType;
+    cooperation.commissionValue = dto.commissionValue;
+    return this.cooperationRepo.save(cooperation);
+  }
+
+  async addContract(
+    id: number,
+    contractUrl: string,
+    dto: Omit<UploadContractDto, 'file'>,
+  ): Promise<CooperationContract> {
+    const cooperation = await this.findOne(id);
+    
+    // Create new contract record
+    const contract = this.contractRepo.create({
+      cooperationId: id,
+      contractUrl,
+      signedDate: dto.signedDate,
+      expiryDate: dto.expiryDate,
+      terms: dto.terms,
+      active: true,
+    });
+
+    const savedContract = await this.contractRepo.save(contract);
+
+    // Update cooperation status to ACTIVE
+    cooperation.status = CooperationStatus.ACTIVE;
+    cooperation.currentContractUrl = contractUrl;
+    await this.cooperationRepo.save(cooperation);
+
+    return savedContract;
+  }
+
+  async findAllContracts() {
+    return this.contractRepo.find({
+      relations: ['cooperation'],
+      order: { signedDate: 'DESC' },
+    });
   }
 }

@@ -5,12 +5,15 @@ import {
   IsBoolean,
   IsDate,
   IsEmail,
+  IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   MaxLength,
   Min,
 } from 'class-validator';
+import { CommissionType, CooperationStatus } from '../entities/cooperation-enums';
 
 export class CreateCooperationDto {
   @ApiProperty({ description: 'Partner display name' })
@@ -138,4 +141,47 @@ export class CreateCooperationDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @ApiPropertyOptional({
+    enum: CooperationStatus,
+    default: CooperationStatus.PENDING,
+  })
+  @IsOptional()
+  @IsEnum(CooperationStatus)
+  status?: CooperationStatus;
+
+  @ApiPropertyOptional({ enum: CommissionType })
+  @IsOptional()
+  @IsEnum(CommissionType)
+  commissionType?: CommissionType;
+
+  @ApiPropertyOptional({ description: 'Value for commission (percentage or fixed amount)' })
+  @IsOptional()
+  @IsString()
+  commissionValue?: string;
+
+  @ApiPropertyOptional({ description: 'Tax Identification Number' })
+  @IsOptional()
+  @IsString()
+  taxId?: string;
+
+  @ApiPropertyOptional({ description: 'Legal representative name' })
+  @IsOptional()
+  @IsString()
+  representativeName?: string;
+
+  @ApiPropertyOptional({ description: 'Legal representative phone' })
+  @IsOptional()
+  @IsString()
+  representativePhone?: string;
+
+  @ApiPropertyOptional({ description: 'Legal representative email' })
+  @IsOptional()
+  @IsEmail()
+  representativeEmail?: string;
+
+  @ApiPropertyOptional({ description: 'Current active contract PDF URL' })
+  @IsOptional()
+  @IsString()
+  currentContractUrl?: string;
 }

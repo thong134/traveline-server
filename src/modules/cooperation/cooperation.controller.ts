@@ -9,8 +9,12 @@ import {
   Patch,
   Post,
   Query,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import {
+  ApiBody,
+  ApiConsumes,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
@@ -24,10 +28,18 @@ import {
 } from './partner-catalog.service';
 import { CreateCooperationDto } from './dto/create-cooperation.dto';
 import { UpdateCooperationDto } from './dto/update-cooperation.dto';
+import { RegisterCooperationDto } from './dto/register-cooperation.dto';
+import { ApproveCooperationDto } from './dto/approve-cooperation.dto';
+import { UploadContractDto } from './dto/upload-contract.dto';
 import { HotelAvailabilityQueryDto } from './dto/hotel-availability-query.dto';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
+import { CooperationStatus } from './entities/cooperation-enums';
+import { UserRole } from '../user/entities/user-role.enum';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
+import type { Express } from 'express';
 
 @ApiTags('cooperations')
 @Controller('cooperations')
@@ -35,6 +47,7 @@ export class CooperationsController {
   constructor(
     private readonly cooperationsService: CooperationsService,
     private readonly partnerCatalogService: PartnerCatalogService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   @Post()
@@ -51,14 +64,16 @@ export class CooperationsController {
   @ApiQuery({ name: 'city', required: false })
   @ApiQuery({ name: 'province', required: false })
   @ApiQuery({ name: 'active', required: false, type: Boolean })
+  @ApiQuery({ name: 'status', required: false, enum: CooperationStatus })
   @ApiOkResponse({ description: 'Cooperation list' })
   findAll(
     @Query('type') type?: string,
     @Query('city') city?: string,
     @Query('province') province?: string,
     @Query('active', new ParseBoolPipe({ optional: true })) active?: boolean,
+    @Query('status') status?: CooperationStatus,
   ) {
-    return this.cooperationsService.findAll({ type, city, province, active });
+    return this.cooperationsService.findAll({ type, city, province, active, status });
   }
 
   @Get('favorites')
@@ -130,5 +145,49 @@ export class CooperationsController {
     @Query() query: HotelAvailabilityQueryDto,
   ): Promise<HotelAvailabilityResponse> {
     return this.partnerCatalogService.getHotelAvailability(id, query);
+  }
+
+  @Post('register')
+  @RequireAuth()
+  @ApiOperation({ summary: 'Khách du lịch đăng ký làm đối tác' })
+  register(
+    @Body() dto: RegisterCooperationDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.cooperationsService.register(dto, user.userId);
+  }
+
+  @Patch(':id/approve')
+  @RequireAuth(UserRole.Admin)
+  @ApiOperation({ summary: 'Admin duyệt hồ sơ hợp tác' })
+  approve(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ApproveCooperationDto,
+  ) {
+    return this.cooperationsService.approve(id, dto);
+  }
+
+  @Post(':id/contract')
+  @RequireAuth(UserRole.Admin)
+  @ApiOperation({ summary: 'Admin upload hợp đồng và kích hoạt hợp tác' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadContract(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UploadContractDto,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const upload = await this.cloudinaryService.uploadImage(file, {
+      folder: 'traveline/cooperations/contracts',
+    });
+    const { file: _, ...data } = dto;
+    return this.cooperationsService.addContract(id, upload.url, data);
+  }
+
+  @Get('contracts/all')
+  @RequireAuth(UserRole.Admin)
+  @ApiOperation({ summary: 'Lấy danh sách tất cả hợp đồng của các đối tác (Admin)' })
+  findAllContracts() {
+    return this.cooperationsService.findAllContracts();
   }
 }
