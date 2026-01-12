@@ -144,18 +144,24 @@ export class AuthController {
     );
   }
 
+  @RequireAuth()
+  @ApiBearerAuth()
   @Post('phone/verify')
   @ApiOperation({
     summary: 'Xác thực số điện thoại bằng OTP',
     description:
-      'Dùng code OTP từ SMS và sessionInfo nhận từ bước /auth/phone/start.',
+      'Dùng code OTP từ SMS và sessionInfo nhận từ bước /auth/phone/start. Yêu cầu đăng nhập.',
   })
   @ApiOkResponse({ description: 'Phone verified' })
-  async phoneVerify(@Body() dto: PhoneVerifyDto) {
+  async phoneVerify(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: PhoneVerifyDto,
+  ) {
     return this.authService.verifyPhoneCode(
       dto.phone,
       dto.sessionInfo,
       dto.code,
+      user.userId,
     );
   }
 

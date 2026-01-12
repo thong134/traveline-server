@@ -445,6 +445,7 @@ export class AuthService implements OnModuleInit {
     phone: string,
     sessionInfo: string,
     code: string,
+    userId?: number,
   ): Promise<{ ok: boolean; phoneNumber: string }> {
     this.checkRate(`phone:verify:${phone}`, 10, 60 * 60 * 1000);
     const apiKey = process.env.FIREBASE_API_KEY;
@@ -482,17 +483,31 @@ export class AuthService implements OnModuleInit {
       );
 
       const { phoneNumber } = response.data;
+      console.log(`[Auth] Firebase verified OTP. Returned phoneNumber: ${phoneNumber}, Original input phone: ${phone}`);
 
       matched.used = true;
       await this.phoneOtpRepo.save(matched);
 
-      const normalizedPhone = phoneNumber ?? phone;
-      const user = await this.usersService.findByPhone(normalizedPhone);
-      if (user) {
-        await this.usersService.markPhoneVerified(user.id);
+      // 1. If we have userId (from Request), use it directly
+      if (userId) {
+        console.log(`[Auth] Updating isPhoneVerified using current session User ID: ${userId}`);
+        await this.usersService.markPhoneVerified(userId);
+      } else {
+        // 2. Fallback: Lookup by phone numbers
+        let user = phoneNumber ? await this.usersService.findByPhone(phoneNumber) : null;
+        if (!user) {
+          user = await this.usersService.findByPhone(phone);
+        }
+        
+        if (user) {
+          console.log(`[Auth] Updating isPhoneVerified for linked User ID: ${user.id}`);
+          await this.usersService.markPhoneVerified(user.id);
+        } else {
+          console.warn(`[Auth] No user found to update for phone: ${phone} / ${phoneNumber}`);
+        }
       }
 
-      return { ok: true, phoneNumber: normalizedPhone };
+      return { ok: true, phoneNumber: phoneNumber ?? phone };
     } catch (error: unknown) {
       if (axios.isAxiosError<FirebaseErrorResponse>(error)) {
         const firebaseError = error.response?.data?.error;
