@@ -41,19 +41,19 @@ export class AdministrativeMappingController {
 
   @Post('convert/new-to-old-address')
   @ApiOperation({
-    summary: 'Chuyển đổi địa chỉ mới sang địa chỉ cũ (dạng text)',
+    summary: 'Chuyển đổi địa chỉ mới sang các địa chỉ cũ tương ứng (dạng text)',
   })
   @ApiOkResponse({
     schema: {
       type: 'object',
       properties: {
-        oldAddress: { type: 'string' },
+        oldAddresses: { type: 'array', items: { type: 'string' } },
       },
     },
   })
   convertNewToOldAddress(
     @Body() dto: ConvertAddressDto,
-  ): Promise<{ oldAddress: string }> {
+  ): Promise<{ oldAddresses: string[] }> {
     return this.service.convertNewToOldAddress(dto);
   }
 
@@ -67,7 +67,20 @@ export class AdministrativeMappingController {
 
   @Post('convert/new-to-old-details')
   @ApiOperation({
-    summary: 'Chuyển đổi chi tiết địa chỉ mới sang cũ',
+    summary: 'Chuyển đổi chi tiết địa chỉ mới sang các chi tiết địa chỉ cũ tương ứng',
+  })
+  @ApiOkResponse({
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          province: { type: 'object' },
+          district: { type: 'object' },
+          ward: { type: 'object' },
+        },
+      },
+    },
   })
   convertNewToOldDetails(@Body() dto: ConvertNewToOldDetailsDto) {
     return this.service.convertNewToOldDetails(dto);

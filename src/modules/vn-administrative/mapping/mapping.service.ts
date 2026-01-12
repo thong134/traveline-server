@@ -197,7 +197,7 @@ export class AdministrativeMappingService {
     return { newAddress };
   }
 
-  async convertNewToOldAddress(dto: ConvertAddressDto): Promise<{ oldAddress: string }> {
+  async convertNewToOldAddress(dto: ConvertAddressDto): Promise<{ oldAddresses: string[] }> {
     const { address } = dto;
     const parts = address.split(',').map((p) => p.trim()).filter(Boolean);
     if (parts.length < 2) {
@@ -220,20 +220,16 @@ export class AdministrativeMappingService {
       relations: { province: true }
     });
     
-    // Filter by province if validation needed, but simple name match might be enough if unique, or filter after
     let validCommune: ReformCommune | null | undefined = commune;
     if (commune && nProvince) {
        const pName = this.normalizeText(commune.province?.name);
        const pFullName = this.normalizeText(commune.province?.fullName);
        if (pName !== nProvince && pFullName !== nProvince) {
-          // If ILike returned wrong province one, try to find explicitly with query builder if strict needed
-          // For now, let's assume specific enough or simplistic
           validCommune = undefined;
        }
     }
 
     if (!validCommune) {
-        // use query builder for strict match
         const qb = this.reformCommuneRepo.createQueryBuilder('commune')
           .leftJoinAndSelect('commune.province', 'province')
           .where('(LOWER(commune.name) = :cName OR LOWER(commune.fullName) = :cName)', { cName: nCommune })
@@ -246,35 +242,29 @@ export class AdministrativeMappingService {
       throw new NotFoundException(`Could not parse reform address: ${address}`);
     }
 
-    const mapping = await this.findByNewCommune(validCommune.code);
-    // There can be multiple old units mapped to one new unit. 
-    // We pick the first one as representative or try to find best fit?
-    // "Convert address" implies getting A OLD address.
-    const primaryMapping = mapping[0]; // Naive strategy
+    const mappings = await this.findByNewCommune(validCommune.code);
+    const oldAddresses: string[] = [];
 
-    // Need to resolve old names. Mapping has old codes.
-    // We need to look up legacy ward.
-    if (!primaryMapping.oldWardCode) {
-       throw new NotFoundException(`No legacy ward code for mapping ${primaryMapping.id}`);
+    for (const m of mappings) {
+      if (m.oldWardCode) {
+         const legacyWard = await this.legacyWardRepo.findOne({
+            where: { code: m.oldWardCode },
+            relations: { district: { province: true } }
+         });
+
+         if (legacyWard) {
+            const oldAddr = [
+              specificAddress, 
+              legacyWard.fullName, 
+              legacyWard.district?.fullName, 
+              legacyWard.district?.province?.fullName
+            ].filter(Boolean).join(', ');
+            oldAddresses.push(oldAddr);
+         }
+      }
     }
 
-    const legacyWard = await this.legacyWardRepo.findOne({
-      where: { code: primaryMapping.oldWardCode },
-      relations: { district: { province: true } }
-    });
-
-    if (!legacyWard) {
-      throw new NotFoundException(`Legacy unit for ${primaryMapping.oldWardCode} not found`);
-    }
-
-    const oldAddress = [
-      specificAddress, 
-      legacyWard.fullName, 
-      legacyWard.district?.fullName, 
-      legacyWard.district?.province?.fullName
-    ].filter(Boolean).join(', ');
-
-    return { oldAddress };
+    return { oldAddresses };
   }
 
   async convertOldToNewDetails(dto: ConvertOldToNewDetailsDto) {

@@ -1285,7 +1285,6 @@ export class TravelRoutesService {
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
     const uniqueHobbies = this.mapHobbiesToCategories(user.hobbies || []);
-    const lang = dto.lang || 'both';
 
     try {
       const resp = await firstValueFrom(
@@ -1308,65 +1307,13 @@ export class TravelRoutesService {
           const dest = destMap.get(s.destinationId);
           return {
             ...s,
-            destination: dest ? this.formatDestinationByLang(dest, lang) : null,
+            destination: dest || null,
           };
         });
       }
       return data;
     } catch (error) {
       this.handleAiServiceError(error);
-    }
-  }
-
-  /**
-   * Format destination object based on language preference.
-   * - 'vi': Returns name and description in Vietnamese only
-   * - 'en': Returns name and descriptionEng only  
-   * - 'both': Returns all fields with explicit nameVi/nameEn and descriptionVi/descriptionEn
-   */
-  private formatDestinationByLang(dest: any, lang: 'vi' | 'en' | 'both'): any {
-    const base = {
-      id: dest.id,
-      type: dest.type,
-      province: dest.province,
-      district: dest.district,
-      specificAddress: dest.specificAddress,
-      reformAddress: dest.reformAddress,
-      latitude: dest.latitude,
-      longitude: dest.longitude,
-      rating: dest.rating,
-      favouriteTimes: dest.favouriteTimes,
-      categories: dest.categories,
-      photos: dest.photos,
-      videos: dest.videos,
-      openTime: dest.openTime,
-      closeTime: dest.closeTime,
-      available: dest.available,
-    };
-
-    if (lang === 'vi') {
-      return {
-        ...base,
-        name: dest.name,
-        description: dest.descriptionViet || dest.descriptionEng || '',
-      };
-    } else if (lang === 'en') {
-      return {
-        ...base,
-        name: dest.name, // Name is usually in Vietnamese, keep as-is
-        description: dest.descriptionEng || dest.descriptionViet || '',
-      };
-    } else {
-      // 'both' - return all language variants
-      return {
-        ...base,
-        name: dest.name,
-        nameVi: dest.name,
-        nameEn: dest.name, // Most destinations don't have separate English names
-        description: dest.descriptionViet || '',
-        descriptionVi: dest.descriptionViet || '',
-        descriptionEn: dest.descriptionEng || '',
-      };
     }
   }
 
