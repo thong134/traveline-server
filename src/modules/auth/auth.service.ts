@@ -292,7 +292,7 @@ export class AuthService implements OnModuleInit {
     return { ok: true, token, expiresAt };
   }
 
-  async verifyEmailCode(dto: EmailVerifyDto): Promise<{ ok: boolean }> {
+  async verifyEmailCode(dto: EmailVerifyDto, userId?: number): Promise<{ ok: boolean }> {
     this.checkRate(`email:verify:${dto.email}`, 10, 60 * 60 * 1000);
     let payload: { email: string; code: string };
     try {
@@ -304,19 +304,29 @@ export class AuthService implements OnModuleInit {
       );
     } catch {
       throw new UnauthorizedException(
-        'M� x�c th?c kh�ng h?p l? ho?c d� h?t h?n',
+        'Mã xác thực không hợp lệ hoặc đã hết hạn',
       );
     }
 
     if (payload.email !== dto.email || payload.code !== dto.code) {
-      throw new UnauthorizedException('M� x�c th?c kh�ng h?p l?');
+      throw new UnauthorizedException('Mã xác thực không hợp lệ');
     }
 
+    // Use userId from session if available (guaranteed correct user)
+    if (userId) {
+      console.log(`[Auth] Updating isEmailVerified using session User ID: ${userId}`);
+      await this.usersService.markEmailVerified(userId, dto.email);
+      return { ok: true };
+    }
+
+    // Fallback: lookup by email
     const user = await this.usersService.findByEmail(dto.email);
+    console.log(`[Auth] Email verification lookup for ${dto.email}: ${user ? `Found User ID ${user.id}` : 'Not Found'}`);
     if (!user) {
-      throw new UnauthorizedException('T�i kho?n kh�ng t?n t?i');
+      throw new UnauthorizedException('Tài khoản không tồn tại');
     }
 
+    console.log(`[Auth] Updating isEmailVerified for User ID: ${user.id}`);
     await this.usersService.markEmailVerified(user.id, dto.email);
     return { ok: true };
   }

@@ -118,11 +118,16 @@ export class AuthController {
     return this.authService.startEmailVerification(user.userId);
   }
 
+  @RequireAuth()
+  @ApiBearerAuth()
   @Post('email/verify')
-  @ApiOperation({ summary: 'Xác thực email bằng mã' })
+  @ApiOperation({ summary: 'Xác thực email bằng mã (Yêu cầu đăng nhập)' })
   @ApiOkResponse({ description: 'Email verified' })
-  async emailVerify(@Body() dto: EmailVerifyDto) {
-    return this.authService.verifyEmailCode(dto);
+  async emailVerify(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: EmailVerifyDto,
+  ) {
+    return this.authService.verifyEmailCode(dto, user.userId);
   }
 
   @RequireAuth()
