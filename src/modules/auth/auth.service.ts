@@ -750,7 +750,6 @@ export class AuthService implements OnModuleInit {
         fullName: ocrResult.name ? this.capitalizeName(ocrResult.name) : undefined,
         citizenId: ocrResult.id,
         address: ocrResult.address,
-        nationality: ocrResult.nationality ? this.capitalizeName(ocrResult.nationality) : undefined,
     };
 
     // Date Parsing (dd/MM/yyyy)
