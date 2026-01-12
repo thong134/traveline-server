@@ -1280,18 +1280,53 @@ export class TravelRoutesService {
     return hours * 60 + minutes;
   }
 
+  private async normalizeProvince(input: string): Promise<string> {
+    if (!input) return input;
+    
+    // Get unique provinces from DB
+    const result = await this.destinationRepo
+      .createQueryBuilder('dest')
+      .select('DISTINCT dest.province', 'province')
+      .where('dest.province IS NOT NULL')
+      .getRawMany();
+
+    const provinces = result.map(row => row.province as string);
+
+    const normalize = (str: string) => 
+      str.toLowerCase()
+         .normalize("NFD")
+         .replace(/[\u0300-\u036f]/g, "")
+         .replace(/đ/g, "d")
+         .replace(/Đ/g, "D")
+         .trim();
+
+    const normalizedInput = normalize(input);
+
+    // Try exact match first
+    const exactMatch = provinces.find(p => p.toLowerCase() === input.toLowerCase());
+    if (exactMatch) return exactMatch;
+
+    // Try normalized match
+    const normalizedMatch = provinces.find(p => normalize(p) === normalizedInput);
+    
+    return normalizedMatch || input;
+  }
+
   async suggestQuick(userId: number, dto: QuickSuggestTravelRouteDto): Promise<any> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
     const uniqueHobbies = this.mapHobbiesToCategories(user.hobbies || []);
 
+    // Normalize province (handle unaccented inputs like "Phu Yen" -> "Phú Yên")
+    const validProvince = await this.normalizeProvince(dto.province);
+
     try {
       const resp = await firstValueFrom(
         this.httpService.post('/recommend/route', {
           hobbies: uniqueHobbies,
           favorites: user.favoriteDestinationIds || [],
-          province: dto.province,
+          province: validProvince,
           startDate: dto.startDate,
           endDate: dto.endDate,
         }),
