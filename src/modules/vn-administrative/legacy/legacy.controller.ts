@@ -84,6 +84,15 @@ export class LegacyAdministrativeController {
     });
   }
 
+  @Get('provinces/:code/districts')
+  @ApiOperation({
+    summary: 'Danh sách huyện của tỉnh trước sáp nhập',
+  })
+  @ApiOkResponse({ type: LegacyDistrict, isArray: true })
+  listDistrictsOfProvince(@Param('code') code: string): Promise<LegacyDistrict[]> {
+    return this.service.findDistrictsByProvince(code);
+  }
+
   @Get('districts/:code')
   @ApiOperation({
     summary: 'Chi tiết huyện trước sáp nhập (có thể kèm xã/phường)',

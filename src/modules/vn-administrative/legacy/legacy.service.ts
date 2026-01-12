@@ -68,6 +68,14 @@ export class LegacyAdministrativeService {
     return district;
   }
 
+  async findDistrictsByProvince(provinceCode: string): Promise<LegacyDistrict[]> {
+    return this.districtRepo.find({
+      where: { provinceCode },
+      order: { name: 'ASC' },
+      take: 200,
+    });
+  }
+
   findWardsByDistrict(code: string): Promise<LegacyWard[]> {
     return this.wardRepo.find({
       where: { districtCode: code },
