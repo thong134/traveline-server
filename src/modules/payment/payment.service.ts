@@ -77,6 +77,10 @@ export class PaymentService {
     private readonly vouchersService: VouchersService,
   ) {}
 
+  get repo() {
+    return this.paymentRepo;
+  }
+
   async createVisaPayment(dto: CreateVisaPaymentDto): Promise<{ ok: boolean; paymentId: number; message: string }> {
     const { rentalId, amount, cardNumber, cardHolderName } = dto;
     const rental = await this.rentalRepo.findOne({ where: { id: rentalId } });
@@ -485,6 +489,11 @@ export class PaymentService {
     }
     if (payment.method === PaymentMethodType.MOMO) {
       return this.refundMomo(payment.id);
+    }
+    if (payment.method === PaymentMethodType.VISA) {
+       // Mock refund for Visa
+       await this.paymentRepo.update(payment.id, { status: PaymentStatus.REFUNDED });
+       return { ok: true, message: 'Đã hoàn tiền vào thẻ VISA (Mock)' };
     }
     // QR: đánh dấu REFUNDED thủ công
     await this.paymentRepo.update(payment.id, { status: PaymentStatus.REFUNDED });

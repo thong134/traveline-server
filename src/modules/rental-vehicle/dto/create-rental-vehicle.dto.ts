@@ -59,20 +59,18 @@ export class CreateRentalVehicleDto {
   @Min(0)
   priceFor8Hours?: number;
 
-  @ApiPropertyOptional({ description: 'Price for 12-hour package' })
+  @ApiProperty({ description: 'Price for 12-hour package' })
   @Type(() => Number)
-  @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  priceFor12Hours?: number;
+  priceFor12Hours: number;
 
-  // Daily packages (optional)
-  @ApiPropertyOptional({ description: 'Price for 2-day package' })
+  // Daily packages
+  @ApiProperty({ description: 'Price for 2-day package' })
   @Type(() => Number)
-  @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  priceFor2Days?: number;
+  priceFor2Days: number;
 
   @ApiPropertyOptional({ description: 'Price for 3-day package' })
   @Type(() => Number)

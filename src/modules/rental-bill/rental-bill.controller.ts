@@ -41,6 +41,8 @@ import type { Express } from 'express';
 import { imageMulterOptions } from '../../common/upload/image-upload.config';
 import { Public } from '../auth/decorators/public.decorator';
 
+import { CancelRentalBillDto } from './dto/cancel-rental-bill.dto';
+
 @ApiTags('rental-bills')
 @RequireAuth()
 @Controller('rental-bills')
@@ -124,9 +126,11 @@ export class RentalBillsController {
   cancel(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
+    @Body() dto: CancelRentalBillDto,
   ) {
-    return this.service.cancel(id, user.userId);
+    return this.service.cancel(id, user.userId, dto.reason);
   }
+
 
   @Patch(':id/owner-cancel')
   @ApiOperation({ summary: 'Chủ xe: Hủy hóa đơn đã thanh toán (Hoàn tiền)' })

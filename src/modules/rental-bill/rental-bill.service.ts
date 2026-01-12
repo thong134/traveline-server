@@ -17,6 +17,7 @@ import {
   RentalBillType,
   RentalProgressStatus,
 } from './entities/rental-bill.entity';
+import { PaymentStatus } from '../payment/entities/payment.entity';
 import { RentalBillDetail } from './entities/rental-bill-detail.entity';
 import { CreateRentalBillDto } from './dto/create-rental-bill.dto';
 import { UpdateRentalBillDto } from './dto/update-rental-bill.dto';
@@ -406,10 +407,40 @@ export class RentalBillsService {
     return this.billRepo.save(bill);
   }
 
-  async cancel(id: number, userId: number): Promise<RentalBill> {
+  async cancel(id: number, userId: number, reason: string): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
     if ([RentalBillStatus.COMPLETED, RentalBillStatus.CANCELLED].includes(bill.status)) {
       throw new BadRequestException(`Bill is already ${bill.status}`);
+    }
+
+    // 24h Cancellation Rule
+    // Only allow cancellation within 24h of PAYMENT (createdAt for now if payment time not tracked separately, 
+    // but better to track payment time. However, logic says "24h after payment". 
+    // If bill is PENDING, no payment yet, so safe to cancel.
+    // If bill is PAID, check time.
+    
+    if (bill.status === RentalBillStatus.PAID) {
+      // Assuming payment happens roughly around update to PAID.
+      // Or we check createdAt if we don't have payment timestamp.
+      // Let's use updatedAt as a proxy for payment time if status is PAID, or find payment record.
+      // For simplicity/requirement "24h sau khi đã thanh toán", relying on updatedAt when it turned PAID is risky if other updates happen.
+      // Best to find the Payment record.
+      
+      const payment = await this.paymentService.repo.findOne({
+        where: { rentalId: bill.id, status: PaymentStatus.SUCCESS },
+        order: { createdAt: 'DESC' }
+      });
+
+      if (payment) {
+        const now = new Date();
+        const paymentTime = new Date(payment.createdAt);
+        const diffMs = now.getTime() - paymentTime.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        if (diffHours > 24) {
+          throw new BadRequestException('Chỉ có thể hủy đơn hàng trong vòng 24h sau khi thanh toán');
+        }
+      }
     }
 
     // If already paid/confirmed, handle refunds or vehicle availability
@@ -428,6 +459,9 @@ export class RentalBillsService {
 
     bill.status = RentalBillStatus.CANCELLED;
     bill.rentalStatus = RentalProgressStatus.CANCELLED;
+    bill.cancelReason = reason;
+    bill.cancelledBy = RentalBillCancelledBy.USER;
+    
     return this.billRepo.save(bill);
   }
 
@@ -898,6 +932,22 @@ export class RentalBillsService {
     const now = new Date();
     if (now >= new Date(bill.startDate)) {
       throw new BadRequestException('Cannot cancel after the delivery date');
+    }
+
+    // 24h Cancellation Rule after Payment
+    const payment = await this.paymentService.repo.findOne({
+      where: { rentalId: bill.id, status: PaymentStatus.SUCCESS },
+      order: { createdAt: 'DESC' }
+    });
+
+    if (payment) {
+      const paymentTime = new Date(payment.createdAt);
+      const diffMs = now.getTime() - paymentTime.getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+
+      if (diffHours > 24) {
+        throw new BadRequestException('Chỉ có thể hủy đơn hàng trong vòng 24h sau khi thanh toán');
+      }
     }
 
     return await this.dataSource.transaction(async (manager) => {
