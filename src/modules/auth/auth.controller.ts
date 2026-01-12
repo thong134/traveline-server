@@ -205,9 +205,9 @@ export class AuthController {
   @Post('citizen-id/verify')
   @RequireAuth()
   @ApiOperation({
-    summary: 'Xác thực căn cước công dân (Face Match Auto-Update)',
+    summary: 'Xác thực giấy tờ tùy thân (CCCD/Passport)',
     description:
-      'Upload 1 ảnh CCCD mặt trước + 1 ảnh Selfie. Hệ thống so khớp khuôn mặt. Nếu trùng khớp -> Tự động OCR và cập nhật Profile người dùng.',
+      'Upload 1 ảnh giấy tờ mặt trước + 1 ảnh Selfie. Hệ thống tự động nhận diện loại giấy tờ (CCCD cho VN, Passport cho nước ngoài) dựa vào quốc tịch, so khớp khuôn mặt và cập nhật Profile.',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({

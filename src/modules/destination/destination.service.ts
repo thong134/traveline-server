@@ -78,7 +78,6 @@ export class DestinationsService {
       qb.andWhere(
         `(
           destination.name ILIKE :q
-          OR destination.type ILIKE :q
           OR destination.province ILIKE :q
         )`,
         { q: `%${q}%` },
@@ -101,6 +100,33 @@ export class DestinationsService {
 
     qb.take(limit).skip(offset);
     return qb.getMany();
+  }
+
+  /**
+   * Export all available destinations in a format suitable for AI model training.
+   * Returns: Array of destinations with fields mapped for AI consumption.
+   */
+  async exportForAI(): Promise<object[]> {
+    const destinations = await this.repo.find({
+      where: { available: true },
+      order: { id: 'ASC' },
+    });
+
+    return destinations.map((dest) => ({
+      destinationId: dest.id,
+      name: dest.name,
+      province: dest.province || '',
+      category: dest.categories?.length > 0 ? dest.categories[0] : 'Unknown',
+      averageRating: dest.rating || 0,
+      favouriteTimes: dest.favouriteTimes || 0,
+      latitude: dest.latitude,
+      longitude: dest.longitude,
+      description: dest.descriptionViet || dest.descriptionEng || `Địa điểm du lịch tại ${dest.province || 'Việt Nam'}`,
+      categories: dest.categories || [],
+      district: dest.district || '',
+      openTime: dest.openTime || '',
+      closeTime: dest.closeTime || '',
+    }));
   }
 
   async findOne(id: number): Promise<Destination> {

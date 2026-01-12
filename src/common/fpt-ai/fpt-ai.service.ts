@@ -43,6 +43,32 @@ export class FptAiService {
     }
   }
 
+  async recognizePassport(imageBuffer: Buffer, filename: string = 'image.jpg'): Promise<any> {
+    try {
+      const form = new FormData();
+      form.append('image', imageBuffer, { filename });
+
+      const response = await firstValueFrom(
+        this.httpService.post(`${this.baseUrl}/passport/vnm`, form, {
+          headers: {
+            ...form.getHeaders(),
+            'api-key': this.apiKey,
+          },
+        }),
+      );
+
+      if (response.data.errorCode !== 0) {
+        this.logger.error(`FPT.AI Passport Error: ${JSON.stringify(response.data)}`);
+        throw new Error(response.data.errorMessage || 'Failed to recognize Passport');
+      }
+
+      return response.data.data;
+    } catch (error) {
+      this.logger.error('Error calling FPT.AI Passport Recognition', error);
+      throw error;
+    }
+  }
+
   async faceMatch(
     file1: Buffer,
     file2: Buffer | string, // Can be buffer or URL? FPT usually takes file. Let's assume user provides buffer for comparison. 

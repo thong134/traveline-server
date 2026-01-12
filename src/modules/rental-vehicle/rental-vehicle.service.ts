@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -170,6 +171,16 @@ export class RentalVehiclesService {
     if (contract.status !== RentalContractStatus.APPROVED) {
       throw new BadRequestException(
         'Hợp đồng phải được phê duyệt trước khi đăng ký xe',
+      );
+    }
+
+    // Check for duplicate license plate
+    const existingVehicle = await this.repo.findOne({
+      where: { licensePlate: dto.licensePlate },
+    });
+    if (existingVehicle) {
+      throw new ConflictException(
+        `Biển số xe "${dto.licensePlate}" đã được đăng ký trước đó`,
       );
     }
 

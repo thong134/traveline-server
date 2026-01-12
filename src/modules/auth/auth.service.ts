@@ -711,16 +711,38 @@ export class AuthService implements OnModuleInit {
     // 3. OCR Extraction
     let ocrResult: any;
     try {
-        const ocrResponse = await this.fptAiService.recognizeIdCard(front.buffer);
-        if (Array.isArray(ocrResponse) && ocrResponse.length > 0) {
-            ocrResult = ocrResponse[0];
+        const user = await this.usersService.findOne(userId);
+        const isVietnam = !user.nationality || user.nationality.toLowerCase() === 'vietnam' || user.nationality.toLowerCase() === 'việt nam';
+        
+        if (isVietnam) {
+          const ocrResponse = await this.fptAiService.recognizeIdCard(front.buffer);
+          if (Array.isArray(ocrResponse) && ocrResponse.length > 0) {
+              ocrResult = ocrResponse[0];
+          } else {
+              throw new Error('No OCR data found');
+          }
         } else {
-            throw new Error('No OCR data found');
+          // Passport for foreigners
+          const ocrResponse = await this.fptAiService.recognizePassport(front.buffer);
+          if (Array.isArray(ocrResponse) && ocrResponse.length > 0) {
+              // Map Passport fields to generic OCR result
+              const passportData = ocrResponse[0];
+              ocrResult = {
+                name: passportData.name,
+                id: passportData.passport_number, // Use passport number as ID
+                address: passportData.place_of_birth || passportData.pob, // Passport often has POB, not full address
+                nationality: passportData.nationality,
+                dob: passportData.dob,
+                sex: passportData.sex,
+              };
+          } else {
+              throw new Error('No Passport OCR data found');
+          }
         }
     } catch (e) {
         this.logger.error('OCR failed', e);
         // Even if OCR fails, FaceMatch passed. But we need OCR to update profile. 
-        throw new BadRequestException('Nhận diện khuôn mặt thành công nhưng không thể đọc thông tin trên thẻ. Vui lòng thử lại với ảnh rõ nét hơn.');
+        throw new BadRequestException('Nhận diện khuôn mặt thành công nhưng không thể đọc thông tin trên giấy tờ. Vui lòng thử lại với ảnh rõ nét hơn.');
     }
 
     // 4. Parse & Auto-Update Profile
@@ -728,7 +750,7 @@ export class AuthService implements OnModuleInit {
         fullName: ocrResult.name ? this.capitalizeName(ocrResult.name) : undefined,
         citizenId: ocrResult.id,
         address: ocrResult.address,
-        nationality: ocrResult.nationality ? this.capitalizeName(ocrResult.nationality) : undefined, // Usually "VIỆT NAM"
+        nationality: ocrResult.nationality ? this.capitalizeName(ocrResult.nationality) : undefined,
     };
 
     // Date Parsing (dd/MM/yyyy)
@@ -743,8 +765,8 @@ export class AuthService implements OnModuleInit {
     // Gender Parsing
     if (ocrResult.sex) {
         const sex = ocrResult.sex.toUpperCase();
-        if (sex === 'NAM') profileUpdate.gender = 'male';
-        if (sex === 'NỮ' || sex === 'NU') profileUpdate.gender = 'female';
+        if (sex === 'NAM' || sex === 'M' || sex === 'MALE') profileUpdate.gender = 'male';
+        if (sex === 'NỮ' || sex === 'NU' || sex === 'F' || sex === 'FEMALE') profileUpdate.gender = 'female';
     }
     
     // Update User

@@ -9,6 +9,7 @@ import {
 export enum PaymentMethodType {
   MOMO = 'MOMO',
   QR_CODE = 'QR_CODE',
+  VISA = 'VISA',
 }
 
 export enum PaymentStatus {

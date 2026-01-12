@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, IsOptional, IsIn } from 'class-validator';
 
 export class QuickSuggestTravelRouteDto {
   @ApiProperty({ description: 'Tỉnh/thành phố muốn đi du lịch', example: 'Da Nang' })
@@ -16,4 +16,14 @@ export class QuickSuggestTravelRouteDto {
   @IsNotEmpty()
   @IsString()
   endDate: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Ngôn ngữ trả về (vi/en/both). Mặc định: both', 
+    example: 'both',
+    enum: ['vi', 'en', 'both']
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['vi', 'en', 'both'])
+  lang?: 'vi' | 'en' | 'both';
 }

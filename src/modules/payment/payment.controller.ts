@@ -7,6 +7,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { UserRole } from '../user/entities/user-role.enum';
+import { CreateVisaPaymentDto } from './dto/create-visa-payment.dto';
 
 @ApiTags('payments')
 @Controller('payments')
@@ -24,6 +25,13 @@ export class PaymentController {
       rentalId: body.rentalId,
       amount: body.amount,
     });
+  }
+
+  @RequireAuth()
+  @Post('visa/create')
+  @ApiOperation({ summary: 'Thanh toán bằng thẻ Visa (Mock)' })
+  createVisa(@Body() dto: CreateVisaPaymentDto) {
+    return this.paymentService.createVisaPayment(dto);
   }
 
   @Post('momo/ipn')

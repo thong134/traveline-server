@@ -1,3 +1,4 @@
+import { CreateVisaPaymentDto } from './dto/create-visa-payment.dto';
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -75,6 +76,76 @@ export class PaymentService {
     private readonly walletService: WalletService,
     private readonly vouchersService: VouchersService,
   ) {}
+
+  async createVisaPayment(dto: CreateVisaPaymentDto): Promise<{ ok: boolean; paymentId: number; message: string }> {
+    const { rentalId, amount, cardNumber, cardHolderName } = dto;
+    const rental = await this.rentalRepo.findOne({ where: { id: rentalId } });
+    if (!rental) {
+      throw new BadRequestException(`Không tìm thấy rental ${rentalId}`);
+    }
+
+    // Mock processing - assume always success
+    const orderId = `visa_${rentalId}_${Date.now()}`;
+    const transactionId = `trans_${Date.now()}`;
+
+    const payment = this.paymentRepo.create({
+      rentalId: rental.id,
+      method: PaymentMethodType.VISA,
+      amount: amount.toFixed(2),
+      currency: 'VND', // or USD if converted
+      status: PaymentStatus.SUCCESS,
+      orderId,
+      transactionId,
+      metadata: {
+        cardHolderName: cardHolderName.toUpperCase(),
+        maskedCard: `**** **** **** ${cardNumber.slice(-4)}`,
+        note: 'Mock Visa Payment Success',
+      },
+    });
+    const saved = await this.paymentRepo.save(payment);
+
+    // Perform post-payment logic (Escrow, Points, Voucher, Update Bill)
+    this.logger.log(`Processing successful Visa payment for rentalId: ${rental.id}`);
+
+    // 1. Wallet escrow
+    try {
+      const amountNum = amount;
+      if (amountNum > 0) {
+        // For Visa, we deposit "fresh money" into user wallet then lock it
+        await this.walletService.deposit(rental.userId, amountNum, `visa:${saved.id}`);
+        await this.walletService.lockFunds(rental.userId, amountNum, `rental:${rental.id}`);
+        this.logger.log(`Successfully escrowed ${amountNum} for rental ${rental.id} (Visa)`);
+      }
+    } catch (err) {
+      this.logger.error(`Failed to escrow funds for Visa rental ${rental.id}: ${err.message}`);
+      // In real world, we might refund here. For mock, we just log.
+    }
+
+    // 2. Travel Points deduction
+    if (rental.travelPointsUsed && rental.travelPointsUsed > 0) {
+      const user = await this.userRepo.findOne({ where: { id: rental.userId } });
+      if (user) {
+        const deducted = Math.min(user.travelPoint, rental.travelPointsUsed);
+        if (deducted > 0) {
+          await this.userRepo.decrement({ id: user.id }, 'travelPoint', deducted);
+          this.logger.log(`Deducted ${deducted} points from user ${user.id} (Visa)`);
+        }
+      }
+    }
+
+    // 3. Voucher Usage
+    if (rental.voucherId) {
+      await this.vouchersService.incrementUsage(rental.voucherId);
+    }
+
+    // 4. Update Bill Status
+    await this.rentalRepo.update(rental.id, {
+      status: RentalBillStatus.PAID,
+      rentalStatus: RentalProgressStatus.BOOKED,
+    });
+
+    return { ok: true, paymentId: saved.id, message: 'Thanh toán Visa thành công' };
+  }
 
   async createMomoPayment(params: CreateMomoPaymentParams): Promise<{ payUrl: string; paymentId: number; }> {
     const { rentalId, amount } = params;
