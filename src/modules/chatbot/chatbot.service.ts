@@ -1353,8 +1353,8 @@ export class ChatService {
         rawTarget = rawTarget.slice(3).trim();
     }
     const suffixes = [
-        ' không ta',' không nhỉ',' không ạ',' không',' nhỉ',' ta',' nhé', 
-        ' thế nào',' ra sao',' vậy',' hả',' hở',' à', ' chưa'
+        ' hay không', ' không ta',' không nhỉ',' không ạ',' không',' nhỉ',' ta',' nhé', 
+        ' thế nào',' ra sao',' vậy',' hả',' hở',' à', ' chưa', ' hay'
     ];
     for (const suffix of suffixes) {
          // Check case-insensitive
