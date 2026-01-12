@@ -1308,8 +1308,21 @@ export class TravelRoutesService {
 
     // Try normalized match
     const normalizedMatch = provinces.find(p => normalize(p) === normalizedInput);
+    if (normalizedMatch) return normalizedMatch;
+
+    // Try substring match (e.g. "Hue" matches "Thừa Thiên Huế")
+    // We favor matches where input is a distinct word or at end
+    const partialMatches = provinces.filter(p => normalize(p).includes(normalizedInput));
     
-    return normalizedMatch || input;
+    if (partialMatches.length > 0) {
+      // Sort by length to find "best" match (usually the one where input is most significant part?)
+      // Or just pick the first one?
+      // "Hue" -> "Thừa Thiên Huế" matches. 
+      // "Ha Noi" -> "Hà Nội" matches.
+      return partialMatches.sort((a, b) => a.length - b.length)[0];
+    }
+    
+    return input;
   }
 
   async suggestQuick(userId: number, dto: QuickSuggestTravelRouteDto): Promise<any> {
