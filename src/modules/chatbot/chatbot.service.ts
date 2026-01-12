@@ -709,14 +709,20 @@ export class ChatService {
     });
     
     const results = await this.searchDestinations(searchTerms, provinceFilter);
-    if (!results.length) {
-      return this.generateConversationalReply(fallback, lang, 'destination', {
-        history: context.history,
-        profileSummary: context.profileSummary,
-        attachments: context.attachments,
-        databaseMiss: true,
-      });
-    }
+  if (!results.length) {
+      if (classification.aiResponse && !fallback.toLowerCase().includes('không')) { 
+          // If the AI gave a nice intro but database failed, we might want to say "I looked but found nothing".
+          // But using a static safe message is better for quota.
+      }
+      const notFoundText = lang === 'en'
+        ? `I couldn't find any destinations matching "${searchTerms.join(', ')}". You can try another location!`
+        : `Mình chưa tìm thấy địa điểm nào phù hợp với từ khóa "${searchTerms.join(', ')}". Bạn thử tìm địa điểm khác xem sao nhé!`;
+      
+      return {
+          source: 'ai',
+          text: notFoundText
+      };
+  }
 
     const mapped = results.map((destination) => ({
       id: destination.id,
@@ -738,7 +744,6 @@ export class ChatService {
     }));
 
     const summary = this.buildSummaryText('dia diem du lich', mapped, 'vi');
-    const translatedSummary = await this.translateIfNeeded(summary, lang);
 
     const images = await this.prepareImagePayloads(
       mapped.flatMap((item) => item.images ?? []),
@@ -751,7 +756,7 @@ export class ChatService {
         lang === 'en'
           ? await this.translateEntries(mapped, 'destination')
           : mapped,
-      text: lang === 'en' ? (translatedSummary ?? summary) : summary,
+      text: summary,
       images,
     };
   }
@@ -1898,7 +1903,13 @@ export class ChatService {
             parts: [
               {
                 text: `Classify the travel intent of the user. Valid intents: destination, restaurant, hotel, service, app_guide, booking_help, transport, image_request, profile_update, route_query, route_detail, transport_search, my_orders, my_routes, search_vehicle, search_hotel, search_restaurant, create_route, other. 
-                If the intent is 'other', 'profile_update', or 'app_guide', you MUST also provide a helpful, natural conversational reply in the 'ai_response' field (Language: ${lang === 'en' ? 'English' : 'Vietnamese'}). 
+                
+                CRITICAL INSTRUCTION:
+                You must ALWAYS provide a natural conversational reply in the 'ai_response' field (Language: ${lang === 'en' ? 'English' : 'Vietnamese'}).
+                - If intent is 'other': Provide the full answer to the user.
+                - If intent is 'destination/restaurant/hotel' etc: Provide a polite intro like "Sure, let me find some places for you in [Region]" or "Here are some suggestions".
+                - If you are unsure or data might be missing, provide a polite "I will check my data for you".
+
                 Reply ONLY with JSON {"intent":string,"keywords":string[],"regions":string[],"categories":string[],"followUp":boolean,"imageRequested":boolean, "ai_response": string}.`,
               },
             ],
