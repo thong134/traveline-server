@@ -138,7 +138,6 @@ export class AuthController {
   })
   async phoneStart(
     @CurrentUser() user: RequestUser,
-    @Body() dto: PhoneStartDto,
   ) {
     return this.authService.startPhoneVerification(
       user.userId,

@@ -402,10 +402,11 @@ export class AuthService implements OnModuleInit {
     }
 
     try {
+      const normalizedPhone = this.normalizePhone(phone);
       const response = await axios.post<FirebaseSendVerificationResponse>(
         `https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=${apiKey}`,
         {
-          phoneNumber: phone,
+          phoneNumber: normalizedPhone,
         },
       );
 
@@ -434,9 +435,9 @@ export class AuthService implements OnModuleInit {
           firebaseError?.message ||
           firebaseError?.status ||
           'Failed to initiate phone verification';
-        throw new UnauthorizedException(message);
+        throw new BadRequestException(message);
       }
-      throw new UnauthorizedException('Failed to initiate phone verification');
+      throw new BadRequestException('Failed to initiate phone verification');
     }
   }
 
@@ -741,5 +742,16 @@ export class AuthService implements OnModuleInit {
   private capitalizeName(name: string): string {
       // "TRẦN TRUNG THÔNG" -> "Trần Trung Thông"
       return name.toLowerCase().replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
+  }
+
+  private normalizePhone(phone: string): string {
+    let cleaned = phone.replace(/\D/g, ''); // Keep only digits
+    if (cleaned.startsWith('84')) {
+      return '+' + cleaned;
+    }
+    if (cleaned.startsWith('0')) {
+      return '+84' + cleaned.slice(1);
+    }
+    return '+84' + cleaned;
   }
 }

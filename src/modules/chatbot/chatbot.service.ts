@@ -72,6 +72,7 @@ type Classification = {
   categories: string[];
   followUp: boolean;
   imageRequested: boolean;
+  aiResponse?: string;
 };
 
 type ChatResultItem = {
@@ -174,11 +175,12 @@ const LOCATION_ALIASES: Record<string, string> = {
 
 @Injectable()
 export class ChatService {
-  private readonly modelName = 'gemini-2.5-flash';
-  private readonly visionModelName = 'gemini-2.5-flash';
+  private readonly modelName = 'gemini-1.5-flash';
+  private readonly visionModelName = 'gemini-1.5-flash';
   private readonly historyLimit = 6;
   private readonly modelPool = new Map<string, GenerativeModel>();
-  private geminiClient: GoogleGenerativeAI | null = null;
+  private geminiClients: GoogleGenerativeAI[] = [];
+  private currentClientIndex = 0;
 
   constructor(
     private readonly configService: ConfigService,
@@ -355,7 +357,7 @@ export class ChatService {
       };
     } else if (isGreeting) {
       classification = {
-        intent: 'other',
+        intent: 'greeting',
         keywords: [],
         regions: [],
         categories: [],
@@ -372,6 +374,7 @@ export class ChatService {
           message,
           history,
           profileSummary,
+          preferredLang,
         );
       }
     }
@@ -606,6 +609,13 @@ export class ChatService {
           preferredLang,
           context,
         );
+      case 'greeting':
+        return {
+          source: 'ai',
+          text: preferredLang === 'en'
+            ? "Hello! I'm Traveline AI. How can I help you explore today?"
+            : "Xin chào! Mình là Traveline AI. Hôm nay bạn muốn khám phá địa điểm nào nhỉ?"
+        };
       case 'other':
       default:
         return this.generateConversationalReply(
@@ -616,6 +626,7 @@ export class ChatService {
             history: context.history,
             profileSummary: context.profileSummary,
             attachments: context.attachments,
+            textOverride: classification.aiResponse,
           },
         );
     }
@@ -1277,34 +1288,30 @@ export class ChatService {
     context: { history?: Content[] },
   ): Promise<ChatResponse> {
     
-    // 1. AI Extraction (Re-enabled for better natural language handling)
-    // We call AI to extract interpret the target name, removing fillers like "không ta", "nhỉ".
-    const extractionPrompt = `
-      Extract the exact place/location name from this Vietnamese question: "${message}"
-      Remove conversational fillers like "có nên đi", "không ta", "review", "thấy sao về", "nhỉ".
-      Correct spelling if obvious (e.g. "Da Lat" -> "Đà Lạt").
-      Return JSON with field "name".
-    `;
+    // 1. Natural Language Processing (Local)
+    // Regex to extract the part after keywords
+    const feedbackRegex = /(?:review|đánh giá|nhận xét|có nên đi|thấy sao về)\s+(.+)/i;
+    const match = message.match(feedbackRegex);
+    let rawTarget = match ? match[1].trim() : message;
 
-    let rawTarget = '';
-    try {
-        const extractionResult = await this.performModelCall(
-            (model) => model.generateContent({
-                contents: [{ role: 'user', parts: [{ text: extractionPrompt }] }],
-                generationConfig: { responseMimeType: 'application/json' }
-            }),
-            this.modelName,
-        );
-        const parsed = JSON.parse(this.extractText(extractionResult));
-        rawTarget = parsed.name || '';
-    } catch (e) {
-        console.warn('[FeedbackSummary] AI Extraction failed, falling back to Regex', e);
-        // Fallback to regex if AI fails
-        const feedbackRegex = /(?:review|đánh giá|nhận xét|có nên đi|thấy sao về)\s+(.+)/i;
-        const match = message.match(feedbackRegex);
-        rawTarget = match ? match[1].trim() : message;
-        rawTarget = rawTarget.replace(/[?!.,]/g, '').trim();
+    // Advanced cleaning for natural language:
+    // Remove "về" if it's at the start of the remainder
+    if (rawTarget.toLowerCase().startsWith('về ')) {
+        rawTarget = rawTarget.slice(3).trim();
     }
+    const suffixes = [
+        ' không ta',' không nhỉ',' không ạ',' không',' nhỉ',' ta',' nhé', 
+        ' thế nào',' ra sao',' vậy',' hả',' hở',' à', ' chưa'
+    ];
+    for (const suffix of suffixes) {
+         // Check case-insensitive
+         if (rawTarget.toLowerCase().endsWith(suffix)) {
+             rawTarget = rawTarget.slice(0, -suffix.length).trim();
+         }
+    }
+
+    // Remove punctuation
+    rawTarget = rawTarget.replace(/[?!.,]/g, '').trim();
 
     if (!rawTarget || rawTarget.length < 2) {
          return this.generateConversationalReply(message, lang, 'feedback_summary', context);
@@ -1367,12 +1374,13 @@ export class ChatService {
       if (!feedbacks || feedbacks.length === 0) {
           const noReviewText = lang === 'en'
             ? `There are no reviews for "${targetName}" yet. You can be the first one!`
-            : `Hiện chưa có đánh giá nào cho "${targetName}". Bạn hãy trải nghiệm và review nhé!`;
+      : `Hiện chưa có đánh giá nào cho "${targetName}". Bạn hãy trải nghiệm và review nhé!`;
           return { source: 'ai', text: noReviewText };
       }
 
       // 2. Prepare Prompt (1 AI Call)
-      const reviewTexts = feedbacks.slice(0, 20).map(f => `- ${f.comment} (${f.star} sao)`).join('\n');
+    // Reduce to 10 reviews to stay within TPM/RPM limits strictly
+    const reviewTexts = feedbacks.slice(0, 10).map(f => `- ${f.comment} (${f.star} sao)`).join('\n');
       
       const prompt = lang === 'en'
         ? `Summarize reviews for "${targetName}":\n${reviewTexts}\n\nOutput JSON with fields: "summary" (short summary), "pros" (bullet points), "cons" (bullet points), "verdict" (Should go? Yes/No/Maybe with reason).`
@@ -1792,7 +1800,8 @@ export class ChatService {
     message: string,
     history: Content[],
     profileSummary?: string,
-  ): Promise<Classification> {
+    lang: ChatLanguage = 'vi',
+  ): Promise<Classification & { aiResponse?: string }> {
     const historySnippet = history
       .slice(-4)
       .map(
@@ -1817,8 +1826,10 @@ export class ChatService {
             role: 'system',
             parts: [
               {
-              text: 'Classify the travel intent of the user. Valid intents: destination, restaurant, hotel, service, app_guide, booking_help, transport, image_request, profile_update, route_query, route_detail, transport_search, my_orders, my_routes, search_vehicle, search_hotel, search_restaurant, create_route, other. Extract up to five keywords, regions, and categories. "my_orders" for looking up rental bills. "my_routes" for listing user trips. "search_vehicle" for renting bikes/cars. "search_hotel"/"search_restaurant" for finding accommodation/dining using external service. "create_route" for planning a new trip. If the user requests images set imageRequested to true. Reply ONLY with JSON {"intent":string,"keywords":string[],"regions":string[],"categories":string[],"followUp":boolean,"imageRequested":boolean}.',
-            },
+                text: `Classify the travel intent of the user. Valid intents: destination, restaurant, hotel, service, app_guide, booking_help, transport, image_request, profile_update, route_query, route_detail, transport_search, my_orders, my_routes, search_vehicle, search_hotel, search_restaurant, create_route, other. 
+                If the intent is 'other', 'profile_update', or 'app_guide', you MUST also provide a helpful, natural conversational reply in the 'ai_response' field (Language: ${lang === 'en' ? 'English' : 'Vietnamese'}). 
+                Reply ONLY with JSON {"intent":string,"keywords":string[],"regions":string[],"categories":string[],"followUp":boolean,"imageRequested":boolean, "ai_response": string}.`,
+              },
             ],
           },
           contents: [
@@ -1852,10 +1863,14 @@ export class ChatService {
         categories: this.asStringArray(parsedRecord.categories),
         followUp: this.asBoolean(parsedRecord.followUp),
         imageRequested: this.asBoolean(parsedRecord.imageRequested),
+        aiResponse: this.asOptionalString(parsedRecord.ai_response),
       };
     } catch (error) {
-      console.warn('[Chatbot] Classification failed, failing back to keywords:', error.message);
-      return this.simpleKeywordClassification(message);
+      console.warn('[Chatbot] Classification failed, falling back to keywords:', error.message);
+      return {
+          ...this.simpleKeywordClassification(message),
+          aiResponse: undefined
+      };
     }
   }
 
@@ -1885,12 +1900,21 @@ export class ChatService {
   private isSimpleGreeting(message: string): boolean {
     const greetingKeywords = [
       'hello', 'hi', 'hey', 'greetings', 'hola',
-      'chào', 'xin chào', 'hi ban', 'hey ban',
+      'chào', 'xin chào', 'hi ban', 'hey ban', 'chào bạn', 'chào nhé',
       'tạm biệt', 'bye', 'goodbye', 'hen gap lai',
       'cảm ơn', 'thanks', 'thank you', 'cam on',
     ];
     const normalized = message.toLowerCase().trim();
-    return greetingKeywords.some(keyword => normalized === keyword || normalized === keyword + '!');
+    // Also handle starting with keyword like "chào"
+    const isExact = greetingKeywords.some(keyword => normalized === keyword || normalized === keyword + '!');
+    if (isExact) return true;
+
+    // Check if starts with common greeting and is short (conversational fillers)
+    if (normalized.length < 15) {
+      if (normalized.startsWith('chào') || normalized.startsWith('xin chào')) return true;
+    }
+
+    return false;
   }
 
   private enrichClassificationWithHistory(
@@ -2409,11 +2433,11 @@ export class ChatService {
     modelName = this.modelName,
     retries = 3,
   ): Promise<GenerateContentResult> {
-    const model = this.getModel(modelName);
     let attempt = 0;
     
     while (attempt < retries) {
       try {
+        const model = this.getModel(modelName);
         const result = await call(model);
         return result;
       } catch (error) {
@@ -2422,8 +2446,9 @@ export class ChatService {
         
         if (isRetryable && attempt < retries - 1) {
           attempt++;
+          // For 429, we rotate immediately by calling getModel again in next loop
           const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
-          console.warn(`[Gemini] Rate limited. Retrying attempt ${attempt}/${retries} after ${delay}ms...`);
+          console.warn(`[Gemini] Rate limited. Retrying attempt ${attempt}/${retries} with rotated key after ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
@@ -2437,36 +2462,43 @@ export class ChatService {
 
 
   private getModel(modelName: string): GenerativeModel {
-    const cached = this.modelPool.get(modelName);
-    if (cached) {
-      return cached;
-    }
     const client = this.ensureGeminiClient();
-    const model = client.getGenerativeModel({ model: modelName });
-    this.modelPool.set(modelName, model);
-    return model;
+    return client.getGenerativeModel({ model: modelName });
   }
 
   private ensureGeminiClient(): GoogleGenerativeAI {
-    if (this.geminiClient) {
-      return this.geminiClient;
+    if (this.geminiClients.length > 0) {
+      const client = this.geminiClients[this.currentClientIndex];
+      // Log masked key for rotation debugging
+      const apiKey = (client as any).apiKey || 'unknown';
+      const masked = apiKey.slice(0, 6) + '...' + apiKey.slice(-4);
+      console.log(`[Gemini] Using key ${this.currentClientIndex + 1}/${this.geminiClients.length} (${masked})`);
+      
+      this.currentClientIndex = (this.currentClientIndex + 1) % this.geminiClients.length;
+      return client;
     }
-    const apiKey =
-      this.configService.get<string>('gemini.apiKey') ??
-      this.configService.get<string>('services.gemini.apiKey') ??
-      process.env.GEMINI_API_KEY ??
-      process.env.GOOGLE_GENAI_API_KEY;
-    if (!apiKey) {
-      throw new ServiceUnavailableException(
-        'Gemini API key is not configured.',
-      );
+
+    const rawKeys = this.configService.get<string>('GEMINI_API_KEYS') || 
+                    this.configService.get<string>('gemini.apiKey') ||
+                    process.env.GEMINI_API_KEY || 
+                    process.env.GOOGLE_GENAI_API_KEY;
+
+    if (!rawKeys) {
+      throw new ServiceUnavailableException('Gemini API key is not configured.');
     }
-    // Log masked key for debugging
-    const maskedKey = apiKey.slice(0, 6) + '...' + apiKey.slice(-4);
-    console.log(`[Gemini] Using API key: ${maskedKey}`);
+
+    const keys = rawKeys.split(',').map(k => k.trim()).filter(k => !!k);
     
-    this.geminiClient = new GoogleGenerativeAI(apiKey);
-    return this.geminiClient;
+    if (keys.length === 0) {
+      throw new ServiceUnavailableException('No valid Gemini API keys found.');
+    }
+
+    this.geminiClients = keys.map(key => new GoogleGenerativeAI(key));
+    console.log(`[Gemini] Initialized pool with ${this.geminiClients.length} keys.`);
+    
+    const client = this.geminiClients[this.currentClientIndex];
+    this.currentClientIndex = (this.currentClientIndex + 1) % this.geminiClients.length;
+    return client;
   }
   private extractText(result: GenerateContentResult | undefined): string {
     if (!result) {
