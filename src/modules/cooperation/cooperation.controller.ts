@@ -32,6 +32,7 @@ import { RegisterCooperationDto } from './dto/register-cooperation.dto';
 import { ApproveCooperationDto } from './dto/approve-cooperation.dto';
 import { UploadContractDto } from './dto/upload-contract.dto';
 import { HotelAvailabilityQueryDto } from './dto/hotel-availability-query.dto';
+import { NearbySearchDto } from './dto/nearby-search.dto';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
@@ -216,5 +217,27 @@ export class CooperationsController {
   })
   findAllContracts() {
     return this.cooperationsService.findAllContracts();
+  }
+
+  @Get('nearby-hotels')
+  @ApiOperation({ summary: 'Tìm khách sạn gần vị trí người dùng' })
+  async getNearbyHotels(@Query() query: NearbySearchDto) {
+    return this.cooperationsService.getNearbyCooperations('hotel', query);
+  }
+
+  @Get('nearby-restaurants')
+  @ApiOperation({ summary: 'Tìm nhà hàng gần vị trí người dùng' })
+  async getNearbyRestaurants(@Query() query: NearbySearchDto) {
+    return this.cooperationsService.getNearbyCooperations('restaurant', query);
+  }
+
+  @Post('sync-firebase')
+  @RequireAuth(UserRole.Admin)
+  @ApiOperation({
+    summary: 'Đồng bộ tọa độ và tỉnh thành từ Firebase JSON',
+    description: 'Chấp nhận mảng đối tượng Firebase [{ name, latitude, longitude, province }] và cập nhật vào DB.',
+  })
+  syncFirebase(@Body() data: any[]) {
+    return this.cooperationsService.syncWithFirebase(data);
   }
 }

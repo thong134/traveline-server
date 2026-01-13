@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { MapService } from '../../common/map/map.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Cooperation } from './entities/cooperation.entity';
@@ -29,6 +30,7 @@ export class CooperationsService {
     @InjectRepository(CooperationServiceConfig)
     private readonly configRepo: Repository<CooperationServiceConfig>,
     private readonly usersService: UsersService,
+    private readonly mapService: MapService,
   ) {}
 
   private formatMoney(value: number | string | undefined): string {
@@ -49,6 +51,8 @@ export class CooperationsService {
       address: dto.address,
       province: dto.province,
       district: dto.district,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
       photo: dto.photo,
       extension: dto.extension,
       introduction: dto.introduction,
@@ -154,6 +158,8 @@ export class CooperationsService {
       address: dto.address,
       province: dto.province,
       district: dto.district,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
       photo: dto.photo,
       extension: dto.extension,
       introduction: dto.introduction,
@@ -393,5 +399,80 @@ export class CooperationsService {
       relations: ['cooperation'],
       order: { signedDate: 'DESC' },
     });
+  }
+
+  async getNearbyCooperations(
+    type: string,
+    query: { lat: number; lng: number; radius?: number },
+  ) {
+    const radius = query.radius ?? 10;
+    const cooperations = await this.cooperationRepo.find({
+      where: { type, status: CooperationStatus.ACTIVE },
+    });
+
+    const nearbyPromises = cooperations.map(async (coop) => {
+      if (!coop.latitude || !coop.longitude) return null;
+
+      const distanceKm = await this.mapService.getDistance(
+        query.lat,
+        query.lng,
+        parseFloat(coop.latitude.toString()),
+        parseFloat(coop.longitude.toString()),
+      );
+
+      return {
+        ...coop,
+        distanceKm: parseFloat(distanceKm.toFixed(2)),
+      };
+    });
+
+    const nearby = (await Promise.all(nearbyPromises))
+      .filter(
+        (item): item is any => item !== null && item.distanceKm <= radius,
+      )
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+
+    return nearby;
+  }
+
+  async syncWithFirebase(
+    data: any[],
+  ): Promise<{ updated: number; skipped: number; details: any[] }> {
+    let updated = 0;
+    let skipped = 0;
+    const details: any[] = [];
+
+    for (const item of data) {
+      if (!item || !item.name) {
+        skipped++;
+        details.push({
+          name: 'Unknown',
+          status: 'skipped',
+          reason: 'Missing name',
+        });
+        continue;
+      }
+
+      const name = item.name.trim();
+      const cooperation = await this.cooperationRepo.findOne({
+        where: { name: In([name]) }, // Using In or ILike for safer matching
+      });
+
+      if (cooperation) {
+        // Only update the 3 requested fields
+        if (item.latitude !== undefined) cooperation.latitude = item.latitude;
+        if (item.longitude !== undefined) cooperation.longitude = item.longitude;
+        if (item.province !== undefined) cooperation.province = item.province;
+
+        await this.cooperationRepo.save(cooperation);
+        updated++;
+        details.push({ name, status: 'updated' });
+      } else {
+        skipped++;
+        details.push({ name, status: 'skipped', reason: 'Not found in DB' });
+      }
+    }
+
+    return { updated, skipped, details };
   }
 }

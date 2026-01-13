@@ -237,6 +237,13 @@ export class DestinationsService {
     if (!current.includes(destinationId.toString())) {
       user.favoriteDestinationIds = [...current, destinationId.toString()];
       await this.usersRepo.save(user);
+
+      // Increment counter
+      destination.favouriteTimes = (destination.favouriteTimes || 0) + 1;
+      await this.repo.save(destination);
+      
+      // Proactive sync to AI
+      this.syncToAI().catch(e => console.error('Auto-sync to AI failed:', e.message));
     }
   }
 
@@ -252,6 +259,77 @@ export class DestinationsService {
         (id) => id !== destinationId.toString(),
       );
       await this.usersRepo.save(user);
+
+      // Decrement counter
+      const destination = await this.repo.findOne({ where: { id: destinationId } });
+      if (destination && destination.favouriteTimes > 0) {
+        destination.favouriteTimes -= 1;
+        await this.repo.save(destination);
+      }
+
+      this.syncToAI().catch(e => console.error('Auto-sync to AI failed:', e.message));
+    }
+  }
+
+  /**
+   * Syncs database destinations to AI model service and triggers reload.
+   */
+  async syncToAI(): Promise<void> {
+    const data = await this.exportForAI();
+    const csvHeader = 'destinationId,name,province,category,averageRating,favouriteTimes,latitude,longitude,description,categories,district,openTime,closeTime\n';
+    
+    // Simple CSV row formatter
+    const csvRows = data.map((d: any) => {
+      const escape = (val: any) => {
+        if (val === null || val === undefined) return '""';
+        const str = String(val);
+        return `"${str.replace(/"/g, '""')}"`;
+      };
+
+      const formatList = (list: string[]) => {
+        if (!list || list.length === 0) return '"[]"';
+        // Python expected format: ['Cat1', 'Cat2']
+        return `"[${list.map(v => `'${v.replace(/'/g, "\\'")}'`).join(', ')}]"`;
+      };
+
+      return [
+        d.destinationId,
+        escape(d.name),
+        escape(d.province),
+        escape(d.category),
+        d.averageRating,
+        d.favouriteTimes,
+        d.latitude,
+        d.longitude,
+        escape(d.description),
+        formatList(d.categories),
+        escape(d.district),
+        escape(d.openTime),
+        escape(d.closeTime)
+      ].join(',');
+    });
+
+    const csvContent = csvHeader + csvRows.join('\n');
+    
+    // Path to AI service data directory - assuming local development structure
+    // IMPORTANT: In production, this would be an API call or shared volume
+    const aiDataPath = 'd:/ai-model-service/data/destinations.csv';
+    const fs = require('fs');
+    
+    try {
+      fs.writeFileSync(aiDataPath, csvContent);
+    } catch (e) {
+      console.warn('Failed to write CSV to AI service dir:', e.message);
+      return; 
+    }
+    
+    // Trigger reload in AI Service
+    const aiUrl = this.configService.get<string>('AI_SERVICE_URL') ?? 'http://localhost:8000';
+    try {
+      await firstValueFrom(this.httpService.post(`${aiUrl}/reload`, {}));
+      console.log('✓ AI Model reloaded with fresh data from Database');
+    } catch (e) {
+      console.error('Failed to reload AI model endpoint:', e.message);
     }
   }
 
@@ -308,6 +386,21 @@ export class DestinationsService {
       if (feedback.destination?.categories) {
         for (const cat of feedback.destination.categories) {
           engagementProfile[cat] = (engagementProfile[cat] || 0) + 1;
+        }
+      }
+    }
+
+    // Analyze Favorites (NEW: Favorites should influence the profile)
+    if (user.favoriteDestinationIds?.length) {
+      const favorites = await this.repo.find({
+        where: { id: In(user.favoriteDestinationIds.map(id => Number(id))) }
+      });
+      for (const dest of favorites) {
+        if (dest.categories) {
+          for (const cat of dest.categories) {
+            // Hearting is a strong signal, maybe count it twice?
+            historyProfile[cat] = (historyProfile[cat] || 0) + 2;
+          }
         }
       }
     }
@@ -421,6 +514,20 @@ export class DestinationsService {
       if (feedback.destination?.categories) {
         for (const cat of feedback.destination.categories) {
           engagementProfile[cat] = (engagementProfile[cat] || 0) + 1;
+        }
+      }
+    }
+
+    // Analyze Favorites
+    if (user.favoriteDestinationIds?.length) {
+      const favorites = await this.repo.find({
+        where: { id: In(user.favoriteDestinationIds.map(id => Number(id))) }
+      });
+      for (const dest of favorites) {
+        if (dest.categories) {
+          for (const cat of dest.categories) {
+            historyProfile[cat] = (historyProfile[cat] || 0) + 2;
+          }
         }
       }
     }

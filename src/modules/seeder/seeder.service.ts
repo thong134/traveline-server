@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { calculateDistance } from '../../common/utils/location.util';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { Cooperation } from '../cooperation/entities/cooperation.entity';
 import { HotelRoom } from '../hotel/room/entities/hotel-room.entity';
 import { RestaurantTable } from '../restaurant/table/entities/restaurant-table.entity';
@@ -50,20 +51,24 @@ export class SeederService {
     const partners = [
       // Hotels
       {
+        name: 'Khách sạn Hà Nội Daewoo',
+        type: 'hotel',
+        brandLogo: 'https://firebasestorage.googleapis.com/v0/b/tour-guide-app-50140.appspot.com/o/places_photos%2FC00001_0.jpg?alt=media&token=74d00636-f7e8-4355-9fa7-4718fc7ddd69',
+        representativeName: 'Daewoo Group',
+        province: 'Hà Nội', district: 'Ba Đình',
+        provinceId: '01', districtId: '001',
+        address: '360 Kim Mã, Ngọc Khánh, Ba Đình, Hà Nội',
+        latitude: 21.0307546, longitude: 105.8120637,
+        introduction: 'Khách sạn trang nhã, phòng ở thoáng mát, nhiều nhà hàng, quán bar sôi động và bể bơi ngoài trời.',
+      },
+      {
         name: 'Vinpearl Hotels',
         type: 'hotel',
         brandLogo: 'https://res.cloudinary.com/traveline/image/upload/v1/vinpearl_logo',
         representativeName: 'Vingroup',
         province: 'Hồ Chí Minh', district: 'Quận 1',
         provinceId: '79', districtId: '760',
-      },
-      {
-        name: 'Mường Thanh',
-        type: 'hotel',
-        brandLogo: 'https://res.cloudinary.com/traveline/image/upload/v1/muongthanh_logo',
-        representativeName: 'Mường Thanh Group',
-        province: 'Hồ Chí Minh', district: 'Quận 1',
-        provinceId: '79', districtId: '764',
+        latitude: 10.7769, longitude: 106.7009,
       },
       {
         name: 'Fusion Hotels',
@@ -202,8 +207,11 @@ export class SeederService {
     ];
 
     for (const p of partners) {
-      let coop = await this.coopRepo.findOne({ where: { name: p.name } });
+      let coop = await this.coopRepo.findOne({
+        where: { name: ILike(p.name) },
+      });
       if (!coop) {
+        this.logger.log(`Creating new partner: ${p.name}`);
         coop = this.coopRepo.create({
           name: p.name,
           type: p.type,
@@ -213,6 +221,10 @@ export class SeederService {
           district: (p as any).district,
           provinceId: (p as any).provinceId,
           districtId: (p as any).districtId,
+          address: (p as any).address,
+          latitude: (p as any).latitude,
+          longitude: (p as any).longitude,
+          introduction: (p as any).introduction,
           status: CooperationStatus.ACTIVE,
           manager: admin,
           revenue: '0',
@@ -220,12 +232,19 @@ export class SeederService {
           bookingTimes: 0,
         });
         await this.coopRepo.save(coop);
-      } else if (!coop.province && (p as any).province) {
-        // Update existing with location if missing
-        coop.province = (p as any).province;
-        coop.district = (p as any).district;
-        coop.provinceId = (p as any).provinceId;
-        coop.districtId = (p as any).districtId;
+      } else {
+        this.logger.log(`Updating existing partner: ${p.name} (ID: ${coop.id})`);
+        // Update existing with location if missing or provided
+        if ((p as any).province) coop.province = (p as any).province;
+        if ((p as any).district) coop.district = (p as any).district;
+        if ((p as any).provinceId) coop.provinceId = (p as any).provinceId;
+        if ((p as any).districtId) coop.districtId = (p as any).districtId;
+        if ((p as any).address) coop.address = (p as any).address;
+        if ((p as any).latitude) coop.latitude = (p as any).latitude;
+        if ((p as any).longitude) coop.longitude = (p as any).longitude;
+        if ((p as any).introduction)
+          coop.introduction = (p as any).introduction;
+
         await this.coopRepo.save(coop);
       }
     }

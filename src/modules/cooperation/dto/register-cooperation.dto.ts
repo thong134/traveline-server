@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsEmail,
+  IsNumber,
   IsObject,
   IsOptional,
   IsString,
@@ -51,6 +52,16 @@ export class RegisterCooperationDto {
   @IsOptional()
   @IsString()
   wardCode?: string;
+
+  @ApiPropertyOptional({ description: 'Vĩ độ (Latitude)' })
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @ApiPropertyOptional({ description: 'Kinh độ (Longitude)' })
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
 
   @ApiPropertyOptional({ description: 'Giới thiệu ngắn' })
   @IsOptional()

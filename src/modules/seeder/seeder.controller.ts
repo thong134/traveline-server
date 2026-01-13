@@ -115,4 +115,5 @@ export class SeederController {
   ) {
     return this.seederService.getMockTransport('flight', { from, to, date });
   }
+
 }

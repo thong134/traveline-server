@@ -54,6 +54,18 @@ export class CreateCooperationDto {
   @IsString()
   province?: string;
 
+  @ApiPropertyOptional({ description: 'Latitude' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  latitude?: number;
+
+  @ApiPropertyOptional({ description: 'Longitude' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  longitude?: number;
+
   @ApiPropertyOptional({ description: 'Photo url' })
   @IsOptional()
   @IsString()
