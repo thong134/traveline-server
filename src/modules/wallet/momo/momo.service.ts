@@ -1,4 +1,3 @@
-
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
@@ -19,7 +18,8 @@ export class MomoService {
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
   ) {
-    this.partnerCode = this.configService.get<string>('MOMO_PARTNER_CODE') ?? '';
+    this.partnerCode =
+      this.configService.get<string>('MOMO_PARTNER_CODE') ?? '';
     this.accessKey = this.configService.get<string>('MOMO_ACCESS_KEY') ?? '';
     this.secretKey = this.configService.get<string>('MOMO_SECRET_KEY') ?? '';
     this.endpoint = this.configService.get<string>(
@@ -27,7 +27,8 @@ export class MomoService {
       'https://test-payment.momo.vn/v2/gateway/api/create',
     );
     this.ipnUrl = this.configService.get<string>('MOMO_IPN_URL') ?? '';
-    this.redirectUrl = this.configService.get<string>('MOMO_REDIRECT_URL') ?? '';
+    this.redirectUrl =
+      this.configService.get<string>('MOMO_REDIRECT_URL') ?? '';
   }
 
   /**
@@ -94,11 +95,13 @@ export class MomoService {
     };
 
     try {
-      this.logger.log(`Sending payment request to MoMo: ${JSON.stringify(requestBody)}`);
+      this.logger.log(
+        `Sending payment request to MoMo: ${JSON.stringify(requestBody)}`,
+      );
       const response = await firstValueFrom(
         this.httpService.post(this.endpoint, requestBody),
       );
-      
+
       this.logger.log(`MoMo response: ${JSON.stringify(response.data)}`);
       return response.data;
     } catch (error) {

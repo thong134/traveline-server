@@ -16,7 +16,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
-import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { ChatService } from './chatbot.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -65,9 +68,7 @@ export class ChatController {
       required: ['message'],
     },
   })
-  @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'images', maxCount: 3 }]),
-  )
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'images', maxCount: 3 }]))
   @Throttle({ default: { limit: 1, ttl: 3 } })
   async handleChat(
     @Body() body: { message: string; lang?: string; sessionId?: string },
@@ -85,7 +86,9 @@ export class ChatController {
         }))
       : undefined;
 
-    console.log(`[Chatbot] Message: "${body.message}", Received ${uploadedImages?.length ?? 0} images, userId: ${user.userId}`);
+    console.log(
+      `[Chatbot] Message: "${body.message}", Received ${uploadedImages?.length ?? 0} images, userId: ${user.userId}`,
+    );
 
     return this.chatService.handleChat(body.message, body.lang, {
       userId: user.userId,
@@ -120,8 +123,17 @@ export class ChatController {
   @Post('search-destinations')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Smart Search: Tìm địa điểm chi tiết qua chat logic' })
-  async searchDestinations(@Body() dto: DestinationSearchDto, @CurrentUser() user: RequestUser) {
-    return this.chatService.handleDestinationSearchApi(dto.message, dto.lang, user.userId);
+  @ApiOperation({
+    summary: 'Smart Search: Tìm địa điểm chi tiết qua chat logic',
+  })
+  async searchDestinations(
+    @Body() dto: DestinationSearchDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.chatService.handleDestinationSearchApi(
+      dto.message,
+      dto.lang,
+      user.userId,
+    );
   }
 }

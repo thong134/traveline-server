@@ -68,12 +68,27 @@ export class TrainRoutesService {
       cooperationId?: number;
       departureStation?: string;
       arrivalStation?: string;
+      provinceId?: string;
+      districtId?: string;
     } = {},
   ): Promise<TrainRoute[]> {
-    const qb = this.routeRepo.createQueryBuilder('route');
+    const qb = this.routeRepo
+      .createQueryBuilder('route')
+      .leftJoinAndSelect('route.cooperation', 'cooperation');
+
     if (params.cooperationId) {
       qb.andWhere('route.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
+      });
+    }
+    if (params.provinceId) {
+      qb.andWhere('cooperation.provinceId = :provinceId', {
+        provinceId: params.provinceId,
+      });
+    }
+    if (params.districtId) {
+      qb.andWhere('cooperation.districtId = :districtId', {
+        districtId: params.districtId,
       });
     }
     if (params.departureStation) {

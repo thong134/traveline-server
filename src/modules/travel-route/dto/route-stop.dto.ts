@@ -1,4 +1,8 @@
-import { ApiHideProperty, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiHideProperty,
+  ApiProperty,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Matches, Min } from 'class-validator';
 

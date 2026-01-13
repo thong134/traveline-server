@@ -1,5 +1,10 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { LegacyAdministrativeService } from './legacy.service';
 import { LegacyProvince } from './entities/legacy-province.entity';
 import { LegacyDistrict } from './entities/legacy-district.entity';
@@ -62,7 +67,7 @@ export class LegacyAdministrativeController {
     const upload = await this.cloudinaryService.uploadImage(file, {
       folder: 'traveline/legacy/provinces/avatars',
     });
-    
+
     return this.service.updateProvince(code, { avatarUrl: upload.url });
   }
 
@@ -89,7 +94,9 @@ export class LegacyAdministrativeController {
     summary: 'Danh sách huyện của tỉnh trước sáp nhập',
   })
   @ApiOkResponse({ type: LegacyDistrict, isArray: true })
-  listDistrictsOfProvince(@Param('code') code: string): Promise<LegacyDistrict[]> {
+  listDistrictsOfProvince(
+    @Param('code') code: string,
+  ): Promise<LegacyDistrict[]> {
     return this.service.findDistrictsByProvince(code);
   }
 

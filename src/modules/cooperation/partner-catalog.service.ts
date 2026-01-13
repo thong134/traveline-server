@@ -29,7 +29,6 @@ export interface HotelAvailabilityResponse {
   cooperation: {
     id: number;
     name: string;
-    code?: string;
     partnerName: string;
   };
   checkIn: string;
@@ -83,7 +82,7 @@ export class PartnerCatalogService {
       );
     }
 
-    const partnerCode = cooperation.code ?? `HOTEL-${cooperationId}`;
+    const partnerCode = `HOTEL-${cooperationId}`;
     const partnerData = MOCK_PARTNER_DATA[partnerCode];
     if (!partnerData) {
       throw new NotFoundException(
@@ -121,7 +120,6 @@ export class PartnerCatalogService {
       cooperation: {
         id: cooperation.id,
         name: cooperation.name,
-        code: cooperation.code,
         partnerName: partnerData.partnerName,
       },
       checkIn: query.checkIn.toISOString(),

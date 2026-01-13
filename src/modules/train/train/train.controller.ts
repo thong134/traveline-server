@@ -37,16 +37,22 @@ export class TrainRoutesController {
   @Get()
   @ApiOperation({ summary: 'Danh sách tuyến tàu' })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
+  @ApiQuery({ name: 'provinceId', required: false })
+  @ApiQuery({ name: 'districtId', required: false })
   @ApiQuery({ name: 'departureStation', required: false, type: String })
   @ApiQuery({ name: 'arrivalStation', required: false, type: String })
   @ApiOkResponse({ description: 'Train route list' })
   findAll(
     @Query('cooperationId') cooperationId?: string,
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
     @Query('departureStation') departureStation?: string,
     @Query('arrivalStation') arrivalStation?: string,
   ) {
     return this.service.findAll({
       cooperationId: cooperationId ? Number(cooperationId) : undefined,
+      provinceId,
+      districtId,
       departureStation: departureStation ?? undefined,
       arrivalStation: arrivalStation ?? undefined,
     });

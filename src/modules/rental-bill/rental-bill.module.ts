@@ -38,4 +38,3 @@ import { RentalVehiclesModule } from '../rental-vehicle/rental-vehicle.module';
   exports: [RentalBillsService],
 })
 export class RentalBillsModule {}
-

@@ -25,7 +25,10 @@ export class CreateTrainBillDto {
   @Min(1)
   routeId: number;
 
-  @ApiProperty({ description: 'Travel date (dd/MM/yyyy)', example: '13/04/2004' })
+  @ApiProperty({
+    description: 'Travel date (dd/MM/yyyy)',
+    example: '13/04/2004',
+  })
   @TransformDDMMYYYY()
   @IsDate()
   travelDate: Date;

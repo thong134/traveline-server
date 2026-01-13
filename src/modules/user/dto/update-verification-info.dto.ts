@@ -11,5 +11,4 @@ export class UpdateVerificationInfoDto {
   @IsOptional()
   @IsMobilePhone()
   phone?: string;
-
 }

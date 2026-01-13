@@ -33,7 +33,10 @@ import { RequestResetDto } from './dto/request-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import type { AuthTokens } from './dto/auth-tokens.dto';
-import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { RequireAuth } from './decorators/require-auth.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -88,7 +91,8 @@ export class AuthController {
       'Gửi mã 6 số vào email đã đăng ký. Swagger chỉ trả về token + expiresAt; mã OTP nằm trong email.',
   })
   @ApiOkResponse({
-    description: 'OTP sent when account exists (always returns ok to tránh dò email)',
+    description:
+      'OTP sent when account exists (always returns ok to tránh dò email)',
   })
   async requestReset(@Body() dto: RequestResetDto) {
     return this.authService.requestPasswordReset(dto.email);
@@ -141,12 +145,8 @@ export class AuthController {
     description:
       'Trả về sessionInfo; copy sessionInfo này sang bước /auth/phone/verify cùng với mã OTP SMS.',
   })
-  async phoneStart(
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.authService.startPhoneVerification(
-      user.userId,
-    );
+  async phoneStart(@CurrentUser() user: RequestUser) {
+    return this.authService.startPhoneVerification(user.userId);
   }
 
   @RequireAuth()
@@ -201,7 +201,6 @@ export class AuthController {
     return this.authService.changePassword(user.userId, dto);
   }
 
-
   @Post('citizen-id/verify')
   @RequireAuth()
   @ApiOperation({
@@ -229,7 +228,9 @@ export class AuthController {
       imageMulterOptions,
     ),
   )
-  @ApiOkResponse({ description: 'Xác thực thành công, trả về thông tin OCR đã cập nhật' })
+  @ApiOkResponse({
+    description: 'Xác thực thành công, trả về thông tin OCR đã cập nhật',
+  })
   async verifyCitizenId(
     @CurrentUser() user: RequestUser,
     @UploadedFiles()

@@ -13,7 +13,10 @@ export class UseTravelRouteDto {
   @IsDate()
   endDate: Date;
 
-  @ApiProperty({ description: 'New Name for the personal route', required: false })
+  @ApiProperty({
+    description: 'New Name for the personal route',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   @IsNotEmpty()

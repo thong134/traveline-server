@@ -1,4 +1,13 @@
-import { Body, Controller, Param, ParseIntPipe, Post, BadRequestException, UseGuards, ForbiddenException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Param,
+  ParseIntPipe,
+  Post,
+  BadRequestException,
+  UseGuards,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PaymentService } from './payment.service';
 import { PayoutStatus } from './entities/payout.entity';
@@ -18,7 +27,11 @@ export class PaymentController {
   @Post('momo/create')
   @ApiOperation({ summary: 'Tạo yêu cầu thanh toán MoMo cho rental' })
   createMomo(@Body() body: { rentalId: number; amount: number }) {
-    if (!body || typeof body.rentalId !== 'number' || typeof body.amount !== 'number') {
+    if (
+      !body ||
+      typeof body.rentalId !== 'number' ||
+      typeof body.amount !== 'number'
+    ) {
       throw new BadRequestException('rentalId và amount bắt buộc');
     }
     return this.paymentService.createMomoPayment({
@@ -50,7 +63,9 @@ export class PaymentController {
   @RequireAuth()
   @Post('qr/confirm')
   @ApiOperation({ summary: 'Xác nhận thanh toán QR (thủ công/webhook)' })
-  confirmQr(@Body() body: { paymentId?: number; rentalId: number; amount?: number }) {
+  confirmQr(
+    @Body() body: { paymentId?: number; rentalId: number; amount?: number },
+  ) {
     if (!body || typeof body.rentalId !== 'number') {
       throw new BadRequestException('rentalId bắt buộc');
     }
@@ -69,7 +84,9 @@ export class PaymentController {
     @CurrentUser() user: RequestUser,
   ) {
     if (user.role !== UserRole.Admin && user.userId !== ownerId) {
-      throw new ForbiddenException('Chỉ admin hoặc chính chủ xe được xem payout');
+      throw new ForbiddenException(
+        'Chỉ admin hoặc chính chủ xe được xem payout',
+      );
     }
     return this.paymentService.listPayoutsByOwner(ownerId);
   }
@@ -88,6 +105,10 @@ export class PaymentController {
     if (user.role !== UserRole.Admin) {
       throw new ForbiddenException('Chỉ admin mới cập nhật trạng thái payout');
     }
-    return this.paymentService.updatePayoutStatus({ payoutId: id, status: body.status, note: body.note });
+    return this.paymentService.updatePayoutStatus({
+      payoutId: id,
+      status: body.status,
+      note: body.note,
+    });
   }
 }

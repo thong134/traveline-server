@@ -7,9 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThan, Not, In, Repository, LessThan } from 'typeorm';
-import {
-  RentalVehicle,
-} from './entities/rental-vehicle.entity';
+import { RentalVehicle } from './entities/rental-vehicle.entity';
 import {
   RentalVehicleApprovalStatus,
   RentalVehicleAvailabilityStatus,
@@ -26,7 +24,10 @@ import {
 } from '../rental-contract/entities/rental-contract.entity';
 import { VehicleCatalog } from '../vehicle-catalog/entities/vehicle-catalog.entity';
 import { User } from '../user/entities/user.entity';
-import { RentalBill, RentalBillStatus } from '../rental-bill/entities/rental-bill.entity';
+import {
+  RentalBill,
+  RentalBillStatus,
+} from '../rental-bill/entities/rental-bill.entity';
 import { RentalBillDetail } from '../rental-bill/entities/rental-bill-detail.entity';
 import { assignDefined } from '../../common/utils/object.util';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
@@ -34,7 +35,6 @@ import type { Express } from 'express';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
 import { MapService } from '../../common/map/map.service';
 import { calculateShippingFee } from '../../common/utils/shipping-fee.util';
-
 
 type VehicleImageFiles = {
   vehicleRegistrationFront?: Express.Multer.File;
@@ -102,7 +102,9 @@ export class RentalVehiclesService {
     }
 
     if (vehicle.contract?.user?.id !== userId) {
-      throw new ForbiddenException('Bạn không có quyền truy cập vào phương tiện này');
+      throw new ForbiddenException(
+        'Bạn không có quyền truy cập vào phương tiện này',
+      );
     }
 
     return vehicle;
@@ -158,14 +160,14 @@ export class RentalVehiclesService {
     }
 
     if (!contract.user) {
-      throw new NotFoundException(
-        'Hợp đồng chưa có chủ sở hữu',
-      );
+      throw new NotFoundException('Hợp đồng chưa có chủ sở hữu');
     }
 
     // Verify the user owns this contract
     if (contract.user.id !== userId) {
-      throw new ForbiddenException('Bạn không có quyền truy cập vào hợp đồng này');
+      throw new ForbiddenException(
+        'Bạn không có quyền truy cập vào hợp đồng này',
+      );
     }
 
     if (contract.status !== RentalContractStatus.APPROVED) {
@@ -188,18 +190,14 @@ export class RentalVehiclesService {
       where: { id: contract.user?.id },
     });
     if (!owner) {
-      throw new NotFoundException(
-        'Không tìm thấy chủ sở hữu hợp đồng',
-      );
+      throw new NotFoundException('Không tìm thấy chủ sở hữu hợp đồng');
     }
 
     const vehicleCatalog = await this.vehicleCatalogRepo.findOne({
       where: { id: dto.vehicleCatalogId },
     });
     if (!vehicleCatalog) {
-      throw new NotFoundException(
-        'Không tìm thấy dòng xe này trong danh mục',
-      );
+      throw new NotFoundException('Không tìm thấy dòng xe này trong danh mục');
     }
 
     const ownerId = owner.id;
@@ -223,7 +221,11 @@ export class RentalVehiclesService {
     const catType = (vehicleCatalog.type || '').toLowerCase();
     if (catType.includes('ô tô') || catType.includes('car')) {
       vehicleType = RentalVehicleType.CAR;
-    } else if (catType.includes('xe máy') || catType.includes('bike') || catType.includes('mô tô')) {
+    } else if (
+      catType.includes('xe máy') ||
+      catType.includes('bike') ||
+      catType.includes('mô tô')
+    ) {
       vehicleType = RentalVehicleType.BIKE;
     }
 
@@ -314,7 +316,8 @@ export class RentalVehiclesService {
   }
 
   async search(params: SearchRentalVehicleDto): Promise<RentalVehicle[]> {
-    const { rentalType, minPrice, maxPrice, startDate, endDate, vehicleType } = params;
+    const { rentalType, minPrice, maxPrice, startDate, endDate, vehicleType } =
+      params;
 
     const qb = this.repo.createQueryBuilder('vehicle');
 
@@ -386,10 +389,13 @@ export class RentalVehiclesService {
         .select('detail.licensePlate')
         .innerJoin('detail.bill', 'bill')
         .where('bill.status NOT IN (:...excludedStatuses)', {
-          excludedStatuses: [RentalBillStatus.CANCELLED, RentalBillStatus.COMPLETED],
+          excludedStatuses: [
+            RentalBillStatus.CANCELLED,
+            RentalBillStatus.COMPLETED,
+          ],
         })
         .andWhere(
-          // Check for date overlap: 
+          // Check for date overlap:
           // Booked period overlaps if: bookedStart < requestedEnd AND bookedEnd > requestedStart
           '(bill.startDate < :requestedEnd AND bill.endDate > :requestedStart)',
           {
@@ -401,21 +407,30 @@ export class RentalVehiclesService {
       qb.andWhere(
         `vehicle.licensePlate NOT IN (${bookedVehiclesSubQuery.getQuery()})`,
       );
-      qb.setParameters({ ...qb.getParameters(), ...bookedVehiclesSubQuery.getParameters() });
+      qb.setParameters({
+        ...qb.getParameters(),
+        ...bookedVehiclesSubQuery.getParameters(),
+      });
 
       // Also exclude vehicles that are in maintenance during the requested period
       const maintenanceSubQuery = this.maintenanceRepo
         .createQueryBuilder('m')
         .select('m.licensePlate')
-        .where('(m.startDate < :requestedEnd AND m.endDate > :requestedStart)', {
-          requestedStart,
-          requestedEnd,
-        });
+        .where(
+          '(m.startDate < :requestedEnd AND m.endDate > :requestedStart)',
+          {
+            requestedStart,
+            requestedEnd,
+          },
+        );
 
       qb.andWhere(
         `vehicle.licensePlate NOT IN (${maintenanceSubQuery.getQuery()})`,
       );
-      qb.setParameters({ ...qb.getParameters(), ...maintenanceSubQuery.getParameters() });
+      qb.setParameters({
+        ...qb.getParameters(),
+        ...maintenanceSubQuery.getParameters(),
+      });
     }
 
     const vehicles = await qb
@@ -452,12 +467,15 @@ export class RentalVehiclesService {
 
         if (roadDistance <= 20) {
           (vehicle as any).distance = roadDistance;
-          
+
           // Calculate shipping fee exactly as in RentalBillsService
-          const { fee, isNegotiable } = calculateShippingFee(roadDistance, vehicle.vehicleType);
+          const { fee, isNegotiable } = calculateShippingFee(
+            roadDistance,
+            vehicle.vehicleType,
+          );
           (vehicle as any).shippingFee = fee;
           (vehicle as any).isShippingFeeNegotiable = isNegotiable;
-          
+
           filteredVehicles.push(vehicle);
         }
       }
@@ -552,7 +570,9 @@ export class RentalVehiclesService {
 
   async reject(licensePlate: string, reason: string): Promise<RentalVehicle> {
     if (!reason) {
-      throw new BadRequestException('Phương tiện bị từ chối cần có lý do cụ thể');
+      throw new BadRequestException(
+        'Phương tiện bị từ chối cần có lý do cụ thể',
+      );
     }
 
     const vehicle = await this.findOne(licensePlate);
@@ -600,8 +620,14 @@ export class RentalVehiclesService {
     return this.repo.save(vehicle);
   }
 
-  async addMaintenance(userId: number, dto: AddMaintenanceDto): Promise<RentalVehicleMaintenance> {
-    const vehicle = await this.getVehicleWithOwnerCheck(userId, dto.licensePlate);
+  async addMaintenance(
+    userId: number,
+    dto: AddMaintenanceDto,
+  ): Promise<RentalVehicleMaintenance> {
+    const vehicle = await this.getVehicleWithOwnerCheck(
+      userId,
+      dto.licensePlate,
+    );
 
     // Check for overlapping maintenance
     const overlap = await this.maintenanceRepo.findOne({
@@ -615,15 +641,23 @@ export class RentalVehiclesService {
     });
 
     if (overlap) {
-      throw new BadRequestException('Phương tiện đã có lịch bảo trì trùng với thời gian này');
+      throw new BadRequestException(
+        'Phương tiện đã có lịch bảo trì trùng với thời gian này',
+      );
     }
 
     // Check for overlapping bookings
-    const bookings = await this.billDetailRepo.createQueryBuilder('detail')
+    const bookings = await this.billDetailRepo
+      .createQueryBuilder('detail')
       .innerJoin('detail.bill', 'bill')
-      .where('detail.licensePlate = :licensePlate', { licensePlate: dto.licensePlate })
+      .where('detail.licensePlate = :licensePlate', {
+        licensePlate: dto.licensePlate,
+      })
       .andWhere('bill.status NOT IN (:...excludedStatuses)', {
-        excludedStatuses: [RentalBillStatus.CANCELLED, RentalBillStatus.COMPLETED],
+        excludedStatuses: [
+          RentalBillStatus.CANCELLED,
+          RentalBillStatus.COMPLETED,
+        ],
       })
       .andWhere('(bill.startDate < :endDate AND bill.endDate > :startDate)', {
         startDate: dto.startDate,
@@ -632,7 +666,9 @@ export class RentalVehiclesService {
       .getOne();
 
     if (bookings) {
-      throw new BadRequestException('Phương tiện đã có lịch khách đặt trong thời gian này');
+      throw new BadRequestException(
+        'Phương tiện đã có lịch khách đặt trong thời gian này',
+      );
     }
 
     const maintenance = this.maintenanceRepo.create({
@@ -651,18 +687,18 @@ export class RentalVehiclesService {
     });
 
     const now = new Date();
-    
+
     // Check if any bills have end date in the future and are not cancelled/completed
     for (const detail of billDetails) {
       if (!detail.bill) continue;
-      
+
       const isActiveStatus = ![
         RentalBillStatus.CANCELLED,
         RentalBillStatus.COMPLETED,
       ].includes(detail.bill.status);
-      
+
       const isFuture = detail.bill.endDate > now;
-      
+
       if (isActiveStatus && isFuture) {
         return true;
       }
@@ -739,7 +775,9 @@ export class RentalVehiclesService {
 
     const current = user.favoriteRentalVehicleIds ?? [];
     if (current.includes(licensePlate)) {
-      user.favoriteRentalVehicleIds = current.filter((lp) => lp !== licensePlate);
+      user.favoriteRentalVehicleIds = current.filter(
+        (lp) => lp !== licensePlate,
+      );
       await this.userRepo.save(user);
     }
   }

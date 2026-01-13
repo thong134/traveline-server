@@ -25,7 +25,10 @@ import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { UseInterceptors, UploadedFile, UploadedFiles } from '@nestjs/common';
-import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
+import {
+  FileInterceptor,
+  FileFieldsInterceptor,
+} from '@nestjs/platform-express';
 import { imageMulterOptions } from '../../common/upload/image-upload.config';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
@@ -70,7 +73,6 @@ export class UsersController {
   ) {
     return this.usersService.updateInitialProfile(user.userId, dto);
   }
-
 
   @Patch('profile/hobbies')
   @ApiOperation({ summary: 'Cập nhật sở thích/categories du lịch' })

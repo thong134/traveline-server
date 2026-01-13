@@ -37,10 +37,21 @@ export class BusTypesController {
   @Get()
   @ApiOperation({ summary: 'Danh sách loại xe buýt' })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
+  @ApiQuery({ name: 'provinceId', required: false })
+  @ApiQuery({ name: 'districtId', required: false })
+  @ApiQuery({ name: 'q', required: false, description: 'Tìm theo tuyến đường' })
   @ApiOkResponse({ description: 'Bus type list' })
-  findAll(@Query('cooperationId') cooperationId?: string) {
+  findAll(
+    @Query('cooperationId') cooperationId?: string,
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
+    @Query('q') q?: string,
+  ) {
     return this.service.findAll({
       cooperationId: cooperationId ? Number(cooperationId) : undefined,
+      provinceId,
+      districtId,
+      q,
     });
   }
 

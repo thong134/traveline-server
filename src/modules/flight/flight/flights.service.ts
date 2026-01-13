@@ -83,9 +83,14 @@ export class FlightsService {
       airline?: string;
       departureAirport?: string;
       arrivalAirport?: string;
+      provinceId?: string;
+      districtId?: string;
     } = {},
   ): Promise<Flight[]> {
-    const qb = this.flightRepo.createQueryBuilder('flight');
+    const qb = this.flightRepo
+      .createQueryBuilder('flight')
+      .leftJoinAndSelect('flight.cooperation', 'cooperation');
+
     if (params.cooperationId) {
       qb.andWhere('flight.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
@@ -94,6 +99,16 @@ export class FlightsService {
     if (params.airline) {
       qb.andWhere('flight.airline ILIKE :airline', {
         airline: `%${params.airline}%`,
+      });
+    }
+    if (params.provinceId) {
+      qb.andWhere('cooperation.provinceId = :provinceId', {
+        provinceId: params.provinceId,
+      });
+    }
+    if (params.districtId) {
+      qb.andWhere('cooperation.districtId = :districtId', {
+        districtId: params.districtId,
       });
     }
     if (params.departureAirport) {

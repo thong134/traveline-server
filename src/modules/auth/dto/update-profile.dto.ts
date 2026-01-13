@@ -9,7 +9,10 @@ export class UpdateProfileDto {
   @IsString()
   fullName?: string;
 
-  @ApiPropertyOptional({ description: 'Ngày sinh (dd/MM/yyyy)', example: '13/04/2004' })
+  @ApiPropertyOptional({
+    description: 'Ngày sinh (dd/MM/yyyy)',
+    example: '13/04/2004',
+  })
   @IsOptional()
   @TransformDDMMYYYY()
   @IsDate()

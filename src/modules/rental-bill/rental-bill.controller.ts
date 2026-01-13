@@ -24,8 +24,15 @@ import { CreateRentalBillDto } from './dto/create-rental-bill.dto';
 import { UpdateRentalBillDto } from './dto/update-rental-bill.dto';
 import { ManageRentalBillVehicleDto } from './dto/manage-rental-bill-vehicle.dto';
 import { RentalOwnerCancelDto } from './dto/owner-cancel-bill.dto';
-import { PaymentResponseDto, QRCodeResponseDto } from './dto/payment-response.dto';
-import { RentalBill, RentalBillStatus, RentalProgressStatus } from './entities/rental-bill.entity';
+import {
+  PaymentResponseDto,
+  QRCodeResponseDto,
+} from './dto/payment-response.dto';
+import {
+  RentalBill,
+  RentalBillStatus,
+  RentalProgressStatus,
+} from './entities/rental-bill.entity';
 import {
   DeliveryActionDto,
   PickupActionDto,
@@ -36,7 +43,10 @@ import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { RequireVerification } from '../auth/decorators/require-verification.decorator';
-import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import type { Express } from 'express';
 import { imageMulterOptions } from '../../common/upload/image-upload.config';
 import { Public } from '../auth/decorators/public.decorator';
@@ -52,10 +62,7 @@ export class RentalBillsController {
   @RequireVerification()
   @Post()
   @ApiOperation({ summary: 'Tạo hóa đơn thuê xe mới (trạng thái pending)' })
-  create(
-    @CurrentUser() user: RequestUser,
-    @Body() dto: CreateRentalBillDto,
-  ) {
+  create(@CurrentUser() user: RequestUser, @Body() dto: CreateRentalBillDto) {
     return this.service.create(user.userId, dto);
   }
 
@@ -92,7 +99,9 @@ export class RentalBillsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Cập nhật thông tin liên hệ và ghi chú cho hóa đơn' })
+  @ApiOperation({
+    summary: 'Cập nhật thông tin liên hệ và ghi chú cho hóa đơn',
+  })
   update(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: RequestUser,
@@ -105,10 +114,7 @@ export class RentalBillsController {
   @Patch(':id/pay')
   @ApiOperation({ summary: 'Thực hiện thanh toán' })
   @ApiOkResponse({ type: PaymentResponseDto })
-  pay(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-  ) {
+  pay(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
     return this.service.pay(id, user.userId);
   }
 
@@ -131,7 +137,6 @@ export class RentalBillsController {
     return this.service.cancel(id, user.userId, dto.reason);
   }
 
-
   @Patch(':id/owner-cancel')
   @ApiOperation({ summary: 'Chủ xe: Hủy hóa đơn đã thanh toán (Hoàn tiền)' })
   ownerCancel(
@@ -143,7 +148,9 @@ export class RentalBillsController {
   }
 
   @Post(':id/guest-link')
-  @ApiOperation({ summary: 'Generate shareable guest link for vehicle handover' })
+  @ApiOperation({
+    summary: 'Generate shareable guest link for vehicle handover',
+  })
   async generateGuestLink(@Param('id') id: string, @Req() req: any) {
     return this.service.generateGuestLink(+id, req.user.userId);
   }
@@ -160,7 +167,10 @@ export class RentalBillsController {
   @ApiOperation({ summary: 'Guest upload bằng chứng giao/nhận xe' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'photos', maxCount: 10 }], imageMulterOptions),
+    FileFieldsInterceptor(
+      [{ name: 'photos', maxCount: 10 }],
+      imageMulterOptions,
+    ),
   )
   submitGuestEvidence(
     @Param('token') token: string,
@@ -208,7 +218,10 @@ export class RentalBillsController {
   @ApiOperation({ summary: 'Chủ xe: Xác nhận đã giao xe đến nơi' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'photos', maxCount: 10 }], imageMulterOptions),
+    FileFieldsInterceptor(
+      [{ name: 'photos', maxCount: 10 }],
+      imageMulterOptions,
+    ),
   )
   ownerDelivered(
     @Param('id', ParseIntPipe) id: number,
@@ -238,7 +251,10 @@ export class RentalBillsController {
   @ApiOperation({ summary: 'Người dùng: Yêu cầu trả xe (Gửi GPS + Ảnh)' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'photos', maxCount: 10 }], imageMulterOptions),
+    FileFieldsInterceptor(
+      [{ name: 'photos', maxCount: 10 }],
+      imageMulterOptions,
+    ),
   )
   userReturnRequest(
     @Param('id', ParseIntPipe) id: number,
@@ -253,7 +269,10 @@ export class RentalBillsController {
   @ApiOperation({ summary: 'Chủ xe: Xác nhận đã nhận xe (Validate GPS < 50m)' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'photos', maxCount: 10 }], imageMulterOptions),
+    FileFieldsInterceptor(
+      [{ name: 'photos', maxCount: 10 }],
+      imageMulterOptions,
+    ),
   )
   ownerConfirmReturn(
     @Param('id', ParseIntPipe) id: number,

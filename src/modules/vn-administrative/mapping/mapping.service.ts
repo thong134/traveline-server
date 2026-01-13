@@ -134,7 +134,10 @@ export class AdministrativeMappingService {
       await this.resolveMappingForLegacyWard(legacyWard);
 
     // FIX: Extract segments from specificAddress to avoid duplication
-    const segments = await this.extractAddressSegments(specificAddress, provinceName);
+    const segments = await this.extractAddressSegments(
+      specificAddress,
+      provinceName,
+    );
     const baseSpecificAddress = this.buildBaseSpecificAddress(
       specificAddress,
       segments,
@@ -154,41 +157,52 @@ export class AdministrativeMappingService {
     return { oldAddress, newAddress };
   }
 
-  async convertOldToNewAddress(dto: ConvertAddressDto): Promise<{ newAddress: string }> {
+  async convertOldToNewAddress(
+    dto: ConvertAddressDto,
+  ): Promise<{ newAddress: string }> {
     const { address } = dto;
-    const parts = address.split(',').map((p) => p.trim()).filter(Boolean);
+    const parts = address
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean);
     if (parts.length < 3) {
-      throw new BadRequestException('Address too short to parse (expected at least Ward, District, Province)');
+      throw new BadRequestException(
+        'Address too short to parse (expected at least Ward, District, Province)',
+      );
     }
 
     const provinceName = parts[parts.length - 1];
-    const districtName = parts[parts.length - 2]; 
+    const districtName = parts[parts.length - 2];
     const wardName = parts[parts.length - 3];
     const specificAddress = parts.slice(0, -3).join(', ');
 
-    // Best effort: find legacy ward by name and context. 
+    // Best effort: find legacy ward by name and context.
     // Since district is avail, we can try to find ward matching district context
     const wards = await this.ensureLegacyWardCache();
-    
+
     // Normalize names
     const nProvince = this.normalizeText(provinceName);
     const nDistrict = this.normalizeText(districtName);
     const nWard = this.normalizeText(wardName);
 
-    const match = wards.find(w => 
-      (this.normalizeText(w.district?.province?.name) === nProvince || this.normalizeText(w.district?.province?.fullName) === nProvince) &&
-      (this.normalizeText(w.district?.name) === nDistrict || this.normalizeText(w.district?.fullName) === nDistrict) &&
-      (this.normalizeText(w.name) === nWard || this.normalizeText(w.fullName) === nWard)
+    const match = wards.find(
+      (w) =>
+        (this.normalizeText(w.district?.province?.name) === nProvince ||
+          this.normalizeText(w.district?.province?.fullName) === nProvince) &&
+        (this.normalizeText(w.district?.name) === nDistrict ||
+          this.normalizeText(w.district?.fullName) === nDistrict) &&
+        (this.normalizeText(w.name) === nWard ||
+          this.normalizeText(w.fullName) === nWard),
     );
 
     if (!match) {
-       // Try without district strict match if district naming is tricky
-       // But user request implies reliable conversion.
-       throw new NotFoundException(`Could not parse legacy address: ${address}`);
+      // Try without district strict match if district naming is tricky
+      // But user request implies reliable conversion.
+      throw new NotFoundException(`Could not parse legacy address: ${address}`);
     }
 
     const { commune, province } = await this.resolveMappingForLegacyWard(match);
-    
+
     // Construct new address
     const newAddress = [specificAddress, commune.fullName, province.fullName]
       .filter(Boolean)
@@ -197,13 +211,20 @@ export class AdministrativeMappingService {
     return { newAddress };
   }
 
-  async convertNewToOldAddress(dto: ConvertAddressDto): Promise<{ oldAddresses: string[] }> {
+  async convertNewToOldAddress(
+    dto: ConvertAddressDto,
+  ): Promise<{ oldAddresses: string[] }> {
     const { address } = dto;
-    const parts = address.split(',').map((p) => p.trim()).filter(Boolean);
+    const parts = address
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean);
     if (parts.length < 2) {
-       throw new BadRequestException('Address too short (expected at least Commune, Province)');
+      throw new BadRequestException(
+        'Address too short (expected at least Commune, Province)',
+      );
     }
-    
+
     const provinceName = parts[parts.length - 1];
     const communeName = parts[parts.length - 2]; // new "Commune" level
     const specificAddress = parts.slice(0, -2).join(', ');
@@ -213,29 +234,33 @@ export class AdministrativeMappingService {
 
     // Find Reform Commune
     const commune = await this.reformCommuneRepo.findOne({
-      where: [
-        { name: ILike(communeName) },
-        { fullName: ILike(communeName) }
-      ],
-      relations: { province: true }
+      where: [{ name: ILike(communeName) }, { fullName: ILike(communeName) }],
+      relations: { province: true },
     });
-    
+
     let validCommune: ReformCommune | null | undefined = commune;
     if (commune && nProvince) {
-       const pName = this.normalizeText(commune.province?.name);
-       const pFullName = this.normalizeText(commune.province?.fullName);
-       if (pName !== nProvince && pFullName !== nProvince) {
-          validCommune = undefined;
-       }
+      const pName = this.normalizeText(commune.province?.name);
+      const pFullName = this.normalizeText(commune.province?.fullName);
+      if (pName !== nProvince && pFullName !== nProvince) {
+        validCommune = undefined;
+      }
     }
 
     if (!validCommune) {
-        const qb = this.reformCommuneRepo.createQueryBuilder('commune')
-          .leftJoinAndSelect('commune.province', 'province')
-          .where('(LOWER(commune.name) = :cName OR LOWER(commune.fullName) = :cName)', { cName: nCommune })
-          .andWhere('(LOWER(province.name) = :pName OR LOWER(province.fullName) = :pName)', { pName: nProvince });
-        
-        validCommune = await qb.getOne();
+      const qb = this.reformCommuneRepo
+        .createQueryBuilder('commune')
+        .leftJoinAndSelect('commune.province', 'province')
+        .where(
+          '(LOWER(commune.name) = :cName OR LOWER(commune.fullName) = :cName)',
+          { cName: nCommune },
+        )
+        .andWhere(
+          '(LOWER(province.name) = :pName OR LOWER(province.fullName) = :pName)',
+          { pName: nProvince },
+        );
+
+      validCommune = await qb.getOne();
     }
 
     if (!validCommune) {
@@ -247,20 +272,22 @@ export class AdministrativeMappingService {
 
     for (const m of mappings) {
       if (m.oldWardCode) {
-         const legacyWard = await this.legacyWardRepo.findOne({
-            where: { code: m.oldWardCode },
-            relations: { district: { province: true } }
-         });
+        const legacyWard = await this.legacyWardRepo.findOne({
+          where: { code: m.oldWardCode },
+          relations: { district: { province: true } },
+        });
 
-         if (legacyWard) {
-            const oldAddr = [
-              specificAddress, 
-              legacyWard.fullName, 
-              legacyWard.district?.fullName, 
-              legacyWard.district?.province?.fullName
-            ].filter(Boolean).join(', ');
-            oldAddresses.push(oldAddr);
-         }
+        if (legacyWard) {
+          const oldAddr = [
+            specificAddress,
+            legacyWard.fullName,
+            legacyWard.district?.fullName,
+            legacyWard.district?.province?.fullName,
+          ]
+            .filter(Boolean)
+            .join(', ');
+          oldAddresses.push(oldAddr);
+        }
       }
     }
 
@@ -274,30 +301,39 @@ export class AdministrativeMappingService {
     const nWard = this.normalizeText(ward);
 
     const wards = await this.ensureLegacyWardCache();
-    const match = wards.find(w => {
-       const pMatch = this.normalizeText(w.district?.province?.name) === nProvince || this.normalizeText(w.district?.province?.fullName) === nProvince;
-       if (!pMatch) return false;
+    const match = wards.find((w) => {
+      const pMatch =
+        this.normalizeText(w.district?.province?.name) === nProvince ||
+        this.normalizeText(w.district?.province?.fullName) === nProvince;
+      if (!pMatch) return false;
 
-       if (nDistrict) {
-         const dMatch = this.normalizeText(w.district?.name) === nDistrict || this.normalizeText(w.district?.fullName) === nDistrict;
-         if (!dMatch) return false;
-       }
+      if (nDistrict) {
+        const dMatch =
+          this.normalizeText(w.district?.name) === nDistrict ||
+          this.normalizeText(w.district?.fullName) === nDistrict;
+        if (!dMatch) return false;
+      }
 
-       if (nWard) {
-         const wMatch = this.normalizeText(w.name) === nWard || this.normalizeText(w.fullName) === nWard;
-         if (!wMatch) return false;
-       }
-       return true;
+      if (nWard) {
+        const wMatch =
+          this.normalizeText(w.name) === nWard ||
+          this.normalizeText(w.fullName) === nWard;
+        if (!wMatch) return false;
+      }
+      return true;
     });
 
     if (!match) {
-      throw new NotFoundException('Legacy unit not found with provided details');
+      throw new NotFoundException(
+        'Legacy unit not found with provided details',
+      );
     }
 
-    const { commune, province: newProvince } = await this.resolveMappingForLegacyWard(match);
+    const { commune, province: newProvince } =
+      await this.resolveMappingForLegacyWard(match);
     return {
       province: newProvince,
-      commune: commune
+      commune: commune,
     };
   }
 
@@ -306,11 +342,18 @@ export class AdministrativeMappingService {
     const nProvince = this.normalizeText(province);
     const nCommune = this.normalizeText(commune);
 
-    const qb = this.reformCommuneRepo.createQueryBuilder('commune')
+    const qb = this.reformCommuneRepo
+      .createQueryBuilder('commune')
       .leftJoinAndSelect('commune.province', 'province')
-      .where('(LOWER(commune.name) = :cName OR LOWER(commune.fullName) = :cName)', { cName: nCommune })
-      .andWhere('(LOWER(province.name) = :pName OR LOWER(province.fullName) = :pName)', { pName: nProvince });
-        
+      .where(
+        '(LOWER(commune.name) = :cName OR LOWER(commune.fullName) = :cName)',
+        { cName: nCommune },
+      )
+      .andWhere(
+        '(LOWER(province.name) = :pName OR LOWER(province.fullName) = :pName)',
+        { pName: nProvince },
+      );
+
     const validCommune = await qb.getOne();
 
     if (!validCommune) {
@@ -318,13 +361,13 @@ export class AdministrativeMappingService {
     }
 
     const mappings = await this.findByNewCommune(validCommune.code);
-    // Resolving potentially multiple legacy sources. 
+    // Resolving potentially multiple legacy sources.
     // Returning list or first? The prompt implies singular return "address of old unit".
     // Or "chi tiết province, district, ward của địa chỉ cũ tương ứng".
     // If plural, I'd return array. But let's return array of old units since user asked for "những" (implicitly?) or just "địa chỉ cũ".
     // "kết quả trả về là các chi tiết province, district (nếu có), ward (nếu có) của địa chỉ cũ tương ứng"
     // "Các chi tiết" could mean "the details" (singular block) or "details" (plural).
-    // Given 1-to-many merge (many old -> 1 new), converting NEW -> OLD is ambiguous. 
+    // Given 1-to-many merge (many old -> 1 new), converting NEW -> OLD is ambiguous.
     // "Một api chuyển địa chỉ mới ngược lại địa chỉ cũ ... trả về các chi tiết ..."
     // Effectively, it expands to 1 or more old units. I will return list of old units.
 
@@ -333,16 +376,17 @@ export class AdministrativeMappingService {
       if (m.oldWardCode) {
         const w = await this.legacyWardRepo.findOne({
           where: { code: m.oldWardCode },
-          relations: { district: { province: true } }
+          relations: { district: { province: true } },
         });
-        if (w) results.push({
-           province: w.district?.province,
-           district: w.district,
-           ward: w
-        });
+        if (w)
+          results.push({
+            province: w.district?.province,
+            district: w.district,
+            ward: w,
+          });
       }
     }
-    
+
     return results;
   }
 
@@ -480,8 +524,11 @@ export class AdministrativeMappingService {
       );
     }
 
-    const segments = await this.extractAddressSegments(specificAddressRaw, provinceRaw);
-    let wardCandidate = segments.wardCandidate?.trim();
+    const segments = await this.extractAddressSegments(
+      specificAddressRaw,
+      provinceRaw,
+    );
+    const wardCandidate = segments.wardCandidate?.trim();
 
     let legacyWard = wardCandidate
       ? await this.findLegacyWardByName(wardCandidate, provinceRaw)
@@ -489,10 +536,13 @@ export class AdministrativeMappingService {
 
     // Fallback: If no ward found by segments, search whole string for a ward name
     if (!legacyWard) {
-      legacyWard = await this.searchWardInString(specificAddressRaw, provinceRaw);
+      legacyWard = await this.searchWardInString(
+        specificAddressRaw,
+        provinceRaw,
+      );
       if (legacyWard) {
-         // If found via fallback, we need to rebuild base parts
-         // This is tricky, but let's just keep the original as base for now
+        // If found via fallback, we need to rebuild base parts
+        // This is tricky, but let's just keep the original as base for now
       }
     }
 
@@ -563,7 +613,7 @@ export class AdministrativeMappingService {
         districtCode: legacyDistrictCode,
         districtName: legacyDistrictName,
         wardCode: legacyWard.code ?? undefined,
-        wardName: (legacyWard.fullName ?? legacyWard.name) ?? undefined,
+        wardName: legacyWard.fullName ?? legacyWard.name ?? undefined,
       },
       reform: {
         provinceCode: province.code,
@@ -717,9 +767,15 @@ export class AdministrativeMappingService {
     const lastSegment = segments[segments.length - 1];
 
     // Priority 1: Last segment is a District
-    if (this.looksLikeDistrictName(lastSegment) || await this.isKnownDistrict(lastSegment, provinceName)) {
-      const wardCandidate = segments.length >= 2 ? segments[segments.length - 2] : undefined;
-      const baseParts = wardCandidate ? segments.slice(0, -2) : segments.slice(0, -1);
+    if (
+      this.looksLikeDistrictName(lastSegment) ||
+      (await this.isKnownDistrict(lastSegment, provinceName))
+    ) {
+      const wardCandidate =
+        segments.length >= 2 ? segments[segments.length - 2] : undefined;
+      const baseParts = wardCandidate
+        ? segments.slice(0, -2)
+        : segments.slice(0, -1);
       return {
         baseParts,
         wardCandidate,
@@ -831,43 +887,54 @@ export class AdministrativeMappingService {
     return /\b(phuong|xa|commune|ward|thi tran)\b/.test(normalized);
   }
 
-  private async isKnownDistrict(name: string, provinceName: string): Promise<boolean> {
+  private async isKnownDistrict(
+    name: string,
+    provinceName: string,
+  ): Promise<boolean> {
     const normalizedName = this.normalizeText(name);
     const normalizedProvince = this.normalizeText(provinceName);
     const wards = await this.ensureLegacyWardCache();
-    
-    return wards.some(w => 
-      this.normalizeText(w.district?.province?.name) === normalizedProvince &&
-      (this.normalizeText(w.district?.name) === normalizedName || 
-       this.normalizeText(w.district?.fullName) === normalizedName)
+
+    return wards.some(
+      (w) =>
+        this.normalizeText(w.district?.province?.name) === normalizedProvince &&
+        (this.normalizeText(w.district?.name) === normalizedName ||
+          this.normalizeText(w.district?.fullName) === normalizedName),
     );
   }
 
-  private async searchWardInString(text: string, provinceName: string): Promise<LegacyWardWithContext | undefined> {
+  private async searchWardInString(
+    text: string,
+    provinceName: string,
+  ): Promise<LegacyWardWithContext | undefined> {
     const normalizedText = this.normalizeText(text);
     const normalizedProvince = this.normalizeText(provinceName);
     const wards = await this.ensureLegacyWardCache();
 
     // Filter wards by province first
-    const provinceWards = wards.filter(w => 
-      this.normalizeText(w.district?.province?.name) === normalizedProvince ||
-      this.normalizeText(w.district?.province?.fullName) === normalizedProvince
+    const provinceWards = wards.filter(
+      (w) =>
+        this.normalizeText(w.district?.province?.name) === normalizedProvince ||
+        this.normalizeText(w.district?.province?.fullName) ===
+          normalizedProvince,
     );
 
     // Sort by name length descending to match longest name first (e.g. "Hòa Hiệp Bắc" before "Hòa Hiệp")
-    provinceWards.sort((a, b) => (b.fullName || b.name).length - (a.fullName || a.name).length);
+    provinceWards.sort(
+      (a, b) => (b.fullName || b.name).length - (a.fullName || a.name).length,
+    );
 
     for (const ward of provinceWards) {
       const names = [
         this.normalizeText(ward.fullName),
-        this.normalizeText(ward.name)
-      ].filter(n => n.length > 2); // Avoid matching too short names
+        this.normalizeText(ward.name),
+      ].filter((n) => n.length > 2); // Avoid matching too short names
 
-      if (names.some(n => normalizedText.includes(n))) {
+      if (names.some((n) => normalizedText.includes(n))) {
         return ward;
       }
     }
-    
+
     return undefined;
   }
 

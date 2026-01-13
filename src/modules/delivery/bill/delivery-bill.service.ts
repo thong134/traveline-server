@@ -24,7 +24,6 @@ import { BlockchainService } from '../../blockchain/blockchain.service';
 import { assignDefined } from '../../../common/utils/object.util';
 import { parse, isValid } from 'date-fns';
 
-
 const VND_TO_ETH_RATE = 80_000_000;
 
 @Injectable()
@@ -55,13 +54,15 @@ export class DeliveryBillsService {
     if (isValid(date)) return date;
     date = new Date(dateStr);
     if (isValid(date)) return date;
-    throw new BadRequestException(`Invalid date format: ${dateStr}. Expected ISO 8601 or dd:MM:yyyy HH:mm`);
+    throw new BadRequestException(
+      `Invalid date format: ${dateStr}. Expected ISO 8601 or dd:MM:yyyy HH:mm`,
+    );
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
   async checkTimeouts() {
     const now = new Date();
-    
+
     // 30 min timeout for PENDING
     const pendingThreshold = new Date(now.getTime() - 30 * 60 * 1000);
     const pendingBills = await this.billRepo.find({
@@ -74,7 +75,9 @@ export class DeliveryBillsService {
     for (const bill of pendingBills) {
       bill.status = DeliveryBillStatus.CANCELLED;
       await this.billRepo.save(bill);
-      this.logger.log(`Delivery Bill ${bill.id} (PENDING) cancelled due to 30min timeout`);
+      this.logger.log(
+        `Delivery Bill ${bill.id} (PENDING) cancelled due to 30min timeout`,
+      );
     }
 
     // 10 min timeout for CONFIRMED
@@ -89,18 +92,26 @@ export class DeliveryBillsService {
     for (const bill of confirmedBills) {
       bill.status = DeliveryBillStatus.CANCELLED;
       await this.billRepo.save(bill);
-      this.logger.log(`Delivery Bill ${bill.id} (CONFIRMED) cancelled due to 10min timeout`);
+      this.logger.log(
+        `Delivery Bill ${bill.id} (CONFIRMED) cancelled due to 10min timeout`,
+      );
     }
   }
 
-  private calculateSubtotal(distanceKm: number, vehicle: DeliveryVehicle): number {
+  private calculateSubtotal(
+    distanceKm: number,
+    vehicle: DeliveryVehicle,
+  ): number {
     const base = Number(vehicle.priceLessThan10Km ?? 0);
     const extra = Number(vehicle.priceMoreThan10Km ?? 0);
     if (distanceKm <= 10) return base;
     return base + (distanceKm - 10) * extra;
   }
 
-  async create(userId: number, dto: CreateDeliveryBillDto): Promise<DeliveryBill> {
+  async create(
+    userId: number,
+    dto: CreateDeliveryBillDto,
+  ): Promise<DeliveryBill> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
@@ -151,10 +162,19 @@ export class DeliveryBillsService {
     return bill;
   }
 
-  async update(id: number, userId: number, dto: UpdateDeliveryBillDto): Promise<DeliveryBill> {
+  async update(
+    id: number,
+    userId: number,
+    dto: UpdateDeliveryBillDto,
+  ): Promise<DeliveryBill> {
     const bill = await this.findOne(id, userId);
-    if (bill.status !== DeliveryBillStatus.PENDING && bill.status !== DeliveryBillStatus.CONFIRMED) {
-      throw new BadRequestException(`Cannot update bill in ${bill.status} status`);
+    if (
+      bill.status !== DeliveryBillStatus.PENDING &&
+      bill.status !== DeliveryBillStatus.CONFIRMED
+    ) {
+      throw new BadRequestException(
+        `Cannot update bill in ${bill.status} status`,
+      );
     }
 
     assignDefined(bill, {
@@ -174,7 +194,10 @@ export class DeliveryBillsService {
         const voucher = await this.vouchersService.findByCode(dto.voucherCode);
         if (!voucher) throw new NotFoundException('Voucher not found');
 
-        this.vouchersService.validateVoucherForBooking(voucher, parseFloat(bill.subtotal));
+        this.vouchersService.validateVoucherForBooking(
+          voucher,
+          parseFloat(bill.subtotal),
+        );
 
         bill.voucher = voucher;
       }
@@ -183,13 +206,17 @@ export class DeliveryBillsService {
     if (dto.travelPointsUsed !== undefined) {
       const points = Number(dto.travelPointsUsed);
       if (Number.isNaN(points) || points < 0) {
-        throw new BadRequestException('travelPointsUsed must be a non-negative number');
+        throw new BadRequestException(
+          'travelPointsUsed must be a non-negative number',
+        );
       }
-      
+
       if (bill.user && points > bill.user.travelPoint) {
-         throw new BadRequestException(`Bạn không đủ điểm (Hiện có: ${bill.user.travelPoint})`);
+        throw new BadRequestException(
+          `Bạn không đủ điểm (Hiện có: ${bill.user.travelPoint})`,
+        );
       }
-      
+
       bill.travelPointsUsed = Math.floor(points);
     }
 
@@ -203,7 +230,8 @@ export class DeliveryBillsService {
     paymentMethod: string,
   ): Promise<DeliveryBill> {
     const bill = await this.findOne(id, userId);
-    if (bill.status !== DeliveryBillStatus.PENDING) throw new BadRequestException('Not pending');
+    if (bill.status !== DeliveryBillStatus.PENDING)
+      throw new BadRequestException('Not pending');
 
     if (!bill.contactName || !bill.contactPhone) {
       throw new BadRequestException('Contact info required');
@@ -217,24 +245,26 @@ export class DeliveryBillsService {
 
   async pay(id: number, userId: number): Promise<DeliveryBill> {
     const bill = await this.findOne(id, userId);
-    if (bill.status !== DeliveryBillStatus.CONFIRMED) throw new BadRequestException('Not confirmed');
-
-
+    if (bill.status !== DeliveryBillStatus.CONFIRMED)
+      throw new BadRequestException('Not confirmed');
 
     bill.status = DeliveryBillStatus.IN_TRANSIT;
-    
+
     // Points deduction
     if (bill.travelPointsUsed > 0 && bill.user) {
-       const user = await this.userRepo.findOne({ where: { id: bill.user.id } });
-       if (user) {
-         user.travelPoint = Math.max(0, user.travelPoint - bill.travelPointsUsed);
-         await this.userRepo.save(user);
-       }
+      const user = await this.userRepo.findOne({ where: { id: bill.user.id } });
+      if (user) {
+        user.travelPoint = Math.max(
+          0,
+          user.travelPoint - bill.travelPointsUsed,
+        );
+        await this.userRepo.save(user);
+      }
     }
 
     // Voucher increment
     if (bill.voucher?.id) {
-       await this.vouchersService.incrementUsage(bill.voucher.id);
+      await this.vouchersService.incrementUsage(bill.voucher.id);
     }
 
     return this.billRepo.save(bill);
@@ -242,10 +272,13 @@ export class DeliveryBillsService {
 
   async complete(id: number, userId: number): Promise<DeliveryBill> {
     const bill = await this.findOne(id, userId);
-    if (bill.status !== DeliveryBillStatus.IN_TRANSIT) throw new BadRequestException('Not in transit');
+    if (bill.status !== DeliveryBillStatus.IN_TRANSIT)
+      throw new BadRequestException('Not in transit');
 
     bill.status = DeliveryBillStatus.COMPLETED;
-    const ownerUserId = bill.cooperation?.manager?.id || (bill.vehicle?.cooperation as any)?.manager?.id;
+    const ownerUserId =
+      bill.cooperation?.manager?.id ||
+      (bill.vehicle?.cooperation as any)?.manager?.id;
     await this.processRefundOrRelease(bill, 'release', ownerUserId);
 
     return this.billRepo.save(bill);
@@ -253,12 +286,16 @@ export class DeliveryBillsService {
 
   async cancel(id: number, userId: number): Promise<DeliveryBill> {
     const bill = await this.findOne(id, userId);
-    if ([DeliveryBillStatus.COMPLETED, DeliveryBillStatus.CANCELLED].includes(bill.status)) {
+    if (
+      [DeliveryBillStatus.COMPLETED, DeliveryBillStatus.CANCELLED].includes(
+        bill.status,
+      )
+    ) {
       throw new BadRequestException('Finished');
     }
 
     if ([DeliveryBillStatus.IN_TRANSIT].includes(bill.status)) {
-       await this.processRefundOrRelease(bill, 'refund');
+      await this.processRefundOrRelease(bill, 'refund');
     }
 
     bill.status = DeliveryBillStatus.CANCELLED;
@@ -285,21 +322,27 @@ export class DeliveryBillsService {
     bill.total = this.formatMoney(total);
   }
 
-
-
-  private async processRefundOrRelease(bill: DeliveryBill, action: 'release' | 'refund', ownerUserId?: number) {
+  private async processRefundOrRelease(
+    bill: DeliveryBill,
+    action: 'release' | 'refund',
+    ownerUserId?: number,
+  ) {
     const amount = parseFloat(bill.total);
     if (amount <= 0) return;
-    await this.walletService.releaseFunds(bill.user.id, amount, `delivery:${bill.id}`, action === 'release' ? ownerUserId : undefined);
 
+    // Direct payment: App doesn't hold money. Award points only on completion.
     if (action === 'release') {
-      await this.blockchainService.adminReleaseFundsForRental(bill.id);
       const points = Math.floor(amount / 100);
       if (points > 0) {
-        await this.userRepo.increment({ id: bill.user.id }, 'travelPoint', points);
+        await this.userRepo.increment(
+          { id: bill.user.id },
+          'travelPoint',
+          points,
+        );
       }
-    } else {
-      await this.blockchainService.adminRefundForRental(bill.id);
+      this.logger.log(
+        `Awarded ${points} points to user ${bill.user.id} for completed delivery bill ${bill.id}`,
+      );
     }
   }
 
@@ -309,12 +352,17 @@ export class DeliveryBillsService {
     return `DB${timestamp}${random}`;
   }
 
-  async findAll(userId: number, params: { status?: DeliveryBillStatus } = {}): Promise<DeliveryBill[]> {
+  async findAll(
+    userId: number,
+    params: { status?: DeliveryBillStatus } = {},
+  ): Promise<DeliveryBill[]> {
     const qb = this.billRepo.createQueryBuilder('bill');
     qb.where('bill.user_id = :userId', { userId });
-    if (params.status) qb.andWhere('bill.status = :status', { status: params.status });
-    return qb.leftJoinAndSelect('bill.vehicle', 'vehicle')
-             .orderBy('bill.createdAt', 'DESC')
-             .getMany();
+    if (params.status)
+      qb.andWhere('bill.status = :status', { status: params.status });
+    return qb
+      .leftJoinAndSelect('bill.vehicle', 'vehicle')
+      .orderBy('bill.createdAt', 'DESC')
+      .getMany();
   }
 }

@@ -37,14 +37,20 @@ export class RestaurantTablesController {
   @Get()
   @ApiOperation({ summary: 'Danh sách bàn nhà hàng' })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
+  @ApiQuery({ name: 'provinceId', required: false })
+  @ApiQuery({ name: 'districtId', required: false })
   @ApiQuery({ name: 'active', required: false, type: Boolean })
   @ApiOkResponse({ description: 'Restaurant table list' })
   findAll(
     @Query('cooperationId') cooperationId?: string,
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
     @Query('active') active?: string,
   ) {
     return this.service.findAll({
       cooperationId: cooperationId ? Number(cooperationId) : undefined,
+      provinceId,
+      districtId,
       active: active !== undefined ? active === 'true' : undefined,
     });
   }

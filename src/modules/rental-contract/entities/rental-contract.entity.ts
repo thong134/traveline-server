@@ -44,7 +44,6 @@ export class RentalContract {
   @Column({ nullable: true })
   businessName?: string;
 
-
   @ApiPropertyOptional()
   @Column({ nullable: true })
   businessAddress?: string;

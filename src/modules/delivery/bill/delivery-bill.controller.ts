@@ -19,9 +19,7 @@ import {
 import { DeliveryBillsService } from './delivery-bill.service';
 import { CreateDeliveryBillDto } from './dto/create-delivery-bill.dto';
 import { UpdateDeliveryBillDto } from './dto/update-delivery-bill.dto';
-import {
-  DeliveryBillStatus,
-} from './entities/delivery-bill.entity';
+import { DeliveryBillStatus } from './entities/delivery-bill.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../../auth/decorators/current-user.decorator';
@@ -71,7 +69,9 @@ export class DeliveryBillsController {
   }
 
   @Patch(':id/confirm')
-  @ApiOperation({ summary: 'Xác nhận thông tin và chọn phương thức thanh toán' })
+  @ApiOperation({
+    summary: 'Xác nhận thông tin và chọn phương thức thanh toán',
+  })
   @ApiQuery({ name: 'paymentMethod', required: true })
   confirm(
     @Param('id', ParseIntPipe) id: number,
@@ -83,10 +83,7 @@ export class DeliveryBillsController {
 
   @Patch(':id/pay')
   @ApiOperation({ summary: 'Thanh toán và lấy trạng thái đang vận chuyển' })
-  pay(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-  ) {
+  pay(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
     return this.service.pay(id, user.userId);
   }
 

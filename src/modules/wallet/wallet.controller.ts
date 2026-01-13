@@ -83,10 +83,13 @@ export class WalletController {
     @Body() dto: CreateMomoPaymentDto,
   ) {
     const orderId = `MOMO_${user.userId}_${uuid.v4().split('-')[0]}_${Date.now()}`;
-    const orderInfo = dto.orderInfo ?? `Nap tien vao vi Traveline user ${user.userId}`;
-    
+    const orderInfo =
+      dto.orderInfo ?? `Nap tien vao vi Traveline user ${user.userId}`;
+
     // extraData chứa userId để khi IPN gọi về ta biết là nạp cho user nào
-    const extraData = Buffer.from(JSON.stringify({ userId: user.userId })).toString('base64');
+    const extraData = Buffer.from(
+      JSON.stringify({ userId: user.userId }),
+    ).toString('base64');
 
     const result = await this.momoService.createPaymentUrl(
       orderId,
@@ -102,13 +105,13 @@ export class WalletController {
   @ApiExcludeEndpoint() // Ẩn khỏi Swagger vì đây là API callback của MoMo
   async handleMomoIpn(@Body() body: any) {
     console.log('Received MoMo IPN:', body);
-    
+
     // 1. Xác thực chữ ký
     const isValid = this.momoService.verifySignature(body);
     if (!isValid) {
       console.error('Invalid MoMo Signature');
       // Tuy nhiên vẫn trả về status 204 hoặc 400 đe MoMo biết
-      return { message: 'Invalid signature' }; 
+      return { message: 'Invalid signature' };
     }
 
     // 2. Kiểm tra resultCode
@@ -117,19 +120,27 @@ export class WalletController {
       // Giải mã extraData để lấy userId
       let userId: number | null = null;
       try {
-         const decodedExtra = Buffer.from(body.extraData, 'base64').toString('utf8');
-         const obj = JSON.parse(decodedExtra);
-         userId = obj.userId;
+        const decodedExtra = Buffer.from(body.extraData, 'base64').toString(
+          'utf8',
+        );
+        const obj = JSON.parse(decodedExtra);
+        userId = obj.userId;
       } catch (e) {
-         console.error('Cannot parse extraData', e);
+        console.error('Cannot parse extraData', e);
       }
 
       if (userId) {
         // Cộng tiền vào ví thật (không phải giả lập)
         // Chúng ta có thể dùng lại simulateMomoDeposit hoặc viết hàm mới 'processMomoDeposit'
         // Ở đây tôi sẽ dùng simulateMomoDeposit vì logic nó đúng là: cộng tiền + lưu transaction với referenceId
-        await this.walletService.simulateMomoDeposit(userId, body.amount, body.transId.toString());
-        console.log(`Updated wallet for user ${userId} with amount ${body.amount}`);
+        await this.walletService.simulateMomoDeposit(
+          userId,
+          body.amount,
+          body.transId.toString(),
+        );
+        console.log(
+          `Updated wallet for user ${userId} with amount ${body.amount}`,
+        );
       }
     }
 

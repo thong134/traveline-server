@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, DataSource } from 'typeorm';
 import { Destination } from './entities/destinations.entity';
@@ -33,7 +37,9 @@ export class DestinationsService {
     // 1. Upload Photos
     if (files?.photos && files.photos.length > 0) {
       const uploadPromises = files.photos.map((file) =>
-        this.cloudinaryService.uploadImage(file, { folder: 'traveline/destinations/photos' }),
+        this.cloudinaryService.uploadImage(file, {
+          folder: 'traveline/destinations/photos',
+        }),
       );
       const results = await Promise.all(uploadPromises);
       photoUrls.push(...results.map((r) => r.url));
@@ -45,7 +51,9 @@ export class DestinationsService {
     // 2. Upload Videos
     if (files?.videos && files.videos.length > 0) {
       const uploadPromises = files.videos.map((file) =>
-        this.cloudinaryService.uploadVideo(file, { folder: 'traveline/destinations/videos' }),
+        this.cloudinaryService.uploadVideo(file, {
+          folder: 'traveline/destinations/videos',
+        }),
       );
       const results = await Promise.all(uploadPromises);
       videoUrls.push(...results.map((r) => r.url));
@@ -70,8 +78,17 @@ export class DestinationsService {
     offset?: number;
     province?: string;
     sortBy?: 'rating' | 'popularity';
+    hasTourTickets?: boolean;
+    cooperationId?: number;
   }): Promise<Destination[]> {
-    const { q, available, limit = 50, offset = 0, province, sortBy } = params || {};
+    const {
+      q,
+      available,
+      limit = 50,
+      offset = 0,
+      province,
+      sortBy,
+    } = params || {};
     const qb = this.repo.createQueryBuilder('destination');
 
     if (q) {
@@ -88,6 +105,16 @@ export class DestinationsService {
     }
     if (typeof available === 'boolean') {
       qb.andWhere('destination.available = :available', { available });
+    }
+    if (typeof params?.hasTourTickets === 'boolean') {
+      qb.andWhere('destination.has_tour_tickets = :hasTourTickets', {
+        hasTourTickets: params.hasTourTickets,
+      });
+    }
+    if (params?.cooperationId) {
+      qb.andWhere('destination.cooperation_id = :cooperationId', {
+        cooperationId: params.cooperationId,
+      });
     }
 
     if (sortBy === 'rating') {
@@ -121,7 +148,10 @@ export class DestinationsService {
       favouriteTimes: dest.favouriteTimes || 0,
       latitude: dest.latitude,
       longitude: dest.longitude,
-      description: dest.descriptionViet || dest.descriptionEng || `Địa điểm du lịch tại ${dest.province || 'Việt Nam'}`,
+      description:
+        dest.descriptionViet ||
+        dest.descriptionEng ||
+        `Địa điểm du lịch tại ${dest.province || 'Việt Nam'}`,
       categories: dest.categories || [],
       district: dest.district || '',
       openTime: dest.openTime || '',
@@ -138,12 +168,7 @@ export class DestinationsService {
 
   async update(id: number, dto: UpdateDestinationDto): Promise<Destination> {
     const destination = await this.findOne(id);
-    const {
-      categories,
-      photos,
-      videos,
-      ...rest
-    } = dto;
+    const { categories, photos, videos, ...rest } = dto;
 
     const destinationRecord = destination as unknown as Record<string, unknown>;
 
@@ -201,7 +226,9 @@ export class DestinationsService {
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
     }
-    const destination = await this.repo.findOne({ where: { id: destinationId } });
+    const destination = await this.repo.findOne({
+      where: { id: destinationId },
+    });
     if (!destination) {
       throw new NotFoundException(`Destination ${destinationId} not found`);
     }
@@ -221,21 +248,23 @@ export class DestinationsService {
 
     const current = user.favoriteDestinationIds ?? [];
     if (current.includes(destinationId.toString())) {
-      user.favoriteDestinationIds = current.filter((id) => id !== destinationId.toString());
+      user.favoriteDestinationIds = current.filter(
+        (id) => id !== destinationId.toString(),
+      );
       await this.usersRepo.save(user);
     }
   }
 
   // Hobby to Category mapping
   private readonly hobbyToCategoryMap: Record<string, string[]> = {
-    'Adventure': ['Thiên nhiên'],
-    'Relaxation': ['Thiên nhiên', 'Giải trí'],
+    Adventure: ['Thiên nhiên'],
+    Relaxation: ['Thiên nhiên', 'Giải trí'],
     'Culture&History': ['Công trình', 'Văn hóa', 'Lịch sử'],
-    'Entertainment': ['Giải trí'],
-    'Nature': ['Thiên nhiên'],
+    Entertainment: ['Giải trí'],
+    Nature: ['Thiên nhiên'],
     'Beach&Islands': ['Biển'],
     'Mountain&Forest': ['Núi'],
-    'Photography': ['Thiên nhiên', 'Công trình'],
+    Photography: ['Thiên nhiên', 'Công trình'],
     'Foods&Drinks': ['Công trình', 'Văn hóa'],
   };
 
@@ -314,7 +343,10 @@ export class DestinationsService {
         );
       }
     } catch (e) {
-      console.error('AI Recommendation failed, falling back to basic scoring:', e.message);
+      console.error(
+        'AI Recommendation failed, falling back to basic scoring:',
+        e.message,
+      );
     }
 
     // Fallback to basic scoring if AI is down (kept for robustness)
@@ -326,17 +358,26 @@ export class DestinationsService {
 
     const qb = this.repo.createQueryBuilder('destination');
     qb.where('destination.available = :available', { available: true });
-    if (province) qb.andWhere('destination.province ILIKE :province', { province: `%${province}%` });
+    if (province)
+      qb.andWhere('destination.province ILIKE :province', {
+        province: `%${province}%`,
+      });
     const allDestinations = await qb.getMany();
 
     const scored = allDestinations.map((dest) => {
       let score = 0;
-      const categoryMatch = (dest.categories || []).some((cat) => targetCategories.has(cat));
+      const categoryMatch = (dest.categories || []).some((cat) =>
+        targetCategories.has(cat),
+      );
       if (categoryMatch) score += 0.5;
-      const maxFav = Math.max(...allDestinations.map((d) => d.favouriteTimes || 0), 1);
+      const maxFav = Math.max(
+        ...allDestinations.map((d) => d.favouriteTimes || 0),
+        1,
+      );
       score += 0.3 * ((dest.favouriteTimes || 0) / maxFav);
       score += 0.2 * ((dest.rating || 0) / 5);
-      if (user.favoriteDestinationIds?.includes(dest.id.toString())) score += 0.1;
+      if (user.favoriteDestinationIds?.includes(dest.id.toString()))
+        score += 0.1;
       return { destination: dest, score };
     });
 

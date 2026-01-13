@@ -3,7 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Cooperation } from './entities/cooperation.entity';
 import { CooperationContract } from './entities/cooperation-contract.entity';
-import { CooperationStatus } from './entities/cooperation-enums';
+import { CooperationServiceConfig } from './entities/cooperation-service-config.entity';
+import {
+  CommissionType,
+  CooperationStatus,
+} from './entities/cooperation-enums';
 import { CreateCooperationDto } from './dto/create-cooperation.dto';
 import { RegisterCooperationDto } from './dto/register-cooperation.dto';
 import { ApproveCooperationDto } from './dto/approve-cooperation.dto';
@@ -22,6 +26,8 @@ export class CooperationsService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(CooperationContract)
     private readonly contractRepo: Repository<CooperationContract>,
+    @InjectRepository(CooperationServiceConfig)
+    private readonly configRepo: Repository<CooperationServiceConfig>,
     private readonly usersService: UsersService,
   ) {}
 
@@ -40,16 +46,9 @@ export class CooperationsService {
     const cooperation = this.cooperationRepo.create({
       name: dto.name,
       type: dto.type,
-      code: dto.code,
-      numberOfObjects: dto.numberOfObjects ?? 0,
-      numberOfObjectTypes: dto.numberOfObjectTypes ?? 0,
-      bossName: dto.bossName,
-      bossPhone: dto.bossPhone,
-      bossEmail: dto.bossEmail,
       address: dto.address,
-      district: dto.district,
-      city: dto.city,
       province: dto.province,
+      district: dto.district,
       photo: dto.photo,
       extension: dto.extension,
       introduction: dto.introduction,
@@ -58,7 +57,6 @@ export class CooperationsService {
       bankAccountNumber: dto.bankAccountNumber,
       bankAccountName: dto.bankAccountName,
       bankName: dto.bankName,
-      active: dto.active ?? true,
       status: dto.status ?? CooperationStatus.PENDING,
       commissionType: dto.commissionType,
       commissionValue: dto.commissionValue,
@@ -89,35 +87,44 @@ export class CooperationsService {
     params: {
       q?: string;
       type?: string;
-      city?: string;
-      province?: string;
-      active?: boolean;
+      provinceId?: string;
+      districtId?: string;
       status?: CooperationStatus;
     } = {},
   ): Promise<Cooperation[]> {
-    const { q, type, city, province, active, status } = params;
+    const { q, type, provinceId, districtId, status } = params;
     const qb = this.cooperationRepo
       .createQueryBuilder('cooperation')
       .leftJoinAndSelect('cooperation.manager', 'manager');
 
     if (q) {
-      qb.andWhere('(cooperation.name ILIKE :q OR cooperation.code ILIKE :q)', { q: `%${q}%` });
+      qb.andWhere('cooperation.name ILIKE :q', {
+        q: `%${q}%`,
+      });
     }
 
     if (type) {
       qb.andWhere('cooperation.type = :type', { type });
     }
 
-    if (city) {
-      qb.andWhere('cooperation.city = :city', { city });
+    if (provinceId) {
+      if (/^\d+$/.test(provinceId)) {
+        qb.andWhere('cooperation.provinceId = :provinceId', { provinceId });
+      } else {
+        qb.andWhere('cooperation.province ILIKE :province', {
+          province: `%${provinceId}%`,
+        });
+      }
     }
 
-    if (province) {
-      qb.andWhere('cooperation.province = :province', { province });
-    }
-
-    if (typeof active === 'boolean') {
-      qb.andWhere('cooperation.active = :active', { active });
+    if (districtId) {
+      if (/^\d+$/.test(districtId)) {
+        qb.andWhere('cooperation.districtId = :districtId', { districtId });
+      } else {
+        qb.andWhere('cooperation.district ILIKE :district', {
+          district: `%${districtId}%`,
+        });
+      }
     }
 
     if (status) {
@@ -144,16 +151,9 @@ export class CooperationsService {
     assignDefined(cooperation, {
       name: dto.name,
       type: dto.type,
-      code: dto.code,
-      numberOfObjects: dto.numberOfObjects,
-      numberOfObjectTypes: dto.numberOfObjectTypes,
-      bossName: dto.bossName,
-      bossPhone: dto.bossPhone,
-      bossEmail: dto.bossEmail,
       address: dto.address,
-      district: dto.district,
-      city: dto.city,
       province: dto.province,
+      district: dto.district,
       photo: dto.photo,
       extension: dto.extension,
       introduction: dto.introduction,
@@ -161,7 +161,6 @@ export class CooperationsService {
       bankAccountNumber: dto.bankAccountNumber,
       bankAccountName: dto.bankAccountName,
       bankName: dto.bankName,
-      active: dto.active,
       status: dto.status,
       commissionType: dto.commissionType,
       commissionValue: dto.commissionValue,
@@ -259,7 +258,9 @@ export class CooperationsService {
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
     }
-    const cooperation = await this.cooperationRepo.findOne({ where: { id: cooperationId } });
+    const cooperation = await this.cooperationRepo.findOne({
+      where: { id: cooperationId },
+    });
     if (!cooperation) {
       throw new NotFoundException(`Cooperation ${cooperationId} not found`);
     }
@@ -279,25 +280,77 @@ export class CooperationsService {
 
     const current = user.favoriteCooperationIds ?? [];
     if (current.includes(cooperationId.toString())) {
-      user.favoriteCooperationIds = current.filter((id) => id !== cooperationId.toString());
+      user.favoriteCooperationIds = current.filter(
+        (id) => id !== cooperationId.toString(),
+      );
       await this.userRepo.save(user);
     }
   }
 
-  async register(dto: RegisterCooperationDto, userId: number): Promise<Cooperation> {
+  async register(
+    dto: RegisterCooperationDto,
+    userId: number,
+  ): Promise<Cooperation> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
     }
 
+    const {
+      serviceData,
+      apiBaseUrl,
+      apiKey,
+      apiEndpointCheck,
+      acceptedTerms, // ignored for saving, but validated at DTO level
+      ...coopData
+    } = dto;
+
+    // Default Commission mapping
+    const commissionType = CommissionType.PERCENT;
+    let commissionValue = '0';
+
+    switch (dto.type) {
+      case 'hotel':
+        commissionValue = '7';
+        break;
+      case 'transportation':
+      case 'bus':
+      case 'train':
+      case 'flight':
+      case 'tour':
+        commissionValue = '5';
+        break;
+      case 'delivery':
+        commissionValue = '3';
+        break;
+      case 'restaurant':
+        commissionValue = '0.5';
+        break;
+    }
+
     const cooperation = this.cooperationRepo.create({
-      ...dto,
+      ...coopData,
       manager: user,
       status: CooperationStatus.PENDING,
-      active: true, // legacy compatibility
+      commissionType,
+      commissionValue,
     });
 
-    return this.cooperationRepo.save(cooperation);
+    const savedCoop = await this.cooperationRepo.save(cooperation);
+
+    // Save service configuration if provided
+    if (serviceData || apiBaseUrl) {
+      const config = this.configRepo.create({
+        cooperationId: savedCoop.id,
+        serviceData,
+        apiBaseUrl,
+        apiKey,
+        apiEndpointCheck,
+      });
+      await this.configRepo.save(config);
+    }
+
+    return savedCoop;
   }
 
   async approve(id: number, dto: ApproveCooperationDto): Promise<Cooperation> {
@@ -314,7 +367,7 @@ export class CooperationsService {
     dto: Omit<UploadContractDto, 'file'>,
   ): Promise<CooperationContract> {
     const cooperation = await this.findOne(id);
-    
+
     // Create new contract record
     const contract = this.contractRepo.create({
       cooperationId: id,

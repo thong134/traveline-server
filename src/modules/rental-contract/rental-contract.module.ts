@@ -10,7 +10,12 @@ import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../user/user.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([RentalContract, User, RentalVehicle]), CloudinaryModule, AuthModule, UsersModule],
+  imports: [
+    TypeOrmModule.forFeature([RentalContract, User, RentalVehicle]),
+    CloudinaryModule,
+    AuthModule,
+    UsersModule,
+  ],
   controllers: [RentalContractsController],
   providers: [RentalContractsService],
   exports: [RentalContractsService],

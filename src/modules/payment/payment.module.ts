@@ -13,7 +13,13 @@ import { VouchersModule } from '../voucher/voucher.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Payment, RentalBill, User, Payout, BookingTransaction]),
+    TypeOrmModule.forFeature([
+      Payment,
+      RentalBill,
+      User,
+      Payout,
+      BookingTransaction,
+    ]),
     WalletModule,
     VouchersModule,
   ],

@@ -17,6 +17,15 @@ export class Destination {
   @Column()
   name: string;
 
+  @Column({ default: false })
+  hasTourTickets: boolean;
+
+  @Column({ nullable: true })
+  tourPriceRange?: string;
+
+  @Column({ nullable: true })
+  cooperationId?: number;
+
   @Column({ type: 'text', nullable: true })
   descriptionViet?: string;
 

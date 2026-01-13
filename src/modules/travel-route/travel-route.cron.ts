@@ -4,7 +4,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { TravelRoute, TravelRouteStatus } from './entities/travel-route.entity';
 import { Repository } from 'typeorm';
 import { NotificationService } from '../notification/notification.service';
-import { addDays, addMonths, addYears, isSameDay, subDays, subMonths, subYears } from 'date-fns';
+import {
+  addDays,
+  addMonths,
+  addYears,
+  isSameDay,
+  subDays,
+  subMonths,
+  subYears,
+} from 'date-fns';
 
 @Injectable()
 export class TravelRouteCronService {
@@ -46,8 +54,10 @@ export class TravelRouteCronService {
       }
 
       const endDate = new Date(route.endDate);
-      this.logger.log(`Route ${route.id} "${route.name}" endDate: ${endDate.toISOString()}`);
-      
+      this.logger.log(
+        `Route ${route.id} "${route.name}" endDate: ${endDate.toISOString()}`,
+      );
+
       let period = '';
       if (isSameDay(endDate, oneWeekAgo)) period = '1 tuần';
       else if (isSameDay(endDate, oneMonthAgo)) period = '1 tháng';
@@ -57,15 +67,19 @@ export class TravelRouteCronService {
         this.logger.log(`Route ${route.id} matches ${period} anniversary!`);
         await this.sendAnniversaryNotification(route, period);
         notificationsSent++;
-        
+
         // Add to response with stops and a flattened media list for convenience
         const allMedia: any[] = [];
-        (route.stops || []).forEach(stop => {
+        (route.stops || []).forEach((stop) => {
           if (stop.images) {
-            stop.images.forEach(url => allMedia.push({ url, type: 'image', stopId: stop.id }));
+            stop.images.forEach((url) =>
+              allMedia.push({ url, type: 'image', stopId: stop.id }),
+            );
           }
           if (stop.videos) {
-            stop.videos.forEach(url => allMedia.push({ url, type: 'video', stopId: stop.id }));
+            stop.videos.forEach((url) =>
+              allMedia.push({ url, type: 'video', stopId: stop.id }),
+            );
           }
         });
 
@@ -76,21 +90,26 @@ export class TravelRouteCronService {
           period,
           userName: route.user.fullName || route.user.username,
           stops: route.stops,
-          aggregatedMedia: allMedia
+          aggregatedMedia: allMedia,
         });
       } else {
-        this.logger.log(`Route ${route.id} does not match any anniversary date`);
+        this.logger.log(
+          `Route ${route.id} does not match any anniversary date`,
+        );
       }
     }
 
-    return { 
-      checkedCount: routes.length, 
-      notificationsSent, 
-      matchedRoutes 
+    return {
+      checkedCount: routes.length,
+      notificationsSent,
+      matchedRoutes,
     };
   }
 
-  private async sendAnniversaryNotification(route: TravelRoute, period: string) {
+  private async sendAnniversaryNotification(
+    route: TravelRoute,
+    period: string,
+  ) {
     const user = route.user;
     if (!user) return;
 
@@ -103,7 +122,7 @@ export class TravelRouteCronService {
       title,
       body,
       'anniversary' as any,
-      { routeId: route.id.toString(), period }
+      { routeId: route.id.toString(), period },
     );
 
     // Send Email
@@ -113,18 +132,18 @@ export class TravelRouteCronService {
         title,
         `<p>Xin chào ${user.fullName || user.username},</p>
          <p>${body}</p>
-         <p>Trân trọng,<br/>Traveline</p>`
+         <p>Trân trọng,<br/>Traveline</p>`,
       );
     }
 
     // Send Push Notification
     if (user.fcmToken) {
-        await this.notificationService.sendPushNotification(
-            user.fcmToken,
-            title,
-            body,
-            { routeId: route.id.toString(), type: 'anniversary' }
-        );
+      await this.notificationService.sendPushNotification(
+        user.fcmToken,
+        title,
+        body,
+        { routeId: route.id.toString(), type: 'anniversary' },
+      );
     }
   }
 }

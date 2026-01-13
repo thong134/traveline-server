@@ -147,7 +147,9 @@ export class EateriesService {
 
     const current = user.favoriteEaterieIds ?? [];
     if (current.includes(eateryId.toString())) {
-      user.favoriteEaterieIds = current.filter((id) => id !== eateryId.toString());
+      user.favoriteEaterieIds = current.filter(
+        (id) => id !== eateryId.toString(),
+      );
       await this.userRepo.save(user);
     }
   }

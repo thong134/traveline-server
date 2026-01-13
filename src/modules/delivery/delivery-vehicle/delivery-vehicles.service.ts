@@ -56,12 +56,29 @@ export class DeliveryVehiclesService {
   }
 
   async findAll(
-    params: { cooperationId?: number } = {},
+    params: {
+      cooperationId?: number;
+      provinceId?: string;
+      districtId?: string;
+    } = {},
   ): Promise<DeliveryVehicle[]> {
-    const qb = this.vehicleRepo.createQueryBuilder('vehicle');
+    const qb = this.vehicleRepo
+      .createQueryBuilder('vehicle')
+      .leftJoinAndSelect('vehicle.cooperation', 'cooperation');
+
     if (params.cooperationId) {
-      qb.where('vehicle.cooperation_id = :cooperationId', {
+      qb.andWhere('vehicle.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
+      });
+    }
+    if (params.provinceId) {
+      qb.andWhere('cooperation.provinceId = :provinceId', {
+        provinceId: params.provinceId,
+      });
+    }
+    if (params.districtId) {
+      qb.andWhere('cooperation.districtId = :districtId', {
+        districtId: params.districtId,
       });
     }
     return qb.orderBy('vehicle.createdAt', 'DESC').getMany();

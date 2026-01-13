@@ -4,7 +4,8 @@ import axios from 'axios';
 @Injectable()
 export class MapService {
   private readonly logger = new Logger(MapService.name);
-  private readonly osrmBaseUrl = 'http://router.project-osrm.org/route/v1/driving';
+  private readonly osrmBaseUrl =
+    'http://router.project-osrm.org/route/v1/driving';
 
   /**
    * Calculate travel distance between two points using OSRM
@@ -23,7 +24,12 @@ export class MapService {
       if (response.data?.code !== 'Ok' || !response.data?.routes?.length) {
         this.logger.warn(`OSRM failed to find route: ${response.data?.code}`);
         // Fallback to Haversine if OSRM fails
-        return this.calculateHaversineDistance(startLat, startLon, endLat, endLon);
+        return this.calculateHaversineDistance(
+          startLat,
+          startLon,
+          endLat,
+          endLon,
+        );
       }
 
       // OSRM returns distance in meters
@@ -32,7 +38,12 @@ export class MapService {
     } catch (error) {
       this.logger.error('Error calling OSRM API', error);
       // Fallback to Haversine
-      return this.calculateHaversineDistance(startLat, startLon, endLat, endLon);
+      return this.calculateHaversineDistance(
+        startLat,
+        startLon,
+        endLat,
+        endLon,
+      );
     }
   }
 

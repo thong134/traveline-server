@@ -32,6 +32,7 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { ProvincesModule } from './modules/province/province.module';
 import { MapModule } from './common/map/map.module';
 import { FptAiModule } from './common/fpt-ai/fpt-ai.module';
+import { SeederModule } from './modules/seeder/seeder.module';
 
 @Module({
   imports: [
@@ -42,13 +43,8 @@ import { FptAiModule } from './common/fpt-ai/fpt-ai.module';
       useFactory: () => ({
         type: 'postgres',
         url: process.env.DATABASE_URL,
-        // host: process.env.DB_HOST,
-        // port: Number(process.env.DB_PORT),
-        // username: process.env.DB_USER,
-        // password: process.env.DB_PASS,
-        // database: process.env.DB_NAME,
         autoLoadEntities: true,
-        synchronize: true, // tự tạo bảng dựa trên entity (dev thôi, production thì nên tắt)
+        synchronize: true,
         timezone: 'Asia/Ho_Chi_Minh',
         extra: {
           options: '-c timezone=Asia/Ho_Chi_Minh',
@@ -86,6 +82,7 @@ import { FptAiModule } from './common/fpt-ai/fpt-ai.module';
     ProvincesModule,
     MapModule,
     FptAiModule,
+    SeederModule,
   ],
 })
 export class AppModule {}

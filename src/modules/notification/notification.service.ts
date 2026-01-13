@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  NotFoundException,
+} from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import { createTransport, Transporter, SentMessageInfo } from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
@@ -47,25 +52,31 @@ export class NotificationService implements OnModuleInit {
     }
 
     try {
-        const saPath = this.configService.get('FIREBASE_SERVICE_ACCOUNT_PATH');
-        
-        if (saPath) {
-          const absolutePath = saPath.startsWith('/') || saPath.includes(':') 
-            ? saPath 
+      const saPath = this.configService.get('FIREBASE_SERVICE_ACCOUNT_PATH');
+
+      if (saPath) {
+        const absolutePath =
+          saPath.startsWith('/') || saPath.includes(':')
+            ? saPath
             : require('path').join(process.cwd(), saPath);
-            
-          this.firebaseApp = admin.initializeApp({
-            credential: admin.credential.cert(absolutePath),
-          });
-          this.logger.log(`Firebase Admin initialized using cert at: ${absolutePath}`);
-        } else {
-          this.firebaseApp = admin.initializeApp({
-            credential: admin.credential.applicationDefault(),
-          });
-          this.logger.log('Firebase Admin initialized using applicationDefault');
-        }
+
+        this.firebaseApp = admin.initializeApp({
+          credential: admin.credential.cert(absolutePath),
+        });
+        this.logger.log(
+          `Firebase Admin initialized using cert at: ${absolutePath}`,
+        );
+      } else {
+        this.firebaseApp = admin.initializeApp({
+          credential: admin.credential.applicationDefault(),
+        });
+        this.logger.log('Firebase Admin initialized using applicationDefault');
+      }
     } catch (error) {
-        this.logger.warn('Failed to initialize Firebase Admin. Push notifications will not work.', error);
+      this.logger.warn(
+        'Failed to initialize Firebase Admin. Push notifications will not work.',
+        error,
+      );
     }
   }
 
@@ -83,10 +94,15 @@ export class NotificationService implements OnModuleInit {
     }
   }
 
-  async sendPushNotification(token: string, title: string, body: string, data?: Record<string, string>) {
+  async sendPushNotification(
+    token: string,
+    title: string,
+    body: string,
+    data?: Record<string, string>,
+  ) {
     if (!this.firebaseApp) {
-        this.logger.warn('Firebase not initialized, skipping push notification');
-        return;
+      this.logger.warn('Firebase not initialized, skipping push notification');
+      return;
     }
 
     try {

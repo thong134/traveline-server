@@ -5,6 +5,7 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -23,14 +24,12 @@ import { Flight } from '../../flight/flight/entities/flight.entity';
 import { FlightBill } from '../../flight/bill/entities/flight-bill.entity';
 import { CommissionType, CooperationStatus } from './cooperation-enums';
 import { CooperationContract } from './cooperation-contract.entity';
+import { CooperationServiceConfig } from './cooperation-service-config.entity';
 
 @Entity('cooperations')
 export class Cooperation {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @Column({ unique: true, nullable: true })
-  code?: string;
 
   @Column()
   name: string;
@@ -38,32 +37,26 @@ export class Cooperation {
   @Column({ default: 'hotel' })
   type: string;
 
-  @Column({ type: 'int', default: 0 })
-  numberOfObjects: number;
-
-  @Column({ type: 'int', default: 0 })
-  numberOfObjectTypes: number;
-
-  @Column({ nullable: true })
-  bossName?: string;
-
-  @Column({ nullable: true })
-  bossPhone?: string;
-
-  @Column({ nullable: true })
-  bossEmail?: string;
-
   @Column({ nullable: true })
   address?: string;
+
+  @Column({ nullable: true })
+  province?: string;
 
   @Column({ nullable: true })
   district?: string;
 
   @Column({ nullable: true })
-  city?: string;
+  provinceId?: string;
 
   @Column({ nullable: true })
-  province?: string;
+  districtId?: string;
+
+  @Column({ nullable: true })
+  wardCode?: string;
+
+  @Column({ nullable: true })
+  brandLogo?: string;
 
   @Column({ nullable: true })
   photo?: string;
@@ -104,6 +97,15 @@ export class Cooperation {
   representativeEmail?: string;
 
   @Column({ nullable: true })
+  businessLicense?: string;
+
+  @Column({ nullable: true })
+  representativeIdCard?: string;
+
+  @Column({ nullable: true })
+  paymentQr?: string;
+
+  @Column({ nullable: true })
   currentContractUrl?: string;
 
   @Column({ type: 'date', nullable: true })
@@ -129,12 +131,6 @@ export class Cooperation {
 
   @Column({ type: 'decimal', precision: 4, scale: 2, default: 0 })
   averageRating: string;
-
-  /**
-   * @deprecated logic shifted to status
-   */
-  @Column({ default: true })
-  active: boolean;
 
   @ManyToOne(() => User, (user: User) => user.cooperations, {
     nullable: true,
@@ -184,6 +180,9 @@ export class Cooperation {
 
   @OneToMany(() => CooperationContract, (contract) => contract.cooperation)
   contracts: CooperationContract[];
+
+  @OneToOne(() => CooperationServiceConfig, (config) => config.cooperation)
+  serviceConfig: CooperationServiceConfig;
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;

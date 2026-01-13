@@ -20,7 +20,10 @@ import { lastValueFrom } from 'rxjs';
 import type { Express } from 'express';
 import type { AxiosResponse } from 'axios';
 import { FeedbackReply } from './entities/feedback-reply.entity';
-import { FeedbackReaction, FeedbackReactionType } from './entities/feedback-reaction.entity';
+import {
+  FeedbackReaction,
+  FeedbackReactionType,
+} from './entities/feedback-reaction.entity';
 import { CreateReplyDto } from './dto/create-reply.dto';
 
 interface FeedbackQueryOptions {
@@ -96,14 +99,17 @@ export class FeedbackService {
   async create(
     userId: number,
     dto: CreateFeedbackDto,
-    mediaFiles?: { photos?: Express.Multer.File[]; videos?: Express.Multer.File[] },
+    mediaFiles?: {
+      photos?: Express.Multer.File[];
+      videos?: Express.Multer.File[];
+    },
   ): Promise<Feedback> {
     const resolved = await this.processMedia(dto, mediaFiles);
-    
+
     // No internal moderation here anymore.
-    
+
     const feedback = new Feedback();
-    
+
     // Assign user directly from JWT
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
@@ -122,11 +128,11 @@ export class FeedbackService {
 
   // Helper to call AI
   async coordinateModeration(text: string) {
-     const baseUrl =
+    const baseUrl =
       this.configService.get<string>('AI_REVIEW_BASE_URL') ??
       this.configService.get<string>('AI_SERVICE_URL') ??
       'http://localhost:8000';
-    
+
     const observable = this.httpService.post(`${baseUrl}/moderation/predict`, {
       text,
     });
@@ -178,7 +184,7 @@ export class FeedbackService {
         cooperationId,
       });
     }
-    
+
     if (eateryId) {
       qb.andWhere('feedback.eateryId = :eateryId', { eateryId });
     }
@@ -210,7 +216,6 @@ export class FeedbackService {
     }
     return feedback;
   }
-
 
   async remove(id: number): Promise<{ id: number; message: string }> {
     const feedback = await this.feedbackRepo.findOne({
@@ -327,7 +332,7 @@ export class FeedbackService {
         );
       }
       feedback.cooperation = cooperation;
-    } else    if (dto.cooperationId === null) {
+    } else if (dto.cooperationId === null) {
       feedback.cooperation = undefined;
     }
 
@@ -442,7 +447,9 @@ export class FeedbackService {
     userId: number,
     type: FeedbackReactionType = FeedbackReactionType.LIKE,
   ): Promise<FeedbackReaction> {
-    const feedback = await this.feedbackRepo.findOne({ where: { id: feedbackId } });
+    const feedback = await this.feedbackRepo.findOne({
+      where: { id: feedbackId },
+    });
     if (!feedback) {
       throw new NotFoundException(`Feedback ${feedbackId} not found`);
     }
@@ -477,7 +484,6 @@ export class FeedbackService {
       type,
     });
   }
-
 
   async listReactions(feedbackId: number): Promise<
     {
@@ -547,8 +553,7 @@ export class FeedbackService {
     });
     if (!cooperation) return;
 
-    cooperation.averageRating =
-      count > 0 ? (sum / count).toFixed(2) : '0.00';
+    cooperation.averageRating = count > 0 ? (sum / count).toFixed(2) : '0.00';
     // cooperation entity doesn't have userRatingsTotal column in outline, but let's check
     // Actually Cooperations entity only has numberOfObjects, numberOfObjectTypes.
     // The user didn't specify userRatingsTotal for cooperation but requested it for destinations.
@@ -580,10 +585,12 @@ export class FeedbackService {
 
   // moderateComment removed or replaced by coordinateModeration
 
-
   private async processMedia(
     dto: CreateFeedbackDto,
-    mediaFiles?: { photos?: Express.Multer.File[]; videos?: Express.Multer.File[] },
+    mediaFiles?: {
+      photos?: Express.Multer.File[];
+      videos?: Express.Multer.File[];
+    },
   ): Promise<CreateFeedbackDto> {
     const photos = mediaFiles?.photos ?? [];
     const videos = mediaFiles?.videos ?? [];
@@ -616,7 +623,9 @@ export class FeedbackService {
     userId: number,
     dto: CreateReplyDto,
   ): Promise<FeedbackReply> {
-    const feedback = await this.feedbackRepo.findOne({ where: { id: feedbackId } });
+    const feedback = await this.feedbackRepo.findOne({
+      where: { id: feedbackId },
+    });
     if (!feedback) {
       throw new NotFoundException(`Feedback ${feedbackId} not found`);
     }

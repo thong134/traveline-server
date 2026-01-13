@@ -16,7 +16,10 @@ export class CreateRestaurantBookingDto {
   @Min(1)
   tableId: number;
 
-  @ApiProperty({ description: 'Check-in datetime (ISO or dd:MM:yyyy HH:mm)', example: '25:12:2024 19:00' })
+  @ApiProperty({
+    description: 'Check-in datetime (ISO or dd:MM:yyyy HH:mm)',
+    example: '25:12:2024 19:00',
+  })
   @IsString()
   @IsNotEmpty()
   checkInDate: string;

@@ -37,18 +37,24 @@ export class FlightsController {
   @Get()
   @ApiOperation({ summary: 'Danh sách chuyến bay' })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
+  @ApiQuery({ name: 'provinceId', required: false })
+  @ApiQuery({ name: 'districtId', required: false })
   @ApiQuery({ name: 'airline', required: false, type: String })
   @ApiQuery({ name: 'departureAirport', required: false, type: String })
   @ApiQuery({ name: 'arrivalAirport', required: false, type: String })
   @ApiOkResponse({ description: 'Flight list' })
   findAll(
     @Query('cooperationId') cooperationId?: string,
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
     @Query('airline') airline?: string,
     @Query('departureAirport') departureAirport?: string,
     @Query('arrivalAirport') arrivalAirport?: string,
   ) {
     return this.service.findAll({
       cooperationId: cooperationId ? Number(cooperationId) : undefined,
+      provinceId,
+      districtId,
       airline: airline ?? undefined,
       departureAirport: departureAirport ?? undefined,
       arrivalAirport: arrivalAirport ?? undefined,

@@ -89,7 +89,8 @@ export class EateriesController {
   @ApiOkResponse({ description: 'Danh sách quán ăn được yêu thích' })
   findFavorites(@CurrentUser() user: RequestUser) {
     return this.service.findFavoritesByUser(user.userId);
-  }  @Post(':id/favorite')
+  }
+  @Post(':id/favorite')
   @RequireAuth()
   @ApiOperation({ summary: 'Thêm quán ăn vào danh sách yêu thích' })
   async favorite(

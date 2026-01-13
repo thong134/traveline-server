@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -145,7 +149,6 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-
   async updateFcmToken(userId: number, token: string): Promise<User> {
     const user = await this.findOne(userId);
     user.fcmToken = token;
@@ -194,7 +197,6 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-
   async updateHobbies(userId: number, hobbies: string[]): Promise<User> {
     const user = await this.findOne(userId);
     user.hobbies = hobbies;
@@ -217,7 +219,12 @@ export class UsersService {
     const user = await this.findOne(userId);
 
     if (data.dateOfBirth !== undefined) {
-      user.dateOfBirth = data.dateOfBirth instanceof Date ? data.dateOfBirth : (data.dateOfBirth ? new Date(data.dateOfBirth) : null);
+      user.dateOfBirth =
+        data.dateOfBirth instanceof Date
+          ? data.dateOfBirth
+          : data.dateOfBirth
+            ? new Date(data.dateOfBirth)
+            : null;
     }
 
     assignDefined(user, {
@@ -239,10 +246,7 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-
-  private prepareUserPayload(
-    dto: any,
-  ): Partial<User> {
+  private prepareUserPayload(dto: any): Partial<User> {
     const { dateOfBirth, ...rest } = dto;
     const payload: Partial<User> = {};
     const arrayFields = new Set([
@@ -282,7 +286,12 @@ export class UsersService {
     });
 
     if (dateOfBirth !== undefined) {
-      payload.dateOfBirth = dateOfBirth instanceof Date ? dateOfBirth : (dateOfBirth ? new Date(dateOfBirth) : null);
+      payload.dateOfBirth =
+        dateOfBirth instanceof Date
+          ? dateOfBirth
+          : dateOfBirth
+            ? new Date(dateOfBirth)
+            : null;
     }
 
     if (payload.travelExp !== undefined) {

@@ -37,7 +37,9 @@ export class ReminderCronService {
     const startOfTomorrow = startOfDay(tomorrow);
     const endOfTomorrow = endOfDay(tomorrow);
 
-    this.logger.log(`Scanning events for: ${startOfTomorrow.toISOString()} to ${endOfTomorrow.toISOString()}`);
+    this.logger.log(
+      `Scanning events for: ${startOfTomorrow.toISOString()} to ${endOfTomorrow.toISOString()}`,
+    );
 
     let totalSent = 0;
 
@@ -50,10 +52,14 @@ export class ReminderCronService {
       },
       relations: { user: true },
     });
-    
+
     // Filtering in JS for exact day match to be safe across timezones/TS
     for (const route of routes) {
-      if (route.user && route.startDate && this.isWithinDay(route.startDate, startOfTomorrow, endOfTomorrow)) {
+      if (
+        route.user &&
+        route.startDate &&
+        this.isWithinDay(route.startDate, startOfTomorrow, endOfTomorrow)
+      ) {
         await this.notificationService.createNotification(
           route.user.id,
           'Lộ trình sắp bắt đầu!',
@@ -73,7 +79,10 @@ export class ReminderCronService {
       relations: { user: true },
     });
     for (const rental of rentals) {
-      if (rental.user && this.isWithinDay(rental.startDate, startOfTomorrow, endOfTomorrow)) {
+      if (
+        rental.user &&
+        this.isWithinDay(rental.startDate, startOfTomorrow, endOfTomorrow)
+      ) {
         await this.notificationService.createNotification(
           rental.user.id,
           'Nhắc nhở giao xe!',
@@ -93,7 +102,10 @@ export class ReminderCronService {
       relations: { user: true },
     });
     for (const hotel of hotels) {
-      if (hotel.user && this.isWithinDay(hotel.checkInDate, startOfTomorrow, endOfTomorrow)) {
+      if (
+        hotel.user &&
+        this.isWithinDay(hotel.checkInDate, startOfTomorrow, endOfTomorrow)
+      ) {
         await this.notificationService.createNotification(
           hotel.user.id,
           'Lịch nhận phòng khách sạn!',
@@ -113,7 +125,10 @@ export class ReminderCronService {
       relations: { user: true },
     });
     for (const booking of bookings) {
-      if (booking.user && this.isWithinDay(booking.checkInDate, startOfTomorrow, endOfTomorrow)) {
+      if (
+        booking.user &&
+        this.isWithinDay(booking.checkInDate, startOfTomorrow, endOfTomorrow)
+      ) {
         await this.notificationService.createNotification(
           booking.user.id,
           'Lịch hẹn nhà hàng!',
@@ -125,7 +140,9 @@ export class ReminderCronService {
       }
     }
 
-    this.logger.log(`Reminder check completed. Sent ${totalSent} notifications.`);
+    this.logger.log(
+      `Reminder check completed. Sent ${totalSent} notifications.`,
+    );
     return { remindersSent: totalSent };
   }
 

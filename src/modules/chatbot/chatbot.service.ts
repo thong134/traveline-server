@@ -35,7 +35,10 @@ import { RentalBillsService } from '../rental-bill/rental-bill.service';
 import { RentalVehiclesService } from '../rental-vehicle/rental-vehicle.service';
 import { TravelRoutesService } from '../travel-route/travel-route.service';
 import { CooperationsService } from '../cooperation/cooperation.service';
-import { RentalBillStatus, RentalProgressStatus } from '../rental-bill/entities/rental-bill.entity';
+import {
+  RentalBillStatus,
+  RentalProgressStatus,
+} from '../rental-bill/entities/rental-bill.entity';
 import { RentalType } from '../rental-vehicle/dto/search-rental-vehicle.dto';
 import { FeedbackService } from '../feedback/feedback.service';
 
@@ -147,41 +150,41 @@ const MAX_RECENT_SEARCHES = 10;
 
 // Common Vietnamese aliases mapping (Zero-shot normalization)
 const LOCATION_ALIASES: Record<string, string> = {
-  'sg': 'Hồ Chí Minh',
-  'tphcm': 'Hồ Chí Minh',
-  'saigon': 'Hồ Chí Minh',
+  sg: 'Hồ Chí Minh',
+  tphcm: 'Hồ Chí Minh',
+  saigon: 'Hồ Chí Minh',
   'sài gòn': 'Hồ Chí Minh',
-  'hcm': 'Hồ Chí Minh',
-  'hcmc': 'Hồ Chí Minh',
-  'hn': 'Hà Nội',
-  'hanoi': 'Hà Nội',
+  hcm: 'Hồ Chí Minh',
+  hcmc: 'Hồ Chí Minh',
+  hn: 'Hà Nội',
+  hanoi: 'Hà Nội',
   'hà nội': 'Hà Nội',
-  'đn': 'Đà Nẵng',
-  'dn': 'Đà Nẵng',
+  đn: 'Đà Nẵng',
+  dn: 'Đà Nẵng',
   'đà nẵng': 'Đà Nẵng',
-  'vt': 'Vũng Tàu',
+  vt: 'Vũng Tàu',
   'vũng tàu': 'Vũng Tàu',
-  'đl': 'Đà Lạt',
-  'dl': 'Đà Lạt',
+  đl: 'Đà Lạt',
+  dl: 'Đà Lạt',
   'đà lạt': 'Đà Lạt',
-  'nt': 'Nha Trang',
+  nt: 'Nha Trang',
   'nha trang': 'Nha Trang',
-  'pq': 'Phú Quốc',
+  pq: 'Phú Quốc',
   'phú quốc': 'Phú Quốc',
-  'sp': 'Sapa',
-  'sapa': 'Sapa',
-  'hl': 'Hạ Long',
+  sp: 'Sapa',
+  sapa: 'Sapa',
+  hl: 'Hạ Long',
   'hạ long': 'Hạ Long',
-  'tv': 'Trà Vinh',
-  'hp': 'Hải Phòng',
-  'ct': 'Cần Thơ',
-  'lx': 'Long Xuyên',
-  'bt': 'Bến Tre',
-  'tn': 'Tây Ninh',
-  'hy': 'Hưng Yên',
-  'bn': 'Bắc Ninh',
-  'bg': 'Bắc Giang',
-  'nb': 'Ninh Bình',
+  tv: 'Trà Vinh',
+  hp: 'Hải Phòng',
+  ct: 'Cần Thơ',
+  lx: 'Long Xuyên',
+  bt: 'Bến Tre',
+  tn: 'Tây Ninh',
+  hy: 'Hưng Yên',
+  bn: 'Bắc Ninh',
+  bg: 'Bắc Giang',
+  nb: 'Ninh Bình',
 };
 
 @Injectable()
@@ -243,7 +246,6 @@ export class ChatService {
       profileSummary,
     );
 
-
     // 3. Fallback / Generic Search
     // ... Existing logic ...
     const searchTerms = this.buildSearchTerms(
@@ -266,18 +268,20 @@ export class ChatService {
         .join('\n');
 
       try {
-        const prompt = preferredLang === 'en'
-          ? `User query: "${message}". Found these places:\n${itemsInfo}\n\nGenerate a friendly Opening sentence (e.g., "Here are some great suggestions...") and a Closing sentence (e.g., "Would you like to book a hotel nearby?").\nReply ONLY with JSON: {"opening": "...", "closing": "..."}`
-          : `Người dùng hỏi: "${message}". Tìm thấy:\n${itemsInfo}\n\n Hãy viết một câu Mở đầu thân thiện (ví dụ: "Mình tìm thấy vài địa điểm thú vị...") và một câu Kết thúc gợi mở (ví dụ: "Bạn có muốn xem khách sạn gần đó không?").\nTrả lời CHỈ bằng JSON: {"opening": "...", "closing": "..."}`;
+        const prompt =
+          preferredLang === 'en'
+            ? `User query: "${message}". Found these places:\n${itemsInfo}\n\nGenerate a friendly Opening sentence (e.g., "Here are some great suggestions...") and a Closing sentence (e.g., "Would you like to book a hotel nearby?").\nReply ONLY with JSON: {"opening": "...", "closing": "..."}`
+            : `Người dùng hỏi: "${message}". Tìm thấy:\n${itemsInfo}\n\n Hãy viết một câu Mở đầu thân thiện (ví dụ: "Mình tìm thấy vài địa điểm thú vị...") và một câu Kết thúc gợi mở (ví dụ: "Bạn có muốn xem khách sạn gần đó không?").\nTrả lời CHỈ bằng JSON: {"opening": "...", "closing": "..."}`;
 
         const response = await this.performModelCall(
-          (model) => model.generateContent({
+          (model) =>
+            model.generateContent({
               contents: [{ role: 'user', parts: [{ text: prompt }] }],
-              generationConfig: { responseMimeType: 'application/json' }
-          }),
+              generationConfig: { responseMimeType: 'application/json' },
+            }),
           this.modelName,
         );
-        
+
         const raw = this.extractText(response);
         const json = JSON.parse(raw);
         opening = json.opening;
@@ -285,16 +289,24 @@ export class ChatService {
       } catch (e) {
         // FALLBACK: Static text if AI fails
         console.warn('AI Summary failed, using fallback:', e.message);
-        opening = preferredLang === 'en' ? "Here are the top places I found for you:" : "Dưới đây là những địa điểm hàng đầu mình tìm được cho bạn:";
-        closing = preferredLang === 'en' ? "Do you want to see details for any of them?" : "Bạn có muốn xem chi tiết địa điểm nào không?";
+        opening =
+          preferredLang === 'en'
+            ? 'Here are the top places I found for you:'
+            : 'Dưới đây là những địa điểm hàng đầu mình tìm được cho bạn:';
+        closing =
+          preferredLang === 'en'
+            ? 'Do you want to see details for any of them?'
+            : 'Bạn có muốn xem chi tiết địa điểm nào không?';
       }
     } else {
-       opening = preferredLang === 'en' 
-         ? "I couldn't find any matching destinations." 
-         : "Mình tiếc quá, không tìm thấy địa điểm nào phù hợp.";
-       closing = preferredLang === 'en' 
-         ? "Could you try different keywords?" 
-         : "Bạn thử dùng từ khóa khác xem sao nhé?";
+      opening =
+        preferredLang === 'en'
+          ? "I couldn't find any matching destinations."
+          : 'Mình tiếc quá, không tìm thấy địa điểm nào phù hợp.';
+      closing =
+        preferredLang === 'en'
+          ? 'Could you try different keywords?'
+          : 'Bạn thử dùng từ khóa khác xem sao nhé?';
     }
 
     // 5. Return Structured Response
@@ -303,7 +315,7 @@ export class ChatService {
       data: results, // Frontend renders "Content" from this
       text: {
         opening,
-        closing
+        closing,
       },
     };
   }
@@ -392,22 +404,41 @@ export class ChatService {
 
     // 2. ROUTER Based on Intent (Unified Agent Logic)
     if (options?.userId) {
-        switch (classification.intent) {
-            case 'my_orders':
-                return this.handleMyOrders(options.userId, message, preferredLang);
-            case 'my_routes':
-                return this.handleMyRoutes(options.userId, message, preferredLang);
-            case 'search_vehicle':
-                return this.handleVehicleSearch(options.userId, message, preferredLang);
-            case 'search_hotel':
-                return this.handleExternalSearch(options.userId, message, preferredLang, 'HOTEL');
-            case 'search_restaurant':
-                return this.handleExternalSearch(options.userId, message, preferredLang, 'RESTAURANT');
-            case 'create_route':
-                return this.handleCreateRoute(options.userId, message, preferredLang);
-            case 'feedback_summary':
-                return this.handleFeedbackSummary(classification, message, preferredLang, { history });
-        }
+      switch (classification.intent) {
+        case 'my_orders':
+          return this.handleMyOrders(options.userId, message, preferredLang);
+        case 'my_routes':
+          return this.handleMyRoutes(options.userId, message, preferredLang);
+        case 'search_vehicle':
+          return this.handleVehicleSearch(
+            options.userId,
+            message,
+            preferredLang,
+          );
+        case 'search_hotel':
+          return this.handleExternalSearch(
+            options.userId,
+            message,
+            preferredLang,
+            'HOTEL',
+          );
+        case 'search_restaurant':
+          return this.handleExternalSearch(
+            options.userId,
+            message,
+            preferredLang,
+            'RESTAURANT',
+          );
+        case 'create_route':
+          return this.handleCreateRoute(options.userId, message, preferredLang);
+        case 'feedback_summary':
+          return this.handleFeedbackSummary(
+            classification,
+            message,
+            preferredLang,
+            { history },
+          );
+      }
     }
 
     const enrichedClassification = this.enrichClassificationWithHistory(
@@ -470,9 +501,10 @@ export class ChatService {
       await this.cacheRepo.save(
         this.cacheRepo.create({
           message,
-          response: typeof response.text === 'string' 
-            ? response.text 
-            : (response.text?.opening + '\n' + response.text?.closing) || '',
+          response:
+            typeof response.text === 'string'
+              ? response.text
+              : response.text?.opening + '\n' + response.text?.closing || '',
           metadata: { images: response.images ?? [] },
         }),
       );
@@ -485,23 +517,50 @@ export class ChatService {
     const lower = message.toLowerCase().trim();
 
     // 0. Feedback Summary (Regex-based)
-    const feedbackRegex = /(?:review|đánh giá|nhận xét|có nên đi|thấy sao về)\s+(.+)/i;
+    const feedbackRegex =
+      /(?:review|đánh giá|nhận xét|có nên đi|thấy sao về)\s+(.+)/i;
     if (feedbackRegex.test(message)) {
-       return { intent: 'feedback_summary', keywords: [], regions: [], categories: [], followUp: false, imageRequested: false };
+      return {
+        intent: 'feedback_summary',
+        keywords: [],
+        regions: [],
+        categories: [],
+        followUp: false,
+        imageRequested: false,
+      };
     }
 
     // Identify Regions first
     const regions: string[] = [];
     const provinces = [
-      'Đà Nẵng', 'Hồ Chí Minh', 'Hà Nội', 'Vũng Tàu', 'Đà Lạt', 'Nha Trang', 'Phú Quốc', 
-      'Sapa', 'Hạ Long', 'Trà Vinh', 'Huế', 'Cần Thơ', 'Hải Phòng', 'Phan Thiết', 'Mũi Né',
-      'Ninh Bình', 'Hải Dương', 'Quảng Ninh', 'Quảng Nam', 'Hội An', 'Đồng Nai', 'Bình Dương'
+      'Đà Nẵng',
+      'Hồ Chí Minh',
+      'Hà Nội',
+      'Vũng Tàu',
+      'Đà Lạt',
+      'Nha Trang',
+      'Phú Quốc',
+      'Sapa',
+      'Hạ Long',
+      'Trà Vinh',
+      'Huế',
+      'Cần Thơ',
+      'Hải Phòng',
+      'Phan Thiết',
+      'Mũi Né',
+      'Ninh Bình',
+      'Hải Dương',
+      'Quảng Ninh',
+      'Quảng Nam',
+      'Hội An',
+      'Đồng Nai',
+      'Bình Dương',
     ];
-    
+
     for (const [alias, full] of Object.entries(LOCATION_ALIASES)) {
-       if (lower.includes(alias.toLowerCase())) {
-         if (!regions.includes(full)) regions.push(full);
-       }
+      if (lower.includes(alias.toLowerCase())) {
+        if (!regions.includes(full)) regions.push(full);
+      }
     }
     for (const prov of provinces) {
       if (lower.includes(prov.toLowerCase())) {
@@ -510,54 +569,149 @@ export class ChatService {
     }
 
     // 1. App Guide / Help
-    if (lower.includes('hướng dẫn') || lower.includes('sử dụng app') || lower.includes('cách dùng')) {
-      return { intent: 'app_guide', keywords: [], regions, categories: [], followUp: false, imageRequested: false };
+    if (
+      lower.includes('hướng dẫn') ||
+      lower.includes('sử dụng app') ||
+      lower.includes('cách dùng')
+    ) {
+      return {
+        intent: 'app_guide',
+        keywords: [],
+        regions,
+        categories: [],
+        followUp: false,
+        imageRequested: false,
+      };
     }
-    
-    if (lower.includes('đặt') && (lower.includes('vé') || lower.includes('phòng'))) {
-      return { intent: 'booking_help', keywords: [], regions, categories: [], followUp: true, imageRequested: false };
+
+    if (
+      lower.includes('đặt') &&
+      (lower.includes('vé') || lower.includes('phòng'))
+    ) {
+      return {
+        intent: 'booking_help',
+        keywords: [],
+        regions,
+        categories: [],
+        followUp: true,
+        imageRequested: false,
+      };
     }
 
     // 2. SEARCH INTENTS (Destination, Restaurant, Hotel, Vehicle)
-    const isSearch = lower.includes('tìm') || lower.includes('gợi ý') || lower.includes('địa điểm') || 
-                     lower.includes('chỗ') || lower.includes('đâu') || lower.includes('nào') ||
-                     lower.includes('list') || lower.includes('danh sách');
+    const isSearch =
+      lower.includes('tìm') ||
+      lower.includes('gợi ý') ||
+      lower.includes('địa điểm') ||
+      lower.includes('chỗ') ||
+      lower.includes('đâu') ||
+      lower.includes('nào') ||
+      lower.includes('list') ||
+      lower.includes('danh sách');
 
     if (isSearch || regions.length > 0) {
       // Destination Check
-      if (lower.includes('địa điểm') || lower.includes('chỗ chơi') || lower.includes('du lịch') || 
-          lower.includes('thắng cảnh') || lower.includes('đi đâu') || lower.includes('chơi gì')) {
-        return { intent: 'destination', keywords: [], regions, categories: [], followUp: false, imageRequested: false };
+      if (
+        lower.includes('địa điểm') ||
+        lower.includes('chỗ chơi') ||
+        lower.includes('du lịch') ||
+        lower.includes('thắng cảnh') ||
+        lower.includes('đi đâu') ||
+        lower.includes('chơi gì')
+      ) {
+        return {
+          intent: 'destination',
+          keywords: [],
+          regions,
+          categories: [],
+          followUp: false,
+          imageRequested: false,
+        };
       }
-      
+
       // Restaurant Check
-      if (lower.includes('ăn gì') || lower.includes('quán ăn') || lower.includes('nhà hàng') || 
-          lower.includes('ẩm thực') || lower.includes('đặc sản')) {
-         return { intent: 'search_restaurant', keywords: [], regions, categories: [], followUp: false, imageRequested: false };
+      if (
+        lower.includes('ăn gì') ||
+        lower.includes('quán ăn') ||
+        lower.includes('nhà hàng') ||
+        lower.includes('ẩm thực') ||
+        lower.includes('đặc sản')
+      ) {
+        return {
+          intent: 'search_restaurant',
+          keywords: [],
+          regions,
+          categories: [],
+          followUp: false,
+          imageRequested: false,
+        };
       }
 
       // Hotel Check
-      if (lower.includes('khách sạn') || lower.includes('chỗ ở') || lower.includes('homestay') || 
-          lower.includes('nghỉ ngơi') || lower.includes('ở đâu')) {
-         return { intent: 'search_hotel', keywords: [], regions, categories: [], followUp: false, imageRequested: false };
+      if (
+        lower.includes('khách sạn') ||
+        lower.includes('chỗ ở') ||
+        lower.includes('homestay') ||
+        lower.includes('nghỉ ngơi') ||
+        lower.includes('ở đâu')
+      ) {
+        return {
+          intent: 'search_hotel',
+          keywords: [],
+          regions,
+          categories: [],
+          followUp: false,
+          imageRequested: false,
+        };
       }
 
       // Vehicle Check
-      if (lower.includes('xe') || lower.includes('thuê xe') || lower.includes('di chuyển') || 
-          lower.includes('bike') || lower.includes('car')) {
-         return { intent: 'search_vehicle', keywords: [], regions, categories: [], followUp: false, imageRequested: false };
+      if (
+        lower.includes('xe') ||
+        lower.includes('thuê xe') ||
+        lower.includes('di chuyển') ||
+        lower.includes('bike') ||
+        lower.includes('car')
+      ) {
+        return {
+          intent: 'search_vehicle',
+          keywords: [],
+          regions,
+          categories: [],
+          followUp: false,
+          imageRequested: false,
+        };
       }
 
       // Fallback: If region is present but no specific intent, assume destination
       if (regions.length > 0) {
-          // If message is very short like "Đà Nẵng" or "SG", also consider destination search
-          return { intent: 'destination', keywords: [], regions, categories: [], followUp: false, imageRequested: false };
+        // If message is very short like "Đà Nẵng" or "SG", also consider destination search
+        return {
+          intent: 'destination',
+          keywords: [],
+          regions,
+          categories: [],
+          followUp: false,
+          imageRequested: false,
+        };
       }
     }
 
     // 3. Image Request (local)
-    if (lower.includes('hình ảnh') || lower.includes('ảnh đẹp') || lower.includes('photo') || lower.includes('pic')) {
-      return { intent: 'image_request', keywords: [], regions, categories: [], followUp: false, imageRequested: true };
+    if (
+      lower.includes('hình ảnh') ||
+      lower.includes('ảnh đẹp') ||
+      lower.includes('photo') ||
+      lower.includes('pic')
+    ) {
+      return {
+        intent: 'image_request',
+        keywords: [],
+        regions,
+        categories: [],
+        followUp: false,
+        imageRequested: true,
+      };
     }
 
     return {
@@ -577,7 +731,10 @@ export class ChatService {
     context: ChatRuntimeContext,
   ): Promise<ChatResponse> {
     // Auto-detect image classification when user uploads image
-    if (context.attachments.length > 0 && classification.intent !== 'image_request') {
+    if (
+      context.attachments.length > 0 &&
+      classification.intent !== 'image_request'
+    ) {
       return this.handleImageClassification(
         classification,
         message,
@@ -664,9 +821,10 @@ export class ChatService {
       case 'greeting':
         return {
           source: 'ai',
-          text: preferredLang === 'en'
-            ? "Hello! I'm Traveline AI. How can I help you explore today?"
-            : "Xin chào! Mình là Traveline AI. Hôm nay bạn muốn khám phá địa điểm nào nhỉ?"
+          text:
+            preferredLang === 'en'
+              ? "Hello! I'm Traveline AI. How can I help you explore today?"
+              : 'Xin chào! Mình là Traveline AI. Hôm nay bạn muốn khám phá địa điểm nào nhỉ?',
         };
       case 'other':
       default:
@@ -697,7 +855,7 @@ export class ChatService {
       context.profile,
     );
     const provinceFilter = classification.regions?.[0];
-    
+
     // DEBUG: Log classification and search parameters
     console.log('[Chatbot DEBUG] handleDestinationQuery:', {
       intent: classification.intent,
@@ -707,22 +865,26 @@ export class ChatService {
       provinceFilter,
       searchTerms,
     });
-    
+
     const results = await this.searchDestinations(searchTerms, provinceFilter);
-  if (!results.length) {
-      if (classification.aiResponse && !fallback.toLowerCase().includes('không')) { 
-          // If the AI gave a nice intro but database failed, we might want to say "I looked but found nothing".
-          // But using a static safe message is better for quota.
+    if (!results.length) {
+      if (
+        classification.aiResponse &&
+        !fallback.toLowerCase().includes('không')
+      ) {
+        // If the AI gave a nice intro but database failed, we might want to say "I looked but found nothing".
+        // But using a static safe message is better for quota.
       }
-      const notFoundText = lang === 'en'
-        ? `I couldn't find any destinations matching "${searchTerms.join(', ')}". You can try another location!`
-        : `Mình chưa tìm thấy địa điểm nào phù hợp với từ khóa "${searchTerms.join(', ')}". Bạn thử tìm địa điểm khác xem sao nhé!`;
-      
+      const notFoundText =
+        lang === 'en'
+          ? `I couldn't find any destinations matching "${searchTerms.join(', ')}". You can try another location!`
+          : `Mình chưa tìm thấy địa điểm nào phù hợp với từ khóa "${searchTerms.join(', ')}". Bạn thử tìm địa điểm khác xem sao nhé!`;
+
       return {
-          source: 'ai',
-          text: notFoundText
+        source: 'ai',
+        text: notFoundText,
       };
-  }
+    }
 
     const mapped = results.map((destination) => ({
       id: destination.id,
@@ -790,9 +952,8 @@ export class ChatService {
       name: coop.name,
       address: this.joinAddress([
         coop.address,
-        coop.district,
-        coop.city,
-        coop.province,
+        coop.districtId,
+        coop.provinceId,
       ]),
       description: coop.introduction ?? coop.extension ?? undefined,
       type: 'restaurant' as const,
@@ -843,9 +1004,8 @@ export class ChatService {
       name: coop.name,
       address: this.joinAddress([
         coop.address,
-        coop.district,
-        coop.city,
-        coop.province,
+        coop.districtId,
+        coop.provinceId,
       ]),
       description: coop.introduction ?? coop.extension ?? undefined,
       type: 'hotel' as const,
@@ -931,11 +1091,11 @@ export class ChatService {
 
   // AI Image Class to Vietnamese Category mapping
   private readonly aiClassToCategoryMap: Record<string, string[]> = {
-    'forest': ['Thiên nhiên', 'Rừng'],
-    'architecture_site': ['Lịch sử', 'Công trình'],
-    'urban_life': ['Giải trí', 'Văn hóa', 'Thành phố'],
-    'beach': ['Biển'],
-    'mountain': ['Núi'],
+    forest: ['Thiên nhiên', 'Rừng'],
+    architecture_site: ['Lịch sử', 'Công trình'],
+    urban_life: ['Giải trí', 'Văn hóa', 'Thành phố'],
+    beach: ['Biển'],
+    mountain: ['Núi'],
   };
 
   private async handleImageClassification(
@@ -954,58 +1114,76 @@ export class ChatService {
 
     // 1. Check for "Identify" intent (e.g. "Đây là đâu?", "Where is this?")
     // If user wants to identify the specific location, we return the standard "Hard to recognize" message.
-    const identifyKeywordsLower = lang === 'en' 
+    const identifyKeywordsLower =
+      lang === 'en'
         ? ['where is', 'what is this', 'identify', 'location name']
         : ['đây là đâu', 'chỗ nào', 'tên là gì', 'địa điểm nào'];
     const msgLower = message.toLowerCase();
-    
+
     // Only block if SHORT query asking for ID (to avoid blocking "Tìm chỗ giống này nhưng ở đâu đẹp")
     // Simple heuristic: if contains key phrases.
-    const isIdentifyRequest = identifyKeywordsLower.some(kw => msgLower.includes(kw));
+    const isIdentifyRequest = identifyKeywordsLower.some((kw) =>
+      msgLower.includes(kw),
+    );
 
     if (isIdentifyRequest) {
-        return {
-            source: 'ai',
-            text: lang === 'en' 
-                ? "It's a bit hard to recognize the exact location from this image. However, I can look for similar places if you'd like!"
-                : "Nhìn hình này hơi khó để nhận biết chính xác địa điểm. Tuy nhiên mình có thể tìm các địa điểm có khung cảnh tương tự nhé!",
-            images: this.attachmentsToResponse(context.attachments)
-        };
+      return {
+        source: 'ai',
+        text:
+          lang === 'en'
+            ? "It's a bit hard to recognize the exact location from this image. However, I can look for similar places if you'd like!"
+            : 'Nhìn hình này hơi khó để nhận biết chính xác địa điểm. Tuy nhiên mình có thể tìm các địa điểm có khung cảnh tương tự nhé!',
+        images: this.attachmentsToResponse(context.attachments),
+      };
     }
 
     try {
       const attachment = context.attachments[0];
-      
+
       // Step 1: Upload to Cloudinary
       // Optimize: If it's already a URL from user (unlikely in this flow), skip
       let imageUrl = '';
-      if (attachment.origin === 'user-url' && attachment.base64.startsWith('http')) {
-          imageUrl = attachment.base64;
+      if (
+        attachment.origin === 'user-url' &&
+        attachment.base64.startsWith('http')
+      ) {
+        imageUrl = attachment.base64;
       } else {
         const uploadResult = await this.cloudinaryService.uploadBase64Image(
-            `data:${attachment.mimeType};base64,${attachment.base64}`,
-            'chatbot_images',
+          `data:${attachment.mimeType};base64,${attachment.base64}`,
+          'chatbot_images',
         );
         imageUrl = uploadResult.secure_url;
       }
 
       // Step 2: Call AI service
-      const aiServiceUrl = this.configService.get<string>('AI_SERVICE_URL') || 'http://localhost:8000';
-      
+      const aiServiceUrl =
+        this.configService.get<string>('AI_SERVICE_URL') ||
+        'http://localhost:8000';
+
       let classifiedCategory = 'urban_life';
       try {
         const classifyResponse = await firstValueFrom(
-          this.httpService.post(`${aiServiceUrl}/vision/classify`, { imageUrl }),
+          this.httpService.post(`${aiServiceUrl}/vision/classify`, {
+            imageUrl,
+          }),
         );
-        classifiedCategory = classifyResponse.data?.class || classifyResponse.data?.predicted_class || 'urban_life';
+        classifiedCategory =
+          classifyResponse.data?.class ||
+          classifyResponse.data?.predicted_class ||
+          'urban_life';
       } catch (aiError) {
         console.warn('[Chatbot] AI classification failed, using fallback.');
-        if (msgLower.includes('biển') || msgLower.includes('beach')) classifiedCategory = 'beach';
-        else if (msgLower.includes('núi') || msgLower.includes('mountain')) classifiedCategory = 'mountain';
+        if (msgLower.includes('biển') || msgLower.includes('beach'))
+          classifiedCategory = 'beach';
+        else if (msgLower.includes('núi') || msgLower.includes('mountain'))
+          classifiedCategory = 'mountain';
       }
-      
+
       // Step 3: Map to Categories
-      const targetCategories = this.aiClassToCategoryMap[classifiedCategory] || ['Thiên nhiên'];
+      const targetCategories = this.aiClassToCategoryMap[
+        classifiedCategory
+      ] || ['Thiên nhiên'];
 
       // DEBUG: Log image classification
       console.log('[Chatbot DEBUG] handleImageClassification:', {
@@ -1023,9 +1201,10 @@ export class ChatService {
         const categoryLabel = targetCategories[0] || classifiedCategory;
         return {
           source: 'ai',
-          text: lang === 'en'
-            ? `It looks like a ${categoryLabel} scene, but I couldn't find similar places nearby.`
-            : `Ảnh này nhìn giống cảnh ${categoryLabel}, nhưng tiếc là mình chưa tìm thấy địa điểm tương tự trong hệ thống.`,
+          text:
+            lang === 'en'
+              ? `It looks like a ${categoryLabel} scene, but I couldn't find similar places nearby.`
+              : `Ảnh này nhìn giống cảnh ${categoryLabel}, nhưng tiếc là mình chưa tìm thấy địa điểm tương tự trong hệ thống.`,
           images: [{ source: 'user', url: imageUrl }],
         };
       }
@@ -1041,36 +1220,40 @@ export class ChatService {
 
       // Step 5: Generate Structure Response (Opening/Closing)
       // Use fallback if AI is overloaded
-      
+
       let opening = '';
       let closing = '';
-      
+
       try {
-          // Attempt AI Generation
-          const categoryLabel = targetCategories[0] || classifiedCategory;
-          const prompt = lang === 'en'
-            ? `User uploaded an image of "${categoryLabel}". Found ${mapped.length} similar places: ${mapped.map(d=>d.name).join(', ')}. Generate Opening (e.g. "Great photo! Here are similar places:") and Closing (e.g. "Want to see more?"). JSON: {"opening": "...", "closing": "..."}`
-            : `Người dùng gửi ảnh cảnh "${categoryLabel}". Tìm thấy ${mapped.length} nơi tương tự: ${mapped.map(d=>d.name).join(', ')}. Tạo câu Mở đầu (vd: "Ảnh đẹp quá! Đây là mấy chỗ tương tự:") và Kết thúc (vd: "Bạn thích chỗ nào không?"). JSON: {"opening": "...", "closing": "..."}`;
-            
-          const response = await this.performModelCall(
-            (model) => model.generateContent({
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: 'application/json' }
+        // Attempt AI Generation
+        const categoryLabel = targetCategories[0] || classifiedCategory;
+        const prompt =
+          lang === 'en'
+            ? `User uploaded an image of "${categoryLabel}". Found ${mapped.length} similar places: ${mapped.map((d) => d.name).join(', ')}. Generate Opening (e.g. "Great photo! Here are similar places:") and Closing (e.g. "Want to see more?"). JSON: {"opening": "...", "closing": "..."}`
+            : `Người dùng gửi ảnh cảnh "${categoryLabel}". Tìm thấy ${mapped.length} nơi tương tự: ${mapped.map((d) => d.name).join(', ')}. Tạo câu Mở đầu (vd: "Ảnh đẹp quá! Đây là mấy chỗ tương tự:") và Kết thúc (vd: "Bạn thích chỗ nào không?"). JSON: {"opening": "...", "closing": "..."}`;
+
+        const response = await this.performModelCall(
+          (model) =>
+            model.generateContent({
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              generationConfig: { responseMimeType: 'application/json' },
             }),
-            this.modelName,
-          );
-          const json = JSON.parse(this.extractText(response));
-          opening = json.opening;
-          closing = json.closing;
+          this.modelName,
+        );
+        const json = JSON.parse(this.extractText(response));
+        opening = json.opening;
+        closing = json.closing;
       } catch (e) {
-          // Fallback if AI fails (Overloaded)
-          const categoryLabel = targetCategories[0] || classifiedCategory;
-          opening = lang === 'en' 
+        // Fallback if AI fails (Overloaded)
+        const categoryLabel = targetCategories[0] || classifiedCategory;
+        opening =
+          lang === 'en'
             ? `Your photo looks like a ${categoryLabel} spot! Here are some similar places:`
             : `Ảnh của bạn nhìn giống cảnh ${categoryLabel} quá! Dưới đây là một vài địa điểm tương tự nè:`;
-          closing = lang === 'en'
-            ? "Do you like any of them?"
-            : "Bạn thấy mấy chỗ này thế nào?";
+        closing =
+          lang === 'en'
+            ? 'Do you like any of them?'
+            : 'Bạn thấy mấy chỗ này thế nào?';
       }
 
       const dbImages = await this.prepareImagePayloads(
@@ -1082,17 +1265,16 @@ export class ChatService {
         source: 'database',
         data: mapped,
         text: { opening, closing },
-        images: [
-          { source: 'user', url: imageUrl },
-          ...dbImages,
-        ],
+        images: [{ source: 'user', url: imageUrl }, ...dbImages],
       };
-
     } catch (error) {
       console.error('Image classification critical error:', error);
       return {
-          source: 'ai',
-          text: lang === 'en' ? "Something went wrong processing your image." : "Có lỗi xảy ra khi xử lý ảnh của bạn."
+        source: 'ai',
+        text:
+          lang === 'en'
+            ? 'Something went wrong processing your image.'
+            : 'Có lỗi xảy ra khi xử lý ảnh của bạn.',
       };
     }
   }
@@ -1106,9 +1288,10 @@ export class ChatService {
     if (!context.userId) {
       return this.generateConversationalReply(message, lang, 'route_query', {
         history: context.history,
-        textOverride: lang === 'en' 
-          ? 'Please log in to view your travel routes.' 
-          : 'Vui lòng đăng nhập để xem lịch trình cá nhân của bạn.',
+        textOverride:
+          lang === 'en'
+            ? 'Please log in to view your travel routes.'
+            : 'Vui lòng đăng nhập để xem lịch trình cá nhân của bạn.',
       });
     }
 
@@ -1131,12 +1314,16 @@ export class ChatService {
 
     // Generate a summary using Gemini
     const routesInfo = routes
-      .map((r, i) => `${i + 1}. ${r.name} (${r.startDate ? r.startDate.toLocaleDateString() : 'N/A'} - ${r.endDate ? r.endDate.toLocaleDateString() : 'N/A'}) - Status: ${r.status}`)
+      .map(
+        (r, i) =>
+          `${i + 1}. ${r.name} (${r.startDate ? r.startDate.toLocaleDateString() : 'N/A'} - ${r.endDate ? r.endDate.toLocaleDateString() : 'N/A'}) - Status: ${r.status}`,
+      )
       .join('\n');
 
-    const prompt = lang === 'en'
-      ? `User is asking about their travel plans: "${message}"\nHere are their recent trips:\n${routesInfo}\n\nSummarize these trips naturally. If they have an upcoming one, highlight it.`
-      : `Người dùng đang hỏi về lịch trình: "${message}"\nĐây là các chuyến đi gần đây:\n${routesInfo}\n\nHãy tóm tắt các chuyến đi này một cách tự nhiên. Nếu có chuyến đi sắp tới, hãy nhấn mạnh nó.`;
+    const prompt =
+      lang === 'en'
+        ? `User is asking about their travel plans: "${message}"\nHere are their recent trips:\n${routesInfo}\n\nSummarize these trips naturally. If they have an upcoming one, highlight it.`
+        : `Người dùng đang hỏi về lịch trình: "${message}"\nĐây là các chuyến đi gần đây:\n${routesInfo}\n\nHãy tóm tắt các chuyến đi này một cách tự nhiên. Nếu có chuyến đi sắp tới, hãy nhấn mạnh nó.`;
 
     const response = await this.performModelCall(
       (model) => model.generateContent(prompt),
@@ -1149,9 +1336,7 @@ export class ChatService {
       where: { route: { id: In(routeIds) } },
       take: 5,
     });
-    const stopImages = firstStops
-      .flatMap((s) => s.images ?? [])
-      .slice(0, 5);
+    const stopImages = firstStops.flatMap((s) => s.images ?? []).slice(0, 5);
     const images = await this.prepareImagePayloads(stopImages, 'destination');
 
     return {
@@ -1170,28 +1355,30 @@ export class ChatService {
     if (!context.userId) {
       return this.generateConversationalReply(message, lang, 'route_detail', {
         history: context.history,
-        textOverride: lang === 'en' 
-          ? 'Please log in to view trip details.' 
-          : 'Vui lòng đăng nhập để xem chi tiết chuyến đi.',
+        textOverride:
+          lang === 'en'
+            ? 'Please log in to view trip details.'
+            : 'Vui lòng đăng nhập để xem chi tiết chuyến đi.',
       });
     }
 
     // Attempt to find the specific route mentioned or the most relevant one
     let targetRoute: TravelRoute | null = null;
-    
+
     if (classification.keywords.length > 0) {
       // Search by name keywords
-      const qb = this.routeRepo.createQueryBuilder('route')
+      const qb = this.routeRepo
+        .createQueryBuilder('route')
         .where('route.user_id = :userId', { userId: context.userId })
         .andWhere('route.isPublic = :isPublic', { isPublic: false });
-      
+
       const subClauses: string[] = [];
       classification.keywords.forEach((kw, i) => {
         subClauses.push(`route.name ILIKE :kw${i}`);
         qb.setParameter(`kw${i}`, `%${kw}%`);
       });
       qb.andWhere(`(${subClauses.join(' OR ')})`);
-      
+
       targetRoute = await qb.orderBy('route.startDate', 'ASC').getOne();
     }
 
@@ -1218,24 +1405,26 @@ export class ChatService {
     });
 
     if (!fullRoute || !fullRoute.stops?.length) {
-      const emptyText = lang === 'en'
-        ? `I found your trip "${targetRoute.name}" but it doesn't have any stops planned yet.`
-        : `Tôi đã tìm thấy chuyến đi "${targetRoute.name}" của bạn nhưng hiện chưa có điểm dừng nào trong lịch trình.`;
+      const emptyText =
+        lang === 'en'
+          ? `I found your trip "${targetRoute.name}" but it doesn't have any stops planned yet.`
+          : `Tôi đã tìm thấy chuyến đi "${targetRoute.name}" của bạn nhưng hiện chưa có điểm dừng nào trong lịch trình.`;
       return { source: 'ai', text: emptyText };
     }
 
     // Summarize the itinerary
     const stopsInfo = fullRoute.stops
-      .map(s => {
+      .map((s) => {
         const destName = s.destination?.name || 'Unknown';
         const time = s.startTime ? ` at ${s.startTime}` : '';
         return `- Day ${s.dayOrder}: ${destName}${time}${s.notes ? ` (${s.notes})` : ''}`;
       })
       .join('\n');
 
-    const prompt = lang === 'en'
-      ? `User wants details for trip: "${fullRoute.name}"\nItinerary:\n${stopsInfo}\n\nPresent this itinerary to the user in a helpful, friendly way. Highlight the start date: ${fullRoute.startDate?.toLocaleDateString()}.`
-      : `Người dùng muốn xem chi tiết chuyến đi: "${fullRoute.name}"\nLịch trình:\n${stopsInfo}\n\nHãy trình bày lịch trình này cho người dùng một cách hữu ích và thân thiện. Nhấn mạnh ngày bắt đầu: ${fullRoute.startDate?.toLocaleDateString()}.`;
+    const prompt =
+      lang === 'en'
+        ? `User wants details for trip: "${fullRoute.name}"\nItinerary:\n${stopsInfo}\n\nPresent this itinerary to the user in a helpful, friendly way. Highlight the start date: ${fullRoute.startDate?.toLocaleDateString()}.`
+        : `Người dùng muốn xem chi tiết chuyến đi: "${fullRoute.name}"\nLịch trình:\n${stopsInfo}\n\nHãy trình bày lịch trình này cho người dùng một cách hữu ích và thân thiện. Nhấn mạnh ngày bắt đầu: ${fullRoute.startDate?.toLocaleDateString()}.`;
 
     const response = await this.performModelCall(
       (model) => model.generateContent(prompt),
@@ -1262,7 +1451,7 @@ export class ChatService {
     context: ChatRuntimeContext,
   ): Promise<ChatResponse> {
     const { regions, keywords } = classification;
-    
+
     // Attempt to extract origin and destination from regions
     // prompt instructed to put origin/destination in regions
     let origin = regions[0] || '';
@@ -1273,47 +1462,85 @@ export class ChatService {
     if (!destination && keywords.length > 1) destination = keywords[1];
 
     if (!origin && !destination) {
-      return this.generateConversationalReply(message, lang, 'transport_search', {
-        history: context.history,
-        textOverride: lang === 'en'
-          ? 'Where would you like to travel from and to? Please specify cities like "from Saigon to Hanoi".'
-          : 'Bạn muốn đi từ đâu đến đâu? Vui lòng cho tôi biết địa điểm cụ thể nhé (ví dụ: "từ Sài Gòn đi Hà Nội").',
-      });
+      return this.generateConversationalReply(
+        message,
+        lang,
+        'transport_search',
+        {
+          history: context.history,
+          textOverride:
+            lang === 'en'
+              ? 'Where would you like to travel from and to? Please specify cities like "from Saigon to Hanoi".'
+              : 'Bạn muốn đi từ đâu đến đâu? Vui lòng cho tôi biết địa điểm cụ thể nhé (ví dụ: "từ Sài Gòn đi Hà Nội").',
+        },
+      );
     }
 
     // 1. Search Buses
     const busQb = this.busRepo.createQueryBuilder('bus');
-    if (origin) busQb.andWhere('bus.route ILIKE :origin', { origin: `%${origin}%` });
-    if (destination) busQb.andWhere('bus.route ILIKE :dest', { dest: `%${destination}%` });
+    if (origin)
+      busQb.andWhere('bus.route ILIKE :origin', { origin: `%${origin}%` });
+    if (destination)
+      busQb.andWhere('bus.route ILIKE :dest', { dest: `%${destination}%` });
     const buses = await busQb.take(5).getMany();
 
     // 2. Search Trains
     const trainQb = this.trainRepo.createQueryBuilder('train');
-    if (origin) trainQb.andWhere('train.departureStation ILIKE :origin', { origin: `%${origin}%` });
-    if (destination) trainQb.andWhere('train.arrivalStation ILIKE :dest', { dest: `%${destination}%` });
+    if (origin)
+      trainQb.andWhere('train.departureStation ILIKE :origin', {
+        origin: `%${origin}%`,
+      });
+    if (destination)
+      trainQb.andWhere('train.arrivalStation ILIKE :dest', {
+        dest: `%${destination}%`,
+      });
     const trains = await trainQb.take(5).getMany();
 
     // 3. Search Flights
     const flightQb = this.flightRepo.createQueryBuilder('flight');
-    if (origin) flightQb.andWhere('flight.departureAirport ILIKE :origin', { origin: `%${origin}%` });
-    if (destination) flightQb.andWhere('flight.arrivalAirport ILIKE :dest', { dest: `%${destination}%` });
+    if (origin)
+      flightQb.andWhere('flight.departureAirport ILIKE :origin', {
+        origin: `%${origin}%`,
+      });
+    if (destination)
+      flightQb.andWhere('flight.arrivalAirport ILIKE :dest', {
+        dest: `%${destination}%`,
+      });
     const flights = await flightQb.take(5).getMany();
 
     if (!buses.length && !trains.length && !flights.length) {
-      return this.generateConversationalReply(message, lang, 'transport_search', {
-        history: context.history,
-        databaseMiss: true,
-      });
+      return this.generateConversationalReply(
+        message,
+        lang,
+        'transport_search',
+        {
+          history: context.history,
+          databaseMiss: true,
+        },
+      );
     }
 
     // Format data for Gemini
-    const busData = buses.map(b => `- Bus: ${b.name}, Price: ${b.price}, Route: ${b.route}`).join('\n');
-    const trainData = trains.map(t => `- Train: ${t.name}, From ${t.departureStation} to ${t.arrivalStation}, Price: ${t.basePrice}, Departure: ${t.departureTime}`).join('\n');
-    const flightData = flights.map(f => `- Flight: ${f.airline} ${f.flightNumber}, From ${f.departureAirport} to ${f.arrivalAirport}, Price: ${f.basePrice}, Time: ${f.departureTime}`).join('\n');
+    const busData = buses
+      .map((b) => `- Bus: ${b.name}, Price: ${b.price}, Route: ${b.route}`)
+      .join('\n');
+    const trainData = trains
+      .map(
+        (t) =>
+          `- Train: ${t.name}, From ${t.departureStation} to ${t.arrivalStation}, Price: ${t.basePrice}, Departure: ${t.departureTime}`,
+      )
+      .join('\n');
+    const flightData = flights
+      .map(
+        (f) =>
+          `- Flight: ${f.airline} ${f.flightNumber}, From ${f.departureAirport} to ${f.arrivalAirport}, Price: ${f.basePrice}, Time: ${f.departureTime}`,
+      )
+      .join('\n');
 
-    const prompt = lang === 'en'
-      ? `User wants to find transport: "${message}"\nDetected Origin: "${origin}", Destination: "${destination}"\n\nResults:\nBUSES:\n${busData || 'None found'}\n\nTRAINS:\n${trainData || 'None found'}\n\nFLIGHTS:\n${flightData || 'None found'}\n\nPresent these options clearly. Group them by type. Suggest the best or cheapest if obvious. Ask if they want to book any of these.`
-      : `Người dùng muốn tìm phương tiện di chuyển: "${message}"\nĐiểm đi: "${origin}", Điểm đến: "${destination}"\n\nKết quả:\nXE KHÁCH:\n${busData || 'Không tìm thấy'}\n\nTÀU HỎA:\n${trainData || 'Không tìm thấy'}\n\nMÁY BAY:\n${flightData || 'Không tìm thấy'}\n\nHãy trình bày các lựa chọn này một cách rõ ràng theo từng loại. Gợi ý phương án tốt nhất hoặc rẻ nhất nếu có thể. Hỏi xem họ có muốn đặt vé nào không.`;
+    const prompt =
+      lang === 'en'
+        ? `User wants to find transport: "${message}"\nDetected Origin: "${origin}", Destination: "${destination}"\n\nResults:\nBUSES:\n${busData || 'None found'}\n\nTRAINS:\n${trainData || 'None found'}\n\nFLIGHTS:\n${flightData || 'None found'}\n\nPresent these options clearly. Group them by type. Suggest the best or cheapest if obvious. Ask if they want to book any of these.`
+        : `Người dùng muốn tìm phương tiện di chuyển: "${message}"\nĐiểm đi: "${origin}", Điểm đến: "${destination}"\n\nKết quả:\nXE KHÁCH:\n${busData || 'Không tìm thấy'}\n\nTÀU HỎA:\n${trainData || 'Không tìm thấy'}\n\nMÁY BAY:\n${flightData || 'Không tìm thấy'}\n\nHãy trình bày các lựa chọn này một cách rõ ràng theo từng loại. Gợi ý phương án tốt nhất hoặc rẻ nhất nếu có thể. Hỏi xem họ có muốn đặt vé nào không.`;
 
     const response = await this.performModelCall(
       (model) => model.generateContent(prompt),
@@ -1345,41 +1572,62 @@ export class ChatService {
     lang: ChatLanguage,
     context: { history?: Content[] },
   ): Promise<ChatResponse> {
-    
     // 1. Natural Language Processing (Local)
     // Regex to extract the part after keywords
-    const feedbackRegex = /(?:review|đánh giá|nhận xét|có nên đi|thấy sao về)\s+(.+)/i;
+    const feedbackRegex =
+      /(?:review|đánh giá|nhận xét|có nên đi|thấy sao về)\s+(.+)/i;
     const match = message.match(feedbackRegex);
     let rawTarget = match ? match[1].trim() : message;
 
     // Advanced cleaning for natural language:
     // Remove "về" if it's at the start of the remainder
     if (rawTarget.toLowerCase().startsWith('về ')) {
-        rawTarget = rawTarget.slice(3).trim();
+      rawTarget = rawTarget.slice(3).trim();
     }
     const suffixes = [
-        ' hay không', ' không ta',' không nhỉ',' không ạ',' không',' nhỉ',' ta',' nhé', 
-        ' thế nào',' ra sao',' vậy',' hả',' hở',' à', ' chưa', ' hay'
+      ' hay không',
+      ' không ta',
+      ' không nhỉ',
+      ' không ạ',
+      ' không',
+      ' nhỉ',
+      ' ta',
+      ' nhé',
+      ' thế nào',
+      ' ra sao',
+      ' vậy',
+      ' hả',
+      ' hở',
+      ' à',
+      ' chưa',
+      ' hay',
     ];
     for (const suffix of suffixes) {
-         // Check case-insensitive
-         if (rawTarget.toLowerCase().endsWith(suffix)) {
-             rawTarget = rawTarget.slice(0, -suffix.length).trim();
-         }
+      // Check case-insensitive
+      if (rawTarget.toLowerCase().endsWith(suffix)) {
+        rawTarget = rawTarget.slice(0, -suffix.length).trim();
+      }
     }
 
     // Remove punctuation
     rawTarget = rawTarget.replace(/[?!.,]/g, '').trim();
 
     if (!rawTarget || rawTarget.length < 2) {
-         return this.generateConversationalReply(message, lang, 'feedback_summary', context);
+      return this.generateConversationalReply(
+        message,
+        lang,
+        'feedback_summary',
+        context,
+      );
     }
 
     // 2. Normalization (Dictionary Check) using LOCATION_ALIASES
     const lowerTarget = rawTarget.toLowerCase();
     const normalizedTarget = LOCATION_ALIASES[lowerTarget] || rawTarget;
-    
-    console.log(`[FeedbackSummary] Raw: "${rawTarget}" -> Normalized: "${normalizedTarget}"`);
+
+    console.log(
+      `[FeedbackSummary] Raw: "${rawTarget}" -> Normalized: "${normalizedTarget}"`,
+    );
 
     // 3. Search Database (Destinations, Eateries, Cooperations)
     // We search across multiple tables to find the most likely match.
@@ -1388,32 +1636,49 @@ export class ChatService {
     // 3a. Search Destination
     const destination = await this.destinationRepo
       .createQueryBuilder('d')
-      .where('LOWER(d.name) LIKE :name', { name: `%${normalizedTarget.toLowerCase()}%` })
-      .orWhere('LOWER(d.province) LIKE :name', { name: `%${normalizedTarget.toLowerCase()}%` }) // Allow searching by province name
+      .where('LOWER(d.name) LIKE :name', {
+        name: `%${normalizedTarget.toLowerCase()}%`,
+      })
+      .orWhere('LOWER(d.province) LIKE :name', {
+        name: `%${normalizedTarget.toLowerCase()}%`,
+      }) // Allow searching by province name
       .getOne();
 
     if (destination) {
-        return this.generateFeedbackSummary(destination.id, 'destination', destination.name, lang);
+      return this.generateFeedbackSummary(
+        destination.id,
+        'destination',
+        destination.name,
+        lang,
+      );
     }
 
     // 3b. Search Cooperation (Hotel/Restaurant)
     const cooperation = await this.cooperationRepo
       .createQueryBuilder('c')
-      .where('LOWER(c.name) LIKE :name', { name: `%${normalizedTarget.toLowerCase()}%` })
+      .where('LOWER(c.name) LIKE :name', {
+        name: `%${normalizedTarget.toLowerCase()}%`,
+      })
       .getOne();
 
     if (cooperation) {
-        return this.generateFeedbackSummary(cooperation.id, 'cooperation', cooperation.name, lang);
+      return this.generateFeedbackSummary(
+        cooperation.id,
+        'cooperation',
+        cooperation.name,
+        lang,
+      );
     }
 
     // 4. Not Found Fallback
-    const fallbackText = lang === 'en'
-      ? `I couldn't find any place named "${rawTarget}". Could you check the spelling?`
-      : `Mình không tìm thấy địa điểm nào tên là "${rawTarget}". Bạn kiểm tra lại tên giúp mình nhé?`;
-      
+    const fallbackText =
+      lang === 'en'
+        ? `I couldn't find any place named "${rawTarget}". Could you check the spelling?`
+        : `Mình không tìm thấy địa điểm nào tên là "${rawTarget}". Bạn kiểm tra lại tên giúp mình nhé?`;
+
     return {
-        source: 'ai',
-        text: fallbackText
+      source: 'ai',
+      text: fallbackText,
     };
   }
 
@@ -1421,79 +1686,107 @@ export class ChatService {
     targetId: number,
     targetType: 'destination' | 'cooperation' | 'eatery',
     targetName: string,
-    lang: ChatLanguage
+    lang: ChatLanguage,
   ): Promise<ChatResponse> {
-      // 1. Get Feedbacks
-      const feedbacks = await this.feedbackService.findByObject({
-          available: true, // Assuming findByObject supports this or ignores it
-          [`${targetType}Id`]: targetId,
-      } as any);
+    // 1. Get Feedbacks
+    const feedbacks = await this.feedbackService.findByObject({
+      available: true, // Assuming findByObject supports this or ignores it
+      [`${targetType}Id`]: targetId,
+    } as any);
 
-      if (!feedbacks || feedbacks.length === 0) {
-          const noReviewText = lang === 'en'
-            ? `There are no reviews for "${targetName}" yet. You can be the first one!`
-      : `Hiện chưa có đánh giá nào cho "${targetName}". Bạn hãy trải nghiệm và review nhé!`;
-          return { source: 'ai', text: noReviewText };
-      }
+    if (!feedbacks || feedbacks.length === 0) {
+      const noReviewText =
+        lang === 'en'
+          ? `There are no reviews for "${targetName}" yet. You can be the first one!`
+          : `Hiện chưa có đánh giá nào cho "${targetName}". Bạn hãy trải nghiệm và review nhé!`;
+      return { source: 'ai', text: noReviewText };
+    }
 
-      // 2. Prepare Prompt (1 AI Call)
+    // 2. Prepare Prompt (1 AI Call)
     // Reduce to 10 reviews to stay within TPM/RPM limits strictly
-    const reviewTexts = feedbacks.slice(0, 10).map(f => `- ${f.comment} (${f.star} sao)`).join('\n');
-      
-      const prompt = lang === 'en'
+    const reviewTexts = feedbacks
+      .slice(0, 10)
+      .map((f) => `- ${f.comment} (${f.star} sao)`)
+      .join('\n');
+
+    const prompt =
+      lang === 'en'
         ? `Summarize reviews for "${targetName}":\n${reviewTexts}\n\nOutput JSON with fields: "summary" (short summary), "pros" (bullet points), "cons" (bullet points), "verdict" (Should go? Yes/No/Maybe with reason).`
         : `Tóm tắt các đánh giá cho "${targetName}" dựa trên:\n${reviewTexts}\n\nTrả lời bằng JSON với các trường: "summary" (tóm tắt ngắn gọn), "pros" (ưu điểm gạch đầu dòng), "cons" (nhược điểm gạch đầu dòng), "verdict" (Lời khuyên: Có nên đi không? Tại sao).`;
 
-      let summaryData = { summary: '', pros: [], cons: [], verdict: '' };
+    let summaryData = { summary: '', pros: [], cons: [], verdict: '' };
 
-      try {
-        const response = await this.performModelCall(
-            (model) => model.generateContent({
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: 'application/json' }
-            }),
-            this.modelName, // Use flash model for speed
-        );
-        const raw = this.extractText(response);
-        summaryData = JSON.parse(raw);
-      } catch (e) {
-       console.error('Feedback Summary AI Failed', e);
-       // Fallback manual summary - Provide value even without AI
-       const avgRating = feedbacks.reduce((acc, curr) => acc + curr.star, 0) / feedbacks.length;
-       const sampleReviews = feedbacks.slice(0, 3).map(f => `- ${f.comment} (${f.star}⭐)`).join('\n');
-       
-       let verdict = '';
-       if (avgRating >= 4.5) verdict = lang === 'en' ? 'Excellent! Highly recommended.' : 'Tuyệt vời! Rất đáng để bạn ghé thăm.';
-       else if (avgRating >= 4) verdict = lang === 'en' ? 'Good quality, mostly positive feedback.' : 'Chất lượng tốt, hầu hết khách hàng đều hài lòng.';
-       else if (avgRating >= 3) verdict = lang === 'en' ? 'Average experience, worth a visit if you are nearby.' : 'Trải nghiệm ở mức ổn, có thể ghé qua nếu tiện đường.';
-       else verdict = lang === 'en' ? 'Consider carefully as there are Mixed reviews.' : 'Nên cân nhắc kỹ vì có nhiều ý kiến trái chiều.';
+    try {
+      const response = await this.performModelCall(
+        (model) =>
+          model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: 'application/json' },
+          }),
+        this.modelName, // Use flash model for speed
+      );
+      const raw = this.extractText(response);
+      summaryData = JSON.parse(raw);
+    } catch (e) {
+      console.error('Feedback Summary AI Failed', e);
+      // Fallback manual summary - Provide value even without AI
+      const avgRating =
+        feedbacks.reduce((acc, curr) => acc + curr.star, 0) / feedbacks.length;
+      const sampleReviews = feedbacks
+        .slice(0, 3)
+        .map((f) => `- ${f.comment} (${f.star}⭐)`)
+        .join('\n');
 
-       const fallbackText = lang === 'en'
+      let verdict = '';
+      if (avgRating >= 4.5)
+        verdict =
+          lang === 'en'
+            ? 'Excellent! Highly recommended.'
+            : 'Tuyệt vời! Rất đáng để bạn ghé thăm.';
+      else if (avgRating >= 4)
+        verdict =
+          lang === 'en'
+            ? 'Good quality, mostly positive feedback.'
+            : 'Chất lượng tốt, hầu hết khách hàng đều hài lòng.';
+      else if (avgRating >= 3)
+        verdict =
+          lang === 'en'
+            ? 'Average experience, worth a visit if you are nearby.'
+            : 'Trải nghiệm ở mức ổn, có thể ghé qua nếu tiện đường.';
+      else
+        verdict =
+          lang === 'en'
+            ? 'Consider carefully as there are Mixed reviews.'
+            : 'Nên cân nhắc kỹ vì có nhiều ý kiến trái chiều.';
+
+      const fallbackText =
+        lang === 'en'
           ? `**User Reviews for ${targetName} (Manual Sync)**\n\nAverage: ${avgRating.toFixed(1)}/5⭐ (${feedbacks.length} reviews)\n\n**Top Comments:**\n${sampleReviews}\n\n**Verdict:** ${verdict}`
           : `**Đánh giá người dùng về ${targetName} (Tóm tắt thủ công)**\n\nTrung bình: ${avgRating.toFixed(1)}/5⭐ (${feedbacks.length} đánh giá)\n\n**Nhận xét tiêu biểu:**\n${sampleReviews}\n\n**💡 Lời khuyên:** ${verdict}`;
 
-       return {
-           source: 'ai',
-           text: fallbackText
-       };
+      return {
+        source: 'ai',
+        text: fallbackText,
+      };
     }
 
-      // 3. Format Response
-      const formattedText = lang === 'en'
+    // 3. Format Response
+    const formattedText =
+      lang === 'en'
         ? `**Review Summary for ${targetName}**\n\n${summaryData.summary}\n\n**Pros:**\n${this.formatBullets(summaryData.pros)}\n\n**Cons:**\n${this.formatBullets(summaryData.cons)}\n\n**Verdict:** ${summaryData.verdict}`
         : `**Tổng hợp đánh giá ${targetName}**\n\n${summaryData.summary}\n\n**👍 Điểm cộng:**\n${this.formatBullets(summaryData.pros)}\n\n**👎 Điểm trừ:**\n${this.formatBullets(summaryData.cons)}\n\n**💡 Lời khuyên:** ${summaryData.verdict}`;
 
-      return {
-          source: 'ai',
-          text: formattedText
-      };
+    return {
+      source: 'ai',
+      text: formattedText,
+    };
   }
 
   private formatBullets(items: any): string {
-      if (Array.isArray(items)) {
-          return items.map(i => `- ${i}`).join('\n');
-      }
-      return typeof items === 'string' ? items : '';
+    if (Array.isArray(items)) {
+      return items.map((i) => `- ${i}`).join('\n');
+    }
+    return typeof items === 'string' ? items : '';
   }
 
   private async findDestinationsByCategories(
@@ -1515,7 +1808,7 @@ export class ChatService {
       const regionClauses = profile.preferredRegions
         .slice(0, 3)
         .map((_, i) => `destination.province ILIKE :region${i}`);
-      
+
       if (regionClauses.length) {
         qb.andWhere(`(${regionClauses.join(' OR ')})`);
         profile.preferredRegions.slice(0, 3).forEach((region, i) => {
@@ -1534,7 +1827,7 @@ export class ChatService {
         console.log('[Chatbot DEBUG] findDestinationsByCategories:', {
           searchCategories: categories,
           foundCount: destinations.length,
-          results: destinations.map(d => ({
+          results: destinations.map((d) => ({
             id: d.id,
             name: d.name,
             province: d.province,
@@ -1545,7 +1838,10 @@ export class ChatService {
       });
   }
 
-  private async searchDestinations(terms: string[], province?: string): Promise<Destination[]> {
+  private async searchDestinations(
+    terms: string[],
+    province?: string,
+  ): Promise<Destination[]> {
     if (!terms.length && !province) {
       return [];
     }
@@ -1554,11 +1850,11 @@ export class ChatService {
     const clauses: string[] = [];
 
     if (province) {
-        // Relax filter: check province, district, address, or name for user's region term
-        qb.andWhere(
-          `(destination.province ILIKE :province OR destination.district ILIKE :province OR destination.specificAddress ILIKE :province OR destination.name ILIKE :province)`,
-          { province: `%${province}%` },
-        );
+      // Relax filter: check province, district, address, or name for user's region term
+      qb.andWhere(
+        `(destination.province ILIKE :province OR destination.district ILIKE :province OR destination.specificAddress ILIKE :province OR destination.name ILIKE :province)`,
+        { province: `%${province}%` },
+      );
     }
 
     terms.forEach((term, index) => {
@@ -1568,9 +1864,9 @@ export class ChatService {
       );
       qb.setParameter(key, `%${term}%`);
     });
-    
+
     if (clauses.length > 0) {
-        qb.andWhere(`(${clauses.join(' OR ')})`);
+      qb.andWhere(`(${clauses.join(' OR ')})`);
     }
 
     return qb
@@ -1583,7 +1879,7 @@ export class ChatService {
           searchTerms: terms,
           provinceFilter: province,
           foundCount: destinations.length,
-          results: destinations.map(d => ({
+          results: destinations.map((d) => ({
             id: d.id,
             name: d.name,
             province: d.province,
@@ -1636,7 +1932,7 @@ export class ChatService {
     profile?: ChatUserProfile | null,
   ): string[] {
     const source = new Set<string>();
-    
+
     // 1. Prioritize explicit keywords and regions from the current query
     classification.keywords.forEach((kw) => {
       source.add(kw);
@@ -1650,19 +1946,15 @@ export class ChatService {
     // 2. Only if NO explicit terms are found, fall back to profile preferences and the raw message fallback
     if (source.size === 0) {
       if (profile) {
-        profile.preferredRegions
-          .slice(0, 2)
-          .forEach((region) => {
-             source.add(region);
-             source.add(this.removeAccents(region));
-          });
+        profile.preferredRegions.slice(0, 2).forEach((region) => {
+          source.add(region);
+          source.add(this.removeAccents(region));
+        });
         if (classification.intent === 'destination') {
-          profile.preferredThemes
-            .slice(0, 2)
-            .forEach((theme) => {
-               source.add(theme);
-               source.add(this.removeAccents(theme));
-            });
+          profile.preferredThemes.slice(0, 2).forEach((theme) => {
+            source.add(theme);
+            source.add(this.removeAccents(theme));
+          });
         }
       }
       if (fallback.trim()) {
@@ -1808,67 +2100,90 @@ export class ChatService {
     }
 
     if (context.aiFailed) {
-        const staticText = lang === 'en' 
-            ? "AI service is currently busy. Please try again in a few moments."
-            : "Hệ thống AI hiện đang bận hoặc quá tải. Bạn chờ vài giây rồi thử lại nhé!";
-         return { source: 'ai', text: staticText };
+      const staticText =
+        lang === 'en'
+          ? 'AI service is currently busy. Please try again in a few moments.'
+          : 'Hệ thống AI hiện đang bận hoặc quá tải. Bạn chờ vài giây rồi thử lại nhé!';
+      return { source: 'ai', text: staticText };
     }
-    
+
     // Quick fallback checks
     if (intent === 'greeting' && this.isSimpleGreeting(message)) {
-       const greetings = lang === 'en' 
-         ? ["Hello! How can I help you today?", "Hi there! Planning a trip?", "Greetings! where do you want to go?"]
-         : ["Xin chào! Mình có thể giúp gì cho bạn?", "Chào bạn! Bạn đang lên kế hoạch đi đâu thế?", "Chào bạn! Hôm nay bạn muốn tìm địa điểm nào?"];
-       return { source: 'ai', text: greetings[Math.floor(Math.random() * greetings.length)] };
+      const greetings =
+        lang === 'en'
+          ? [
+              'Hello! How can I help you today?',
+              'Hi there! Planning a trip?',
+              'Greetings! where do you want to go?',
+            ]
+          : [
+              'Xin chào! Mình có thể giúp gì cho bạn?',
+              'Chào bạn! Bạn đang lên kế hoạch đi đâu thế?',
+              'Chào bạn! Hôm nay bạn muốn tìm địa điểm nào?',
+            ];
+      return {
+        source: 'ai',
+        text: greetings[Math.floor(Math.random() * greetings.length)],
+      };
     }
 
     if (intent === 'other' || context.databaseMiss) {
-       // If standard processing failed or intent is unknown
-       // try AI generation but with heavy fallback protection
+      // If standard processing failed or intent is unknown
+      // try AI generation but with heavy fallback protection
     } else {
-       // specific intent (destination/restaurant etc) but no db results found -> generate conversational "Sorry"
+      // specific intent (destination/restaurant etc) but no db results found -> generate conversational "Sorry"
     }
 
     const history = context.history || [];
     const profileSummary = context.profileSummary || '';
-    
-    const prompt = lang === 'en'
-      ? `You are an intelligent travel assistant. The user said: "${message}". Context: Intent=${intent}. ${profileSummary ? `User Profile: ${profileSummary}` : ''}. Respond naturally, concisely, and helpfully. Max 2 sentences.`
-      : `Bạn là trợ lý du lịch thông minh. Người dùng nói: "${message}". Intent=${intent}. ${profileSummary ? `Hồ sơ người dùng: ${profileSummary}` : ''}. Hãy trả lời tự nhiên, ngắn gọn và hữu ích. Tối đa 2 câu.`;
+
+    const prompt =
+      lang === 'en'
+        ? `You are an intelligent travel assistant. The user said: "${message}". Context: Intent=${intent}. ${profileSummary ? `User Profile: ${profileSummary}` : ''}. Respond naturally, concisely, and helpfully. Max 2 sentences.`
+        : `Bạn là trợ lý du lịch thông minh. Người dùng nói: "${message}". Intent=${intent}. ${profileSummary ? `Hồ sơ người dùng: ${profileSummary}` : ''}. Hãy trả lời tự nhiên, ngắn gọn và hữu ích. Tối đa 2 câu.`;
 
     try {
-        const response = await this.performModelCall(
-        (model) => model.generateContent({
+      const response = await this.performModelCall(
+        (model) =>
+          model.generateContent({
             systemInstruction: {
-            role: 'system',
-            parts: [{ text: prompt }],
+              role: 'system',
+              parts: [{ text: prompt }],
             },
             contents: [
-            ...history,
-            { role: 'user', parts: [{ text: message }] },
+              ...history,
+              { role: 'user', parts: [{ text: message }] },
             ],
-        }),
+          }),
         this.modelName,
-        );
-        return { source: 'ai', text: this.extractText(response) };
+      );
+      return { source: 'ai', text: this.extractText(response) };
     } catch (error) {
-        console.warn('Conversational AI failed, using fallback:', error.message);
-        
-        let staticText = lang === 'en' 
-            ? "I'm having trouble connecting to my creative brain right now. Can you try again?" 
-            : "Hiện tại hệ thống AI đang bận, mình chưa thể trả lời chi tiết được.";
+      console.warn('Conversational AI failed, using fallback:', error.message);
 
-        if (intent === 'greeting') {
-            staticText = lang === 'en' ? "Hello! How can I assist you with your travels?" : "Xin chào! Mình có thể giúp gì cho chuyến đi của bạn?";
-        } else if (intent === 'destination') {
-            staticText = lang === 'en'
-                ? "I couldn't find specific details right now, but I can help you search for other places."
-                : "Mình chưa tìm thấy thông tin chi tiết lúc này, bạn thử tìm địa điểm khác xem sao nhé.";
-        } else if (intent === 'my_routes') {
-             staticText = lang === 'en' ? "Here is your route info." : "Thông tin lịch trình của bạn đây.";
-        }
+      let staticText =
+        lang === 'en'
+          ? "I'm having trouble connecting to my creative brain right now. Can you try again?"
+          : 'Hiện tại hệ thống AI đang bận, mình chưa thể trả lời chi tiết được.';
 
-        return { source: 'ai', text: staticText };
+      if (intent === 'greeting') {
+        staticText =
+          lang === 'en'
+            ? 'Hello! How can I assist you with your travels?'
+            : 'Xin chào! Mình có thể giúp gì cho chuyến đi của bạn?';
+      } else if (intent === 'destination') {
+        staticText =
+          lang === 'en'
+            ? "I couldn't find specific details right now, but I can help you search for other places."
+            : 'Mình chưa tìm thấy thông tin chi tiết lúc này, bạn thử tìm địa điểm khác xem sao nhé.';
+      } else if (intent === 'my_routes') {
+        staticText =
+          lang === 'en'
+            ? 'Here is your route info.'
+            : 'Thông tin lịch trình của bạn đây.';
+      }
+
+      return { source: 'ai', text: staticText };
     }
   }
 
@@ -1929,7 +2244,10 @@ export class ChatService {
 
       let raw = this.extractText(response);
       if (raw) {
-        raw = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+        raw = raw
+          .replace(/```json/gi, '')
+          .replace(/```/g, '')
+          .trim();
       }
       const parsedValue: unknown = raw ? JSON.parse(raw) : null;
       if (!this.isRecord(parsedValue)) {
@@ -1948,16 +2266,17 @@ export class ChatService {
         aiResponse: this.asOptionalString(parsedRecord.ai_response),
       };
     } catch (error) {
-      console.warn('[Chatbot] Classification failed, falling back to keywords:', error.message);
+      console.warn(
+        '[Chatbot] Classification failed, falling back to keywords:',
+        error.message,
+      );
       return {
-          ...this.simpleKeywordClassification(message),
-          aiResponse: undefined,
-          aiFailed: true
+        ...this.simpleKeywordClassification(message),
+        aiResponse: undefined,
+        aiFailed: true,
       };
     }
   }
-
-
 
   private normalizeIntent(intent?: string): ChatIntent {
     switch (intent) {
@@ -1982,19 +2301,37 @@ export class ChatService {
 
   private isSimpleGreeting(message: string): boolean {
     const greetingKeywords = [
-      'hello', 'hi', 'hey', 'greetings', 'hola',
-      'chào', 'xin chào', 'hi ban', 'hey ban', 'chào bạn', 'chào nhé',
-      'tạm biệt', 'bye', 'goodbye', 'hen gap lai',
-      'cảm ơn', 'thanks', 'thank you', 'cam on',
+      'hello',
+      'hi',
+      'hey',
+      'greetings',
+      'hola',
+      'chào',
+      'xin chào',
+      'hi ban',
+      'hey ban',
+      'chào bạn',
+      'chào nhé',
+      'tạm biệt',
+      'bye',
+      'goodbye',
+      'hen gap lai',
+      'cảm ơn',
+      'thanks',
+      'thank you',
+      'cam on',
     ];
     const normalized = message.toLowerCase().trim();
     // Also handle starting with keyword like "chào"
-    const isExact = greetingKeywords.some(keyword => normalized === keyword || normalized === keyword + '!');
+    const isExact = greetingKeywords.some(
+      (keyword) => normalized === keyword || normalized === keyword + '!',
+    );
     if (isExact) return true;
 
     // Check if starts with common greeting and is short (conversational fillers)
     if (normalized.length < 15) {
-      if (normalized.startsWith('chào') || normalized.startsWith('xin chào')) return true;
+      if (normalized.startsWith('chào') || normalized.startsWith('xin chào'))
+        return true;
     }
 
     return false;
@@ -2313,19 +2650,21 @@ export class ChatService {
   private pickResponseText(response: ChatResponse): string {
     const text = response.text;
     if (typeof text === 'string') {
-        return text;
+      return text;
     }
     if (text && typeof text === 'object') {
-        return `${text.opening}\n${text.closing}`;
+      return `${text.opening}\n${text.closing}`;
     }
 
     if (response.source === 'database') {
-        const items = response.data
-        .map((item) => `${item.name}${item.address ? ` - ${item.address}` : ''}`)
+      const items = response.data
+        .map(
+          (item) => `${item.name}${item.address ? ` - ${item.address}` : ''}`,
+        )
         .join('\n');
-        return items || 'No response generated.';
+      return items || 'No response generated.';
     }
-    
+
     return 'No response generated.';
   }
 
@@ -2517,7 +2856,7 @@ export class ChatService {
     retries = 3,
   ): Promise<GenerateContentResult> {
     let attempt = 0;
-    
+
     while (attempt < retries) {
       try {
         const model = this.getModel(modelName);
@@ -2525,24 +2864,28 @@ export class ChatService {
         return result;
       } catch (error) {
         // Check for 429 Too Many Requests or 503 Service Unavailable
-        const isRetryable = error.status === 429 || error.status === 503 || (error.message && error.message.includes('Too Many Requests'));
-        
+        const isRetryable =
+          error.status === 429 ||
+          error.status === 503 ||
+          (error.message && error.message.includes('Too Many Requests'));
+
         if (isRetryable && attempt < retries - 1) {
           attempt++;
           // For 429, we rotate immediately by calling getModel again in next loop
           const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
-          console.warn(`[Gemini] Rate limited. Retrying attempt ${attempt}/${retries} with rotated key after ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
+          console.warn(
+            `[Gemini] Rate limited. Retrying attempt ${attempt}/${retries} with rotated key after ${delay}ms...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay));
           continue;
         }
-        
+
         console.error('[Gemini Error]', error);
         throw error;
       }
     }
     throw new Error('Max retries exceeded for Gemini API call');
   }
-
 
   private getModel(modelName: string): GenerativeModel {
     const client = this.ensureGeminiClient();
@@ -2555,32 +2898,44 @@ export class ChatService {
       // Log masked key for rotation debugging
       const apiKey = (client as any).apiKey || 'unknown';
       const masked = apiKey.slice(0, 6) + '...' + apiKey.slice(-4);
-      console.log(`[Gemini] Using key ${this.currentClientIndex + 1}/${this.geminiClients.length} (${masked})`);
-      
-      this.currentClientIndex = (this.currentClientIndex + 1) % this.geminiClients.length;
+      console.log(
+        `[Gemini] Using key ${this.currentClientIndex + 1}/${this.geminiClients.length} (${masked})`,
+      );
+
+      this.currentClientIndex =
+        (this.currentClientIndex + 1) % this.geminiClients.length;
       return client;
     }
 
-    const rawKeys = this.configService.get<string>('GEMINI_API_KEYS') || 
-                    this.configService.get<string>('gemini.apiKey') ||
-                    process.env.GEMINI_API_KEY || 
-                    process.env.GOOGLE_GENAI_API_KEY;
+    const rawKeys =
+      this.configService.get<string>('GEMINI_API_KEYS') ||
+      this.configService.get<string>('gemini.apiKey') ||
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_GENAI_API_KEY;
 
     if (!rawKeys) {
-      throw new ServiceUnavailableException('Gemini API key is not configured.');
+      throw new ServiceUnavailableException(
+        'Gemini API key is not configured.',
+      );
     }
 
-    const keys = rawKeys.split(',').map(k => k.trim()).filter(k => !!k);
-    
+    const keys = rawKeys
+      .split(',')
+      .map((k) => k.trim())
+      .filter((k) => !!k);
+
     if (keys.length === 0) {
       throw new ServiceUnavailableException('No valid Gemini API keys found.');
     }
 
-    this.geminiClients = keys.map(key => new GoogleGenerativeAI(key));
-    console.log(`[Gemini] Initialized pool with ${this.geminiClients.length} keys.`);
-    
+    this.geminiClients = keys.map((key) => new GoogleGenerativeAI(key));
+    console.log(
+      `[Gemini] Initialized pool with ${this.geminiClients.length} keys.`,
+    );
+
     const client = this.geminiClients[this.currentClientIndex];
-    this.currentClientIndex = (this.currentClientIndex + 1) % this.geminiClients.length;
+    this.currentClientIndex =
+      (this.currentClientIndex + 1) % this.geminiClients.length;
     return client;
   }
   private extractText(result: GenerateContentResult | undefined): string {
@@ -2596,23 +2951,31 @@ export class ChatService {
       // 1. Upload
       const b64 = file.buffer.toString('base64');
       const dataUri = `data:${file.mimetype};base64,${b64}`;
-      const uploadResult = await this.cloudinaryService.uploadBase64Image(dataUri, 'chatbot_debug');
+      const uploadResult = await this.cloudinaryService.uploadBase64Image(
+        dataUri,
+        'chatbot_debug',
+      );
       const imageUrl = uploadResult.secure_url;
 
       // 2. Classify
-      const aiServiceUrl = this.configService.get<string>('AI_SERVICE_URL') || 'http://localhost:8000';
+      const aiServiceUrl =
+        this.configService.get<string>('AI_SERVICE_URL') ||
+        'http://localhost:8000';
       const classifyResponse = await firstValueFrom(
         this.httpService.post(`${aiServiceUrl}/vision/classify`, { imageUrl }),
       );
-      
-      const rawClass = classifyResponse.data?.class || classifyResponse.data?.predicted_class || 'unknown';
+
+      const rawClass =
+        classifyResponse.data?.class ||
+        classifyResponse.data?.predicted_class ||
+        'unknown';
       const categories = this.aiClassToCategoryMap[rawClass] || [];
 
       return {
         imageUrl,
         aiClass: rawClass,
         mappedCategories: categories,
-        rawResponse: classifyResponse.data
+        rawResponse: classifyResponse.data,
       };
     } catch (error) {
       throw new InternalServerErrorException(error.message);
@@ -2658,7 +3021,11 @@ export class ChatService {
     `;
 
     const response = await this.performModelCall(
-      (model) => model.generateContent({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } }),
+      (model) =>
+        model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json' },
+        }),
       this.modelName,
     );
 
@@ -2669,14 +3036,32 @@ export class ChatService {
     }
   }
 
-  private async handleMyOrders(userId: number, message: string, lang: ChatLanguage): Promise<ChatResponse> {
+  private async handleMyOrders(
+    userId: number,
+    message: string,
+    lang: ChatLanguage,
+  ): Promise<ChatResponse> {
     const bills = await this.rentalBillsService.findAll(userId);
     // Simple filter if user asked for specific status
     let displayBills = bills;
-    if (message.toLowerCase().includes('hủy') || message.toLowerCase().includes('cancel')) {
-      displayBills = bills.filter(b => b.status === RentalBillStatus.CANCELLED);
-    } else if (message.toLowerCase().includes('đang') || message.toLowerCase().includes('active')) {
-      displayBills = bills.filter(b => [RentalBillStatus.PENDING, RentalBillStatus.PAID, RentalBillStatus.COMPLETED].includes(b.status));
+    if (
+      message.toLowerCase().includes('hủy') ||
+      message.toLowerCase().includes('cancel')
+    ) {
+      displayBills = bills.filter(
+        (b) => b.status === RentalBillStatus.CANCELLED,
+      );
+    } else if (
+      message.toLowerCase().includes('đang') ||
+      message.toLowerCase().includes('active')
+    ) {
+      displayBills = bills.filter((b) =>
+        [
+          RentalBillStatus.PENDING,
+          RentalBillStatus.PAID,
+          RentalBillStatus.COMPLETED,
+        ].includes(b.status),
+      );
     }
 
     // Sort by recent
@@ -2685,94 +3070,146 @@ export class ChatService {
 
     return {
       source: 'database',
-      data: limited as any, 
+      data: limited as any,
       text: {
-        opening: lang === 'en' ? "Here are your orders:" : "Đây là các đơn hàng của bạn:",
-        closing: lang === 'en' ? "Let me know if you need help with any of them." : "Cần hỗ trợ gì thêm về đơn hàng thì bảo mình nhé."
-      } as any
+        opening:
+          lang === 'en'
+            ? 'Here are your orders:'
+            : 'Đây là các đơn hàng của bạn:',
+        closing:
+          lang === 'en'
+            ? 'Let me know if you need help with any of them.'
+            : 'Cần hỗ trợ gì thêm về đơn hàng thì bảo mình nhé.',
+      } as any,
     };
   }
 
-  private async handleMyRoutes(userId: number, message: string, lang: ChatLanguage): Promise<ChatResponse> {
-      const routes = await this.travelRoutesService.findAll({ userId });
-      const limited = routes.slice(0, 5);
-      
-      return {
-          source: 'database',
-          data: limited as any,
-          text: {
-              opening: lang === 'en' ? "Here are your travel plans:" : "Lịch trình của bạn đây:",
-              closing: lang === 'en' ? "Ready to create a new one?" : "Bạn có muốn tạo lịch trình mới không?"
-          } as any
-      }
+  private async handleMyRoutes(
+    userId: number,
+    message: string,
+    lang: ChatLanguage,
+  ): Promise<ChatResponse> {
+    const routes = await this.travelRoutesService.findAll({ userId });
+    const limited = routes.slice(0, 5);
+
+    return {
+      source: 'database',
+      data: limited as any,
+      text: {
+        opening:
+          lang === 'en'
+            ? 'Here are your travel plans:'
+            : 'Lịch trình của bạn đây:',
+        closing:
+          lang === 'en'
+            ? 'Ready to create a new one?'
+            : 'Bạn có muốn tạo lịch trình mới không?',
+      } as any,
+    };
   }
 
-  private async handleVehicleSearch(userId: number, message: string, lang: ChatLanguage): Promise<ChatResponse> {
+  private async handleVehicleSearch(
+    userId: number,
+    message: string,
+    lang: ChatLanguage,
+  ): Promise<ChatResponse> {
     const params = await this.extractSearchParameters(message, 'vehicle');
-    
+
     // Slot Filling Validation
     if (!params.location || !params.startDate || !params.endDate) {
-       return {
-         source: 'ai',
-         text: lang === 'en' 
-           ? "I can help you find a vehicle. Where do you want to rent, and for which dates?"
-           : "Mình có thể tìm xe giúp bạn. Bạn muốn thuê xe ở đâu và đi ngày nào (từ ngày nào đến ngày nào)?"
-       };
+      return {
+        source: 'ai',
+        text:
+          lang === 'en'
+            ? 'I can help you find a vehicle. Where do you want to rent, and for which dates?'
+            : 'Mình có thể tìm xe giúp bạn. Bạn muốn thuê xe ở đâu và đi ngày nào (từ ngày nào đến ngày nào)?',
+      };
     }
 
     const results = await this.rentalVehiclesService.search({
       startDate: new Date(params.startDate),
       endDate: new Date(params.endDate),
-      vehicleType: params.vehicleType, 
-      rentalType: RentalType.DAILY // default or extract?
+      vehicleType: params.vehicleType,
+      rentalType: RentalType.DAILY, // default or extract?
     });
 
     const limited = results.slice(0, 5);
-    
+
     // Generate Text
-    let opening = '', closing = '';
+    let opening = '',
+      closing = '';
     if (limited.length > 0) {
-        opening = lang === 'en' ? `Found ${limited.length} vehicles in ${params.location}:` : `Tìm thấy ${limited.length} xe tại ${params.location}:`;
-        closing = lang === 'en' ? "Would you like to book one?" : "Bạn ưng chiếc nào không?";
+      opening =
+        lang === 'en'
+          ? `Found ${limited.length} vehicles in ${params.location}:`
+          : `Tìm thấy ${limited.length} xe tại ${params.location}:`;
+      closing =
+        lang === 'en'
+          ? 'Would you like to book one?'
+          : 'Bạn ưng chiếc nào không?';
     } else {
-        opening = lang === 'en' ? `No vehicles found in ${params.location} for those dates.` : `Không tìm thấy xe nào ở ${params.location} vào ngày đó.`;
-        closing = lang === 'en' ? "Try changing dates or location." : "Bạn thử đổi ngày hoặc địa điểm xem sao.";
+      opening =
+        lang === 'en'
+          ? `No vehicles found in ${params.location} for those dates.`
+          : `Không tìm thấy xe nào ở ${params.location} vào ngày đó.`;
+      closing =
+        lang === 'en'
+          ? 'Try changing dates or location.'
+          : 'Bạn thử đổi ngày hoặc địa điểm xem sao.';
     }
 
     return {
-        source: 'database',
-        data: limited as any,
-        text: { opening, closing } as any
+      source: 'database',
+      data: limited as any,
+      text: { opening, closing } as any,
     };
   }
 
-  private async handleExternalSearch(userId: number, message: string, lang: ChatLanguage, type: 'HOTEL' | 'RESTAURANT'): Promise<ChatResponse> {
-     const params = await this.extractSearchParameters(message, type === 'HOTEL' ? 'hotel' : 'restaurant');
-     const results = await this.cooperationsService.findAll({
-         type: type,
-         province: params.location,
-         q: params.q,
-         active: true
-     });
-     
-     const limited = results.slice(0, 5);
+  private async handleExternalSearch(
+    userId: number,
+    message: string,
+    lang: ChatLanguage,
+    type: 'HOTEL' | 'RESTAURANT',
+  ): Promise<ChatResponse> {
+    const params = await this.extractSearchParameters(
+      message,
+      type === 'HOTEL' ? 'hotel' : 'restaurant',
+    );
+    const results = await this.cooperationsService.findAll({
+      type: type,
+      provinceId: params.location,
+      q: params.q,
+    });
 
-     return {
-         source: 'database',
-         data: limited as any,
-         text: {
-             opening: lang === 'en' ? `Here are some ${type.toLowerCase()}s:` : `Đây là một số ${type === 'HOTEL' ? 'khách sạn' : 'nhà hàng'} mình tìm được:`,
-             closing: lang === 'en' ? "Need more details?" : "Bạn cần thông tin chi tiết không?"
-         } as any
-     };
+    const limited = results.slice(0, 5);
+
+    return {
+      source: 'database',
+      data: limited as any,
+      text: {
+        opening:
+          lang === 'en'
+            ? `Here are some ${type.toLowerCase()}s:`
+            : `Đây là một số ${type === 'HOTEL' ? 'khách sạn' : 'nhà hàng'} mình tìm được:`,
+        closing:
+          lang === 'en'
+            ? 'Need more details?'
+            : 'Bạn cần thông tin chi tiết không?',
+      } as any,
+    };
   }
 
-  private async handleCreateRoute(userId: number, message: string, lang: ChatLanguage): Promise<ChatResponse> {
-      return {
-          source: 'ai',
-          text: lang === 'en' 
-            ? "To create a route, please use the 'Plan Trip' feature in the menu for the best experience. I can help you find destinations though!"
-            : "Để tạo lộ trình chi tiết, bạn hãy dùng tính năng 'Lập kế hoạch' trên menu nhé. Mình sẽ giúp bạn tìm địa điểm đẹp!"
-      };
+  private async handleCreateRoute(
+    userId: number,
+    message: string,
+    lang: ChatLanguage,
+  ): Promise<ChatResponse> {
+    return {
+      source: 'ai',
+      text:
+        lang === 'en'
+          ? "To create a route, please use the 'Plan Trip' feature in the menu for the best experience. I can help you find destinations though!"
+          : "Để tạo lộ trình chi tiết, bạn hãy dùng tính năng 'Lập kế hoạch' trên menu nhé. Mình sẽ giúp bạn tìm địa điểm đẹp!",
+    };
   }
 }

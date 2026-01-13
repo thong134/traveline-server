@@ -94,31 +94,50 @@ export class RentalBillsService {
 
     switch (pkg) {
       case '1h':
-        if (Math.abs(diffHours - 1) > 0.01) throw new BadRequestException('Gói 1h phải đúng 1 giờ');
+        if (Math.abs(diffHours - 1) > 0.01)
+          throw new BadRequestException('Gói 1h phải đúng 1 giờ');
         break;
       case '4h':
-        if (Math.abs(diffHours - 4) > 0.01) throw new BadRequestException('Gói 4h phải đúng 4 giờ');
+        if (Math.abs(diffHours - 4) > 0.01)
+          throw new BadRequestException('Gói 4h phải đúng 4 giờ');
         break;
       case '8h':
-        if (Math.abs(diffHours - 8) > 0.01) throw new BadRequestException('Gói 8h phải đúng 8 giờ');
+        if (Math.abs(diffHours - 8) > 0.01)
+          throw new BadRequestException('Gói 8h phải đúng 8 giờ');
         break;
       case '12h':
-        if (Math.abs(diffHours - 12) > 0.01) throw new BadRequestException('Gói 12h phải đúng 12 giờ');
+        if (Math.abs(diffHours - 12) > 0.01)
+          throw new BadRequestException('Gói 12h phải đúng 12 giờ');
         break;
       case '1d':
-        if (diffDays !== 1 || !sameTime) throw new BadRequestException('Gói 1 ngày phải đảm bảo đúng 24 giờ trùng giờ nhận trả');
+        if (diffDays !== 1 || !sameTime)
+          throw new BadRequestException(
+            'Gói 1 ngày phải đảm bảo đúng 24 giờ trùng giờ nhận trả',
+          );
         break;
       case '2d':
-        if (diffDays !== 2 || !sameTime) throw new BadRequestException('Gói 2 ngày phải đảm bảo đúng 2 ngày trùng giờ nhận trả');
+        if (diffDays !== 2 || !sameTime)
+          throw new BadRequestException(
+            'Gói 2 ngày phải đảm bảo đúng 2 ngày trùng giờ nhận trả',
+          );
         break;
       case '3d':
-        if (diffDays !== 3 || !sameTime) throw new BadRequestException('Gói 3 ngày phải đảm bảo đúng 3 ngày trùng giờ nhận trả');
+        if (diffDays !== 3 || !sameTime)
+          throw new BadRequestException(
+            'Gói 3 ngày phải đảm bảo đúng 3 ngày trùng giờ nhận trả',
+          );
         break;
       case '5d':
-        if (diffDays !== 5 || !sameTime) throw new BadRequestException('Gói 5 ngày phải đảm bảo đúng 5 ngày trùng giờ nhận trả');
+        if (diffDays !== 5 || !sameTime)
+          throw new BadRequestException(
+            'Gói 5 ngày phải đảm bảo đúng 5 ngày trùng giờ nhận trả',
+          );
         break;
       case '7d':
-        if (diffDays !== 7 || !sameTime) throw new BadRequestException('Gói 7 ngày phải đảm bảo đúng 7 ngày trùng giờ nhận trả');
+        if (diffDays !== 7 || !sameTime)
+          throw new BadRequestException(
+            'Gói 7 ngày phải đảm bảo đúng 7 ngày trùng giờ nhận trả',
+          );
         break;
       default:
         throw new BadRequestException(`Gói thuê không hợp lệ (${pkg})`);
@@ -148,7 +167,9 @@ export class RentalBillsService {
     date = new Date(dateStr);
     if (isValid(date)) return date;
 
-    throw new BadRequestException(`Invalid date format: ${dateStr}. Expected ISO 8601 or dd:MM:yyyy HH:mm`);
+    throw new BadRequestException(
+      `Invalid date format: ${dateStr}. Expected ISO 8601 or dd:MM:yyyy HH:mm`,
+    );
   }
 
   /**
@@ -159,8 +180,6 @@ export class RentalBillsService {
   @Cron(CronExpression.EVERY_MINUTE)
   async checkTimeouts() {
     const now = new Date();
-    
-
 
     // 10 min timeout for post-confirm PENDING (has paymentMethod)
     const confirmedThreshold = new Date(now.getTime() - 10 * 60 * 1000);
@@ -177,7 +196,9 @@ export class RentalBillsService {
       await this.billRepo.save(bill);
       const billTime = bill.updatedAt.toLocaleString('vi-VN');
       const thresholdTime = confirmedThreshold.toLocaleString('vi-VN');
-      this.logger.log(`Bill ${bill.id} (POST-CONFIRM PENDING) cancelled. Bill updated at: ${billTime}, Threshold: ${thresholdTime}`);
+      this.logger.log(
+        `Bill ${bill.id} (POST-CONFIRM PENDING) cancelled. Bill updated at: ${billTime}, Threshold: ${thresholdTime}`,
+      );
     }
 
     // 30 min timeout for pure PENDING (no paymentMethod)
@@ -190,14 +211,16 @@ export class RentalBillsService {
       },
     });
 
-  for (const bill of pendingBills) {
-    bill.status = RentalBillStatus.CANCELLED;
-    await this.billRepo.save(bill);
-    const billTime = bill.createdAt.toLocaleString('vi-VN');
-    const thresholdTime = pendingThreshold.toLocaleString('vi-VN');
-    this.logger.log(`Bill ${bill.id} (PURE PENDING) cancelled. Bill created at: ${billTime}, Threshold: ${thresholdTime}`);
+    for (const bill of pendingBills) {
+      bill.status = RentalBillStatus.CANCELLED;
+      await this.billRepo.save(bill);
+      const billTime = bill.createdAt.toLocaleString('vi-VN');
+      const thresholdTime = pendingThreshold.toLocaleString('vi-VN');
+      this.logger.log(
+        `Bill ${bill.id} (PURE PENDING) cancelled. Bill created at: ${billTime}, Threshold: ${thresholdTime}`,
+      );
+    }
   }
-}
 
   async create(userId: number, dto: CreateRentalBillDto): Promise<RentalBill> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -256,17 +279,25 @@ export class RentalBillsService {
     // Authorization: Must be renter or owner
     const ownerId = bill.details?.[0]?.vehicle?.contract?.user?.id;
     if (bill.userId !== userId && ownerId !== userId) {
-      throw new ForbiddenException('Bạn không có quyền truy cập vào đơn hàng này');
+      throw new ForbiddenException(
+        'Bạn không có quyền truy cập vào đơn hàng này',
+      );
     }
 
     return bill;
   }
 
-  async update(id: number, userId: number, dto: UpdateRentalBillDto): Promise<RentalBill> {
+  async update(
+    id: number,
+    userId: number,
+    dto: UpdateRentalBillDto,
+  ): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
 
     if (bill.status !== RentalBillStatus.PENDING) {
-      throw new BadRequestException(`Không thể cập nhật đơn hàng ở trạng thái ${bill.status}`);
+      throw new BadRequestException(
+        `Không thể cập nhật đơn hàng ở trạng thái ${bill.status}`,
+      );
     }
 
     assignDefined(bill, {
@@ -281,9 +312,9 @@ export class RentalBillsService {
 
     // Recalculate shipping fee if coordinates change
     if (dto.pickupLatitude !== undefined || dto.pickupLongitude !== undefined) {
-       const { fee, isNegotiable } = await this.calculateShippingFee(bill);
-       bill.shippingFee = fee.toString();
-       bill.isShippingFeeNegotiable = isNegotiable;
+      const { fee, isNegotiable } = await this.calculateShippingFee(bill);
+      bill.shippingFee = fee.toString();
+      bill.isShippingFeeNegotiable = isNegotiable;
     }
 
     if (dto.voucherCode !== undefined) {
@@ -295,8 +326,14 @@ export class RentalBillsService {
         if (!voucher) throw new NotFoundException('Không tìm thấy mã giảm giá');
 
         // Reuse VouchersService validation
-        const totalFromDetails = bill.details.reduce((sum, d) => sum + parseFloat(d.price), 0);
-        this.vouchersService.validateVoucherForBooking(voucher, totalFromDetails);
+        const totalFromDetails = bill.details.reduce(
+          (sum, d) => sum + parseFloat(d.price),
+          0,
+        );
+        this.vouchersService.validateVoucherForBooking(
+          voucher,
+          totalFromDetails,
+        );
 
         bill.voucher = voucher;
         bill.voucherId = voucher.id;
@@ -306,12 +343,16 @@ export class RentalBillsService {
     if (dto.travelPointsUsed !== undefined) {
       const points = Number(dto.travelPointsUsed);
       if (Number.isNaN(points) || points < 0) {
-        throw new BadRequestException('Điểm du lịch sử dụng phải là số không âm');
+        throw new BadRequestException(
+          'Điểm du lịch sử dụng phải là số không âm',
+        );
       }
 
       // Check if user has enough points
       if (bill.user && points > bill.user.travelPoint) {
-         throw new BadRequestException(`Bạn không đủ điểm (Hiện có: ${bill.user.travelPoint})`);
+        throw new BadRequestException(
+          `Bạn không đủ điểm (Hiện có: ${bill.user.travelPoint})`,
+        );
       }
 
       bill.travelPointsUsed = Math.floor(points);
@@ -319,20 +360,25 @@ export class RentalBillsService {
 
     // Recalculate total in-memory based on updated props
     this.calculateTotal(bill);
-    
+
     return this.billRepo.save(bill);
   }
 
-
-
-  async pay(id: number, userId: number): Promise<{ payUrl: string; paymentId: number }> {
+  async pay(
+    id: number,
+    userId: number,
+  ): Promise<{ payUrl: string; paymentId: number }> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== RentalBillStatus.PENDING) {
-      throw new BadRequestException('Chỉ có thể thanh toán các đơn hàng đang chờ (PENDING)');
+      throw new BadRequestException(
+        'Chỉ có thể thanh toán các đơn hàng đang chờ (PENDING)',
+      );
     }
 
     if (!bill.paymentMethod) {
-      throw new BadRequestException('Cần chọn phương thức thanh toán trước khi thanh toán');
+      throw new BadRequestException(
+        'Cần chọn phương thức thanh toán trước khi thanh toán',
+      );
     }
 
     const totalAmount = parseFloat(bill.total);
@@ -351,11 +397,15 @@ export class RentalBillsService {
     }
 
     if (bill.paymentMethod === 'momo') {
-      const { payUrl, paymentId } = await this.paymentService.createMomoPayment({
-        rentalId: bill.id,
-        amount: totalAmount,
-      });
-      this.logger.log(`Created MoMo payment ${paymentId} for rental bill ${bill.id}`);
+      const { payUrl, paymentId } = await this.paymentService.createMomoPayment(
+        {
+          rentalId: bill.id,
+          amount: totalAmount,
+        },
+      );
+      this.logger.log(
+        `Created MoMo payment ${paymentId} for rental bill ${bill.id}`,
+      );
       return { payUrl, paymentId };
     }
 
@@ -375,7 +425,9 @@ export class RentalBillsService {
         amount: totalAmount,
         qrData,
       });
-      this.logger.log(`Created QR payment ${paymentId} for rental bill ${bill.id}`);
+      this.logger.log(
+        `Created QR payment ${paymentId} for rental bill ${bill.id}`,
+      );
       return { payUrl, paymentId };
     }
 
@@ -385,13 +437,15 @@ export class RentalBillsService {
   async complete(id: number, userId: number): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== RentalBillStatus.PAID) {
-      throw new BadRequestException('Chỉ có thể hoàn thành các đơn hàng đã thanh toán (PAID)');
+      throw new BadRequestException(
+        'Chỉ có thể hoàn thành các đơn hàng đã thanh toán (PAID)',
+      );
     }
 
     bill.status = RentalBillStatus.COMPLETED;
-    
+
     // Process funds release to owner
-    const vehicles = bill.details.map(d => d.vehicle).filter(v => !!v);
+    const vehicles = bill.details.map((d) => d.vehicle).filter((v) => !!v);
     const ownerUserId = vehicles[0]?.contract?.user?.id;
     await this.processRefundOrRelease(bill, 'release', ownerUserId);
 
@@ -407,28 +461,36 @@ export class RentalBillsService {
     return this.billRepo.save(bill);
   }
 
-  async cancel(id: number, userId: number, reason: string): Promise<RentalBill> {
+  async cancel(
+    id: number,
+    userId: number,
+    reason: string,
+  ): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
-    if ([RentalBillStatus.COMPLETED, RentalBillStatus.CANCELLED].includes(bill.status)) {
+    if (
+      [RentalBillStatus.COMPLETED, RentalBillStatus.CANCELLED].includes(
+        bill.status,
+      )
+    ) {
       throw new BadRequestException(`Bill is already ${bill.status}`);
     }
 
     // 24h Cancellation Rule
-    // Only allow cancellation within 24h of PAYMENT (createdAt for now if payment time not tracked separately, 
-    // but better to track payment time. However, logic says "24h after payment". 
+    // Only allow cancellation within 24h of PAYMENT (createdAt for now if payment time not tracked separately,
+    // but better to track payment time. However, logic says "24h after payment".
     // If bill is PENDING, no payment yet, so safe to cancel.
     // If bill is PAID, check time.
-    
+
     if (bill.status === RentalBillStatus.PAID) {
       // Assuming payment happens roughly around update to PAID.
       // Or we check createdAt if we don't have payment timestamp.
       // Let's use updatedAt as a proxy for payment time if status is PAID, or find payment record.
       // For simplicity/requirement "24h sau khi đã thanh toán", relying on updatedAt when it turned PAID is risky if other updates happen.
       // Best to find the Payment record.
-      
+
       const payment = await this.paymentService.repo.findOne({
         where: { rentalId: bill.id, status: PaymentStatus.SUCCESS },
-        order: { createdAt: 'DESC' }
+        order: { createdAt: 'DESC' },
       });
 
       if (payment) {
@@ -438,7 +500,9 @@ export class RentalBillsService {
         const diffHours = diffMs / (1000 * 60 * 60);
 
         if (diffHours > 24) {
-          throw new BadRequestException('Chỉ có thể hủy đơn hàng trong vòng 24h sau khi thanh toán');
+          throw new BadRequestException(
+            'Chỉ có thể hủy đơn hàng trong vòng 24h sau khi thanh toán',
+          );
         }
       }
     }
@@ -448,20 +512,23 @@ export class RentalBillsService {
       await this.processRefundOrRelease(bill, 'refund');
     }
 
-    if ([RentalBillStatus.PAID, RentalBillStatus.PENDING].includes(bill.status)) {
-     for (const detail of bill.details) {
-      if (detail.vehicle) {
-        detail.vehicle.availability = RentalVehicleAvailabilityStatus.AVAILABLE;
-        await this.vehicleRepo.save(detail.vehicle);
+    if (
+      [RentalBillStatus.PAID, RentalBillStatus.PENDING].includes(bill.status)
+    ) {
+      for (const detail of bill.details) {
+        if (detail.vehicle) {
+          detail.vehicle.availability =
+            RentalVehicleAvailabilityStatus.AVAILABLE;
+          await this.vehicleRepo.save(detail.vehicle);
+        }
       }
     }
-  }
 
     bill.status = RentalBillStatus.CANCELLED;
     bill.rentalStatus = RentalProgressStatus.CANCELLED;
     bill.cancelReason = reason;
     bill.cancelledBy = RentalBillCancelledBy.USER;
-    
+
     return this.billRepo.save(bill);
   }
 
@@ -470,28 +537,44 @@ export class RentalBillsService {
   async ownerDelivering(id: number, userId: number): Promise<RentalBill> {
     const bill = await this.billRepo.findOne({
       where: { id },
-      relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
+      relations: [
+        'user',
+        'details',
+        'details.vehicle',
+        'details.vehicle.contract',
+        'details.vehicle.contract.user',
+      ],
     });
     if (!bill) throw new NotFoundException('Không tìm thấy đơn hàng');
-    
+
     // Authorization: Must be customer or owner
     const ownerId = bill.details?.[0]?.vehicle?.contract?.user?.id;
     if (bill.userId !== userId && ownerId !== userId) {
-      throw new ForbiddenException('Bạn không có quyền truy cập vào đơn hàng này');
+      throw new ForbiddenException(
+        'Bạn không có quyền truy cập vào đơn hàng này',
+      );
     }
 
     if (bill.status !== RentalBillStatus.PAID) {
-      throw new BadRequestException('Chỉ có thể giao xe sau khi khách đã thanh toán');
+      throw new BadRequestException(
+        'Chỉ có thể giao xe sau khi khách đã thanh toán',
+      );
     }
 
     const now = new Date();
-    const oneHourBeforeStart = new Date(bill.startDate.getTime() - 60 * 60 * 1000);
+    const oneHourBeforeStart = new Date(
+      bill.startDate.getTime() - 60 * 60 * 1000,
+    );
     if (now < oneHourBeforeStart) {
-      throw new BadRequestException(`Chỉ được phép bấm giao xe từ lúc ${oneHourBeforeStart.toLocaleString('vi-VN')} (tối đa 1 tiếng trước giờ thuê)`);
+      throw new BadRequestException(
+        `Chỉ được phép bấm giao xe từ lúc ${oneHourBeforeStart.toLocaleString('vi-VN')} (tối đa 1 tiếng trước giờ thuê)`,
+      );
     }
-    
+
     if (bill.rentalStatus !== RentalProgressStatus.BOOKED) {
-       throw new BadRequestException('Đơn hàng chưa ở trạng thái ĐÃ ĐẶT (BOOKED)');
+      throw new BadRequestException(
+        'Đơn hàng chưa ở trạng thái ĐÃ ĐẶT (BOOKED)',
+      );
     }
 
     bill.rentalStatus = RentalProgressStatus.DELIVERING;
@@ -503,7 +586,11 @@ export class RentalBillsService {
       'Chủ xe đang giao xe!',
       `Chủ xe đang bắt đầu vận chuyển xe ${bill.code} đến cho bạn. Hãy để ý điện thoại nhé!`,
       NotificationType.REMINDER,
-      { billId: bill.id.toString(), category: 'rental-vehicle', status: 'delivering' }
+      {
+        billId: bill.id.toString(),
+        category: 'rental-vehicle',
+        status: 'delivering',
+      },
     );
 
     return saved;
@@ -517,18 +604,30 @@ export class RentalBillsService {
   ): Promise<RentalBill> {
     const bill = await this.billRepo.findOne({
       where: { id },
-      relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
+      relations: [
+        'user',
+        'details',
+        'details.vehicle',
+        'details.vehicle.contract',
+        'details.vehicle.contract.user',
+      ],
     });
     if (!bill) throw new NotFoundException('Không tìm thấy đơn hàng');
 
     if (bill.rentalStatus !== RentalProgressStatus.DELIVERING) {
-      throw new BadRequestException('Phải bấm đang vận chuyển trước khi xác nhận đã đến');
+      throw new BadRequestException(
+        'Phải bấm đang vận chuyển trước khi xác nhận đã đến',
+      );
     }
 
     const now = new Date();
-    const thirtyMinsBeforeStart = new Date(bill.startDate.getTime() - 30 * 60 * 1000);
+    const thirtyMinsBeforeStart = new Date(
+      bill.startDate.getTime() - 30 * 60 * 1000,
+    );
     if (now < thirtyMinsBeforeStart) {
-      throw new BadRequestException(`Chỉ được phép xác nhận đã giao đến từ lúc ${thirtyMinsBeforeStart.toLocaleString('vi-VN')} (tối đa 30 phút trước giờ thuê)`);
+      throw new BadRequestException(
+        `Chỉ được phép xác nhận đã giao đến từ lúc ${thirtyMinsBeforeStart.toLocaleString('vi-VN')} (tối đa 30 phút trước giờ thuê)`,
+      );
     }
 
     const uploadedPhotos = await this.uploadBillImages(photos, id, 'delivery');
@@ -542,7 +641,11 @@ export class RentalBillsService {
       'Xe đã được giao đến!',
       `Xe cho đơn hàng ${bill.code} đã được giao đến điểm hẹn. Vui lòng kiểm tra và xác nhận nhận xe.`,
       NotificationType.REMINDER,
-      { billId: bill.id.toString(), category: 'rental-vehicle', status: 'delivered' }
+      {
+        billId: bill.id.toString(),
+        category: 'rental-vehicle',
+        status: 'delivered',
+      },
     );
 
     return saved;
@@ -556,7 +659,13 @@ export class RentalBillsService {
   ): Promise<RentalBill> {
     const bill = await this.billRepo.findOne({
       where: { id },
-      relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
+      relations: [
+        'user',
+        'details',
+        'details.vehicle',
+        'details.vehicle.contract',
+        'details.vehicle.contract.user',
+      ],
     });
     if (!bill) throw new NotFoundException('Không tìm thấy đơn hàng');
 
@@ -566,28 +675,43 @@ export class RentalBillsService {
 
     // --- FaceMatch Implementation ---
     if (!selfie) {
-        throw new BadRequestException('Bạn cần chụp ảnh selfie để xác nhận nhận xe');
+      throw new BadRequestException(
+        'Bạn cần chụp ảnh selfie để xác nhận nhận xe',
+      );
     }
     const renter = bill.user;
     if (!renter.citizenFrontImageUrl) {
-        throw new BadRequestException('Bạn chưa cập nhật ảnh CCCD. Vui lòng xác thực tài khoản trước.');
+      throw new BadRequestException(
+        'Bạn chưa cập nhật ảnh CCCD. Vui lòng xác thực tài khoản trước.',
+      );
     }
 
     try {
-        const frontImageBuffer = await axios.get(renter.citizenFrontImageUrl, { responseType: 'arraybuffer' }).then(res => Buffer.from(res.data));
-        const similarity = await this.fptAiService.faceMatch(selfie.buffer, frontImageBuffer);
-        // Requirement > 80% or 90%. Let's use 80% for pickup flexibility or match auth (90%). User requested strict.
-        if (similarity < 90) {
-             throw new BadRequestException(`Xác thực khuôn mặt thất bại (${similarity.toFixed(2)}%). Vui lòng thử lại.`);
-        }
+      const frontImageBuffer = await axios
+        .get(renter.citizenFrontImageUrl, { responseType: 'arraybuffer' })
+        .then((res) => Buffer.from(res.data));
+      const similarity = await this.fptAiService.faceMatch(
+        selfie.buffer,
+        frontImageBuffer,
+      );
+      // Requirement > 80% or 90%. Let's use 80% for pickup flexibility or match auth (90%). User requested strict.
+      if (similarity < 90) {
+        throw new BadRequestException(
+          `Xác thực khuôn mặt thất bại (${similarity.toFixed(2)}%). Vui lòng thử lại.`,
+        );
+      }
     } catch (e) {
-        this.logger.error(`FaceMatch error`, e);
-        if (e instanceof BadRequestException) throw e;
-        throw new BadRequestException('Lỗi hệ thống khi xác thực khuôn mặt.');
+      this.logger.error(`FaceMatch error`, e);
+      if (e instanceof BadRequestException) throw e;
+      throw new BadRequestException('Lỗi hệ thống khi xác thực khuôn mặt.');
     }
     // --------------------------------
 
-    const uploadedSelfie = await this.uploadBillImage(selfie, id, 'pickup-selfie');
+    const uploadedSelfie = await this.uploadBillImage(
+      selfie,
+      id,
+      'pickup-selfie',
+    );
     bill.pickupSelfiePhoto = uploadedSelfie ?? dto.selfiePhoto;
     bill.rentalStatus = RentalProgressStatus.IN_PROGRESS;
     const saved = await this.billRepo.save(bill);
@@ -600,7 +724,11 @@ export class RentalBillsService {
         'Khách đã nhận xe!',
         `Khách hàng ${bill.user.fullName || bill.user.username} đã nhận xe ${bill.code} và bắt đầu hành trình.`,
         NotificationType.REMINDER,
-        { billId: bill.id.toString(), category: 'rental-vehicle', status: 'pickup' }
+        {
+          billId: bill.id.toString(),
+          category: 'rental-vehicle',
+          status: 'pickup',
+        },
       );
     }
 
@@ -615,22 +743,38 @@ export class RentalBillsService {
   ): Promise<RentalBill> {
     const bill = await this.billRepo.findOne({
       where: { id },
-      relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
+      relations: [
+        'user',
+        'details',
+        'details.vehicle',
+        'details.vehicle.contract',
+        'details.vehicle.contract.user',
+      ],
     });
     if (!bill) throw new NotFoundException('Không tìm thấy đơn hàng');
 
     if (bill.rentalStatus !== RentalProgressStatus.IN_PROGRESS) {
-      throw new BadRequestException('Chỉ được phép yêu cầu trả xe khi đang trong quá trình hành trình (IN_PROGRESS)');
+      throw new BadRequestException(
+        'Chỉ được phép yêu cầu trả xe khi đang trong quá trình hành trình (IN_PROGRESS)',
+      );
     }
 
     const now = new Date();
-    const thirtyMinsBeforeEnd = new Date(bill.endDate.getTime() - 30 * 60 * 1000);
+    const thirtyMinsBeforeEnd = new Date(
+      bill.endDate.getTime() - 30 * 60 * 1000,
+    );
     if (now < thirtyMinsBeforeEnd) {
-      throw new BadRequestException(`Chỉ được phép yêu cầu trả xe từ lúc ${thirtyMinsBeforeEnd.toLocaleString('vi-VN')} (tối đa 30 phút trước giờ kết thúc)`);
+      throw new BadRequestException(
+        `Chỉ được phép yêu cầu trả xe từ lúc ${thirtyMinsBeforeEnd.toLocaleString('vi-VN')} (tối đa 30 phút trước giờ kết thúc)`,
+      );
     }
 
     bill.returnTimestampUser = now;
-    const uploadedPhotos = await this.uploadBillImages(photos, id, 'return-request');
+    const uploadedPhotos = await this.uploadBillImages(
+      photos,
+      id,
+      'return-request',
+    );
     bill.returnPhotosUser = uploadedPhotos.length ? uploadedPhotos : dto.photos;
     bill.returnLatitudeUser = dto.latitude;
     bill.returnLongitudeUser = dto.longitude;
@@ -640,7 +784,7 @@ export class RentalBillsService {
     if (now > bill.endDate) {
       const diffMs = now.getTime() - bill.endDate.getTime();
       const diffHours = Math.ceil(diffMs / (60 * 60 * 1000));
-      
+
       // Get hourly price from first vehicle (all same owner)
       const firstDetail = bill.details[0];
       if (firstDetail?.vehicle) {
@@ -660,7 +804,11 @@ export class RentalBillsService {
         'Yêu cầu trả xe!',
         `Khách hàng ${bill.user.fullName || bill.user.username} vừa gửi yêu cầu trả xe cho đơn hàng ${bill.code}.`,
         NotificationType.REMINDER,
-        { billId: bill.id.toString(), category: 'rental-vehicle', status: 'return_request' }
+        {
+          billId: bill.id.toString(),
+          category: 'rental-vehicle',
+          status: 'return_request',
+        },
       );
     }
 
@@ -675,7 +823,13 @@ export class RentalBillsService {
   ): Promise<RentalBill> {
     const bill = await this.billRepo.findOne({
       where: { id },
-      relations: ['user', 'details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user'],
+      relations: [
+        'user',
+        'details',
+        'details.vehicle',
+        'details.vehicle.contract',
+        'details.vehicle.contract.user',
+      ],
     });
     if (!bill) throw new NotFoundException('Không tìm thấy đơn hàng');
 
@@ -685,32 +839,44 @@ export class RentalBillsService {
 
     // GPS Validation (< 50m)
     if (bill.returnLatitudeUser && bill.returnLongitudeUser) {
-        const distance = this.calculateDistance(
-            dto.latitude, dto.longitude,
-            Number(bill.returnLatitudeUser), Number(bill.returnLongitudeUser)
+      const distance = this.calculateDistance(
+        dto.latitude,
+        dto.longitude,
+        Number(bill.returnLatitudeUser),
+        Number(bill.returnLongitudeUser),
+      );
+      if (distance > 0.05) {
+        // 0.05 km = 50m
+        throw new BadRequestException(
+          `Vị trí xác nhận quá xa điểm trả xe của khách (${Math.round(distance * 1000)}m > 50m)`,
         );
-        if (distance > 0.05) { // 0.05 km = 50m
-            throw new BadRequestException(`Vị trí xác nhận quá xa điểm trả xe của khách (${Math.round(distance * 1000)}m > 50m)`);
-        }
+      }
     }
 
-    const uploadedPhotos = await this.uploadBillImages(photos, id, 'return-confirm');
-    bill.returnPhotosOwner = uploadedPhotos.length ? uploadedPhotos : dto.photos;
+    const uploadedPhotos = await this.uploadBillImages(
+      photos,
+      id,
+      'return-confirm',
+    );
+    bill.returnPhotosOwner = uploadedPhotos.length
+      ? uploadedPhotos
+      : dto.photos;
     bill.returnLatitudeOwner = dto.latitude;
     bill.returnLongitudeOwner = dto.longitude;
     bill.rentalStatus = RentalProgressStatus.RETURN_CONFIRMED;
     bill.status = RentalBillStatus.COMPLETED;
 
     // Process funds release to owner
-    const totalWithOvertime = parseFloat(bill.total) + parseFloat(bill.overtimeFee || '0');
-    
-    const vehicles = bill.details.map(d => d.vehicle).filter(v => !!v);
+    const totalWithOvertime =
+      parseFloat(bill.total) + parseFloat(bill.overtimeFee || '0');
+
+    const vehicles = bill.details.map((d) => d.vehicle).filter((v) => !!v);
     const ownerUserId = vehicles[0]?.contract?.user?.id;
-    
+
     // Release standard funds + overtime (simplified: release all as one)
     await this.processRefundOrRelease(bill, 'release', ownerUserId);
-    
-    // If there was overtime, we should ideally deduct from user wallet here 
+
+    // If there was overtime, we should ideally deduct from user wallet here
     // but the system currently locks only the initial total.
     // For this task, we assume the user has enough balance or it's handled externally.
     // However, to keep it simple as requested, we just log it and award points on the final total.
@@ -727,14 +893,21 @@ export class RentalBillsService {
     return this.billRepo.save(bill);
   }
 
-  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  private calculateDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
     const R = 6371; // Earth's radius in km
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
@@ -766,15 +939,24 @@ export class RentalBillsService {
     billId: number,
     label: string,
   ): Promise<string | undefined> {
-    const [first] = await this.uploadBillImages(file ? [file] : undefined, billId, label);
+    const [first] = await this.uploadBillImages(
+      file ? [file] : undefined,
+      billId,
+      label,
+    );
     return first;
   }
 
-
-  async addVehicleToBill(id: number, userId: number, dto: ManageRentalBillVehicleDto): Promise<RentalBill> {
+  async addVehicleToBill(
+    id: number,
+    userId: number,
+    dto: ManageRentalBillVehicleDto,
+  ): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== RentalBillStatus.PENDING) {
-      throw new BadRequestException('Chỉ có thể thêm xe vào đơn hàng đang chờ (PENDING)');
+      throw new BadRequestException(
+        'Chỉ có thể thêm xe vào đơn hàng đang chờ (PENDING)',
+      );
     }
 
     const vehicle = await this.vehicleRepo.findOne({
@@ -783,7 +965,10 @@ export class RentalBillsService {
     });
 
     if (!vehicle) throw new NotFoundException('Không tìm thấy phương tiện');
-    if (vehicle.status !== RentalVehicleApprovalStatus.APPROVED || vehicle.availability !== RentalVehicleAvailabilityStatus.AVAILABLE) {
+    if (
+      vehicle.status !== RentalVehicleApprovalStatus.APPROVED ||
+      vehicle.availability !== RentalVehicleAvailabilityStatus.AVAILABLE
+    ) {
       throw new BadRequestException('Phương tiện không khả dụng để cho thuê');
     }
 
@@ -794,25 +979,46 @@ export class RentalBillsService {
         relations: ['vehicle'],
       });
       if (firstDetail?.vehicle?.contractId !== vehicle.contractId) {
-        throw new BadRequestException('Tất cả xe trong đơn hàng phải thuộc cùng một chủ sở hữu');
+        throw new BadRequestException(
+          'Tất cả xe trong đơn hàng phải thuộc cùng một chủ sở hữu',
+        );
       }
     }
 
     const pkg = bill.durationPackage;
     let price = 0;
-    
+
     // Select price based on package
     switch (pkg) {
-      case '1h': price = parseFloat(vehicle.pricePerHour); break;
-      case '4h': price = parseFloat(vehicle.priceFor4Hours || '0'); break;
-      case '8h': price = parseFloat(vehicle.priceFor8Hours || '0'); break;
-      case '12h': price = parseFloat(vehicle.priceFor12Hours || '0'); break;
-      case '1d': price = parseFloat(vehicle.pricePerDay); break;
-      case '2d': price = parseFloat(vehicle.priceFor2Days || '0'); break;
-      case '3d': price = parseFloat(vehicle.priceFor3Days || '0'); break;
-      case '5d': price = parseFloat(vehicle.priceFor5Days || '0'); break;
-      case '7d': price = parseFloat(vehicle.priceFor7Days || '0'); break;
-      default: price = parseFloat(vehicle.pricePerDay);
+      case '1h':
+        price = parseFloat(vehicle.pricePerHour);
+        break;
+      case '4h':
+        price = parseFloat(vehicle.priceFor4Hours || '0');
+        break;
+      case '8h':
+        price = parseFloat(vehicle.priceFor8Hours || '0');
+        break;
+      case '12h':
+        price = parseFloat(vehicle.priceFor12Hours || '0');
+        break;
+      case '1d':
+        price = parseFloat(vehicle.pricePerDay);
+        break;
+      case '2d':
+        price = parseFloat(vehicle.priceFor2Days || '0');
+        break;
+      case '3d':
+        price = parseFloat(vehicle.priceFor3Days || '0');
+        break;
+      case '5d':
+        price = parseFloat(vehicle.priceFor5Days || '0');
+        break;
+      case '7d':
+        price = parseFloat(vehicle.priceFor7Days || '0');
+        break;
+      default:
+        price = parseFloat(vehicle.pricePerDay);
     }
 
     if (price <= 0) {
@@ -828,9 +1034,9 @@ export class RentalBillsService {
     await this.detailRepo.save(detail);
 
     // Refresh details for calculation
-    bill.details = await this.detailRepo.find({ 
+    bill.details = await this.detailRepo.find({
       where: { billId: bill.id },
-      relations: ['vehicle', 'vehicle.contract'] 
+      relations: ['vehicle', 'vehicle.contract'],
     });
 
     // Calculate shipping fee on first vehicle added
@@ -844,10 +1050,16 @@ export class RentalBillsService {
     return this.findOne(id, userId);
   }
 
-  async removeVehicleFromBill(id: number, userId: number, licensePlate: string): Promise<RentalBill> {
+  async removeVehicleFromBill(
+    id: number,
+    userId: number,
+    licensePlate: string,
+  ): Promise<RentalBill> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== RentalBillStatus.PENDING) {
-      throw new BadRequestException('Can only remove vehicles from PENDING bills');
+      throw new BadRequestException(
+        'Can only remove vehicles from PENDING bills',
+      );
     }
 
     await this.detailRepo.delete({ billId: id, licensePlate });
@@ -891,7 +1103,11 @@ export class RentalBillsService {
   async calculateShippingFee(
     bill: RentalBill,
   ): Promise<{ fee: number; isNegotiable: boolean }> {
-    if (!bill.pickupLatitude || !bill.pickupLongitude || !bill.details?.length) {
+    if (
+      !bill.pickupLatitude ||
+      !bill.pickupLongitude ||
+      !bill.details?.length
+    ) {
       return { fee: 0, isNegotiable: false };
     }
 
@@ -912,10 +1128,20 @@ export class RentalBillsService {
 
     return calcShippingFee(distance, bill.vehicleType);
   }
-  async ownerCancel(id: number, ownerUserId: number, reason: string): Promise<RentalBill> {
+  async ownerCancel(
+    id: number,
+    ownerUserId: number,
+    reason: string,
+  ): Promise<RentalBill> {
     const bill = await this.billRepo.findOne({
       where: { id },
-      relations: ['details', 'details.vehicle', 'details.vehicle.contract', 'details.vehicle.contract.user', 'user'],
+      relations: [
+        'details',
+        'details.vehicle',
+        'details.vehicle.contract',
+        'details.vehicle.contract.user',
+        'user',
+      ],
     });
 
     if (!bill) throw new NotFoundException(`Rental bill ${id} not found`);
@@ -937,7 +1163,7 @@ export class RentalBillsService {
     // 24h Cancellation Rule after Payment
     const payment = await this.paymentService.repo.findOne({
       where: { rentalId: bill.id, status: PaymentStatus.SUCCESS },
-      order: { createdAt: 'DESC' }
+      order: { createdAt: 'DESC' },
     });
 
     if (payment) {
@@ -946,7 +1172,9 @@ export class RentalBillsService {
       const diffHours = diffMs / (1000 * 60 * 60);
 
       if (diffHours > 24) {
-        throw new BadRequestException('Chỉ có thể hủy đơn hàng trong vòng 24h sau khi thanh toán');
+        throw new BadRequestException(
+          'Chỉ có thể hủy đơn hàng trong vòng 24h sau khi thanh toán',
+        );
       }
     }
 
@@ -962,17 +1190,24 @@ export class RentalBillsService {
 
       // 3. Update vehicle availability back to available
       for (const detail of bill.details) {
-        await manager.update(RentalVehicle, { licensePlate: detail.licensePlate }, {
-          availability: RentalVehicleAvailabilityStatus.AVAILABLE
-        });
+        await manager.update(
+          RentalVehicle,
+          { licensePlate: detail.licensePlate },
+          {
+            availability: RentalVehicleAvailabilityStatus.AVAILABLE,
+          },
+        );
       }
 
       return await manager.save(bill);
     });
   }
 
-
-  private async processRefundOrRelease(bill: RentalBill, action: 'release' | 'refund', ownerUserId?: number) {
+  private async processRefundOrRelease(
+    bill: RentalBill,
+    action: 'release' | 'refund',
+    ownerUserId?: number,
+  ) {
     const totalAmount = parseFloat(bill.total);
     if (totalAmount <= 0) return;
 
@@ -982,22 +1217,34 @@ export class RentalBillsService {
 
       // 2. Refund Travel Points
       if (bill.travelPointsUsed > 0) {
-        await this.userRepo.increment({ id: bill.userId }, 'travelPoint', bill.travelPointsUsed);
-        this.logger.log(`Refunded ${bill.travelPointsUsed} points to user ${bill.userId} for rental ${bill.id}`);
-        
+        await this.userRepo.increment(
+          { id: bill.userId },
+          'travelPoint',
+          bill.travelPointsUsed,
+        );
+        this.logger.log(
+          `Refunded ${bill.travelPointsUsed} points to user ${bill.userId} for rental ${bill.id}`,
+        );
+
         await this.notificationService.createNotification(
           bill.userId,
           'Hoàn điểm TravelPoints',
           `Bạn đã được hoàn lại ${bill.travelPointsUsed} điểm từ đơn hàng ${bill.code}.`,
           NotificationType.REMINDER,
-          { billId: bill.id.toString(), category: 'rental-vehicle', type: 'refund_points' }
+          {
+            billId: bill.id.toString(),
+            category: 'rental-vehicle',
+            type: 'refund_points',
+          },
         );
       }
 
       // 3. Decrement Voucher Usage
       if (bill.voucherId) {
         await this.vouchersService.decrementUsage(bill.voucherId);
-        this.logger.log(`Decremented usage for voucher ${bill.voucherId} due to refund`);
+        this.logger.log(
+          `Decremented usage for voucher ${bill.voucherId} due to refund`,
+        );
       }
 
       // Notify Refund Success
@@ -1006,44 +1253,70 @@ export class RentalBillsService {
         'Hoàn tiền thành công',
         `Số tiền ${parseFloat(bill.total).toLocaleString('vi-VN')}đ từ đơn hàng ${bill.code} đã được hoàn lại vào ví/tài khoản của bạn.`,
         NotificationType.REMINDER,
-        { billId: bill.id.toString(), category: 'rental-vehicle', type: 'refund_money' }
+        {
+          billId: bill.id.toString(),
+          category: 'rental-vehicle',
+          type: 'refund_money',
+        },
       );
     }
 
     // 4. Release Wallet Funds (Back to user if refund, or to owner if release)
-    await this.walletService.releaseFunds(bill.userId, totalAmount, `rental:${bill.id}`, action === 'release' ? ownerUserId : undefined);
+    await this.walletService.releaseFunds(
+      bill.userId,
+      totalAmount,
+      `rental:${bill.id}`,
+      action === 'release' ? ownerUserId : undefined,
+    );
 
-    const shouldUseBlockchain = bill.requiresEthDeposit && !!bill.ownerEthAddress;
+    const shouldUseBlockchain =
+      bill.requiresEthDeposit && !!bill.ownerEthAddress;
 
     if (action === 'release' && shouldUseBlockchain) {
       await this.blockchainService.adminReleaseFundsForRental(bill.id);
     } else if (action === 'refund' && shouldUseBlockchain) {
       await this.blockchainService.adminRefundForRental(bill.id);
     } else if (action === 'release' && ownerUserId) {
-      this.logger.log(`Automatically released funds to owner ${ownerUserId} for bill ${bill.code}`);
-      
+      this.logger.log(
+        `Automatically released funds to owner ${ownerUserId} for bill ${bill.code}`,
+      );
+
       // Notify Owner about Payout
       await this.notificationService.createNotification(
         ownerUserId,
         'Thanh toán doanh thu',
         `Hệ thống đã chuyển ${totalAmount.toLocaleString('vi-VN')}đ doanh thu từ đơn hàng ${bill.code} vào tài khoản của bạn.`,
         NotificationType.REMINDER,
-        { billId: bill.id.toString(), category: 'rental-vehicle', type: 'payout' }
+        {
+          billId: bill.id.toString(),
+          category: 'rental-vehicle',
+          type: 'payout',
+        },
       );
     }
 
     if (action === 'release') {
       const pointsEarned = Math.floor(totalAmount / 100) * 1;
       if (pointsEarned > 0) {
-        await this.userRepo.increment({ id: bill.userId }, 'travelPoint', pointsEarned);
-        this.logger.log(`User ${bill.userId} earned ${pointsEarned} points for completed rental ${bill.id}`);
-        
+        await this.userRepo.increment(
+          { id: bill.userId },
+          'travelPoint',
+          pointsEarned,
+        );
+        this.logger.log(
+          `User ${bill.userId} earned ${pointsEarned} points for completed rental ${bill.id}`,
+        );
+
         await this.notificationService.createNotification(
           bill.userId,
           'Thưởng điểm TravelPoints',
           `Chúc mừng! Bạn nhận được ${pointsEarned} điểm từ việc hoàn thành đơn hàng ${bill.code}.`,
           NotificationType.REMINDER,
-          { billId: bill.id.toString(), category: 'rental-vehicle', type: 'reward_points' }
+          {
+            billId: bill.id.toString(),
+            category: 'rental-vehicle',
+            type: 'reward_points',
+          },
         );
       }
     }
@@ -1065,24 +1338,33 @@ export class RentalBillsService {
     return {
       qrData,
       amount: bill.total,
-      message: 'Vui lòng quét mã để chuyển khoản vào tài khoản trung gian Traveline (Vietcombank)',
+      message:
+        'Vui lòng quét mã để chuyển khoản vào tài khoản trung gian Traveline (Vietcombank)',
     };
   }
 
-  async findAll(userId: number, params: { status?: RentalBillStatus } = {}): Promise<RentalBill[]> {
+  async findAll(
+    userId: number,
+    params: { status?: RentalBillStatus } = {},
+  ): Promise<RentalBill[]> {
     const qb = this.billRepo.createQueryBuilder('bill');
     qb.where('bill.userId = :userId', { userId });
-    if (params.status) qb.andWhere('bill.status = :status', { status: params.status });
-    return qb.leftJoinAndSelect('bill.details', 'details')
-             .leftJoinAndSelect('details.vehicle', 'vehicle')
-             .leftJoinAndSelect('vehicle.vehicleCatalog', 'catalog')
-             .orderBy('bill.createdAt', 'DESC')
-             .getMany();
+    if (params.status)
+      qb.andWhere('bill.status = :status', { status: params.status });
+    return qb
+      .leftJoinAndSelect('bill.details', 'details')
+      .leftJoinAndSelect('details.vehicle', 'vehicle')
+      .leftJoinAndSelect('vehicle.vehicleCatalog', 'catalog')
+      .orderBy('bill.createdAt', 'DESC')
+      .getMany();
   }
 
-  async findBillsByOwner(ownerId: number, params: { status?: RentalBillStatus } = {}): Promise<RentalBill[]> {
+  async findBillsByOwner(
+    ownerId: number,
+    params: { status?: RentalBillStatus } = {},
+  ): Promise<RentalBill[]> {
     const qb = this.billRepo.createQueryBuilder('bill');
-    
+
     // Join relations to filter by vehicle owner
     qb.leftJoinAndSelect('bill.details', 'details')
       .leftJoinAndSelect('details.vehicle', 'vehicle')
@@ -1102,17 +1384,25 @@ export class RentalBillsService {
     return qb.orderBy('bill.createdAt', 'DESC').getMany();
   }
 
-  async generateGuestLink(id: number, userId: number): Promise<{ token: string; expiresAt: Date }> {
+  async generateGuestLink(
+    id: number,
+    userId: number,
+  ): Promise<{ token: string; expiresAt: Date }> {
     const bill = await this.findOne(id, userId);
-    
+
     // Ensure caller is the owner (only owner can generate links)
     if (bill.details?.[0]?.vehicle?.contract?.user?.id !== userId) {
-      throw new ForbiddenException('Only vehicle owner can generate guest links');
+      throw new ForbiddenException(
+        'Only vehicle owner can generate guest links',
+      );
     }
 
-    if (bill.status !== RentalBillStatus.PAID && bill.status !== RentalBillStatus.PENDING) {
-       // Ideally links are for delivery (PENDING/PAID) or return (RENTING)
-       // Let's allow it generally but keep in mind validation later
+    if (
+      bill.status !== RentalBillStatus.PAID &&
+      bill.status !== RentalBillStatus.PENDING
+    ) {
+      // Ideally links are for delivery (PENDING/PAID) or return (RENTING)
+      // Let's allow it generally but keep in mind validation later
     }
 
     // Generate token
@@ -1155,7 +1445,9 @@ export class RentalBillsService {
       startDate: bill.startDate,
       endDate: bill.endDate,
       licensePlate: bill.details?.[0]?.licensePlate,
-      vehicleName: bill.details?.[0]?.vehicle?.vehicleCatalog ? `${bill.details[0].vehicle.vehicleCatalog.brand} ${bill.details[0].vehicle.vehicleCatalog.model}` : 'Unknown Vehicle',
+      vehicleName: bill.details?.[0]?.vehicle?.vehicleCatalog
+        ? `${bill.details[0].vehicle.vehicleCatalog.brand} ${bill.details[0].vehicle.vehicleCatalog.model}`
+        : 'Unknown Vehicle',
       location: bill.location,
     };
   }
@@ -1175,8 +1467,12 @@ export class RentalBillsService {
       throw new ForbiddenException('Token expired');
     }
 
-    const isDelivery = bill.status === RentalBillStatus.PENDING || bill.status === RentalBillStatus.PAID;
-    const isReturn = bill.rentalStatus === RentalProgressStatus.IN_PROGRESS || bill.rentalStatus === RentalProgressStatus.RETURN_REQUESTED;
+    const isDelivery =
+      bill.status === RentalBillStatus.PENDING ||
+      bill.status === RentalBillStatus.PAID;
+    const isReturn =
+      bill.rentalStatus === RentalProgressStatus.IN_PROGRESS ||
+      bill.rentalStatus === RentalProgressStatus.RETURN_REQUESTED;
 
     if (!isDelivery && !isReturn) {
       throw new BadRequestException('Not in a state to receive evidence');
@@ -1187,87 +1483,100 @@ export class RentalBillsService {
     if (!ownerId) throw new BadRequestException('Owner not found');
 
     if (isDelivery) {
-        // Reuse ownerDelivered logic but bypass auth checks on ownership
-        // We simulate the owner action
-        const dto = new DeliveryActionDto();
-        dto.latitude = gps.lat;
-        dto.longitude = gps.lon;
-        
-        // We need to implement a "force" or "system" version of ownerDelivered 
-        // OR just duplicate the logic here to be safe and avoid modifying guarded methods.
-        // Let's duplicate core logic for safety and clarity.
-        
-        // Logic from ownerDelivered:
-        if (files?.length > 0) {
-            const uploaded = await this.cloudinaryService.uploadMultipleFiles(files, 'rentals/delivery');
-            bill.deliveryPhotos = uploaded.map(f => f.url);
-        }
-        
-        bill.deliveryLatitudeOwner = gps.lat;
-        bill.deliveryLongitudeOwner = gps.lon;
-        bill.status = RentalBillStatus.PAID; // Still PAID, but progress is DELIVERED
-        bill.rentalStatus = RentalProgressStatus.DELIVERED;
-        bill.deliveryDate = new Date();
+      // Reuse ownerDelivered logic but bypass auth checks on ownership
+      // We simulate the owner action
+      const dto = new DeliveryActionDto();
+      dto.latitude = gps.lat;
+      dto.longitude = gps.lon;
 
-        await this.billRepo.save(bill);
+      // We need to implement a "force" or "system" version of ownerDelivered
+      // OR just duplicate the logic here to be safe and avoid modifying guarded methods.
+      // Let's duplicate core logic for safety and clarity.
 
-        // Notify user
-        await this.notificationService.createNotification(
-            bill.userId,
-            'Xe đã đến điểm giao',
-            `Nhân viên đã giao xe ${bill.details[0].licensePlate} đến điểm hẹn. Vui lòng kiểm tra và nhận xe.`,
-            NotificationType.REMINDER,
-            { billId: bill.id.toString(), category: 'rental-vehicle' }
+      // Logic from ownerDelivered:
+      if (files?.length > 0) {
+        const uploaded = await this.cloudinaryService.uploadMultipleFiles(
+          files,
+          'rentals/delivery',
         );
+        bill.deliveryPhotos = uploaded.map((f) => f.url);
+      }
 
+      bill.deliveryLatitudeOwner = gps.lat;
+      bill.deliveryLongitudeOwner = gps.lon;
+      bill.status = RentalBillStatus.PAID; // Still PAID, but progress is DELIVERED
+      bill.rentalStatus = RentalProgressStatus.DELIVERED;
+      bill.deliveryDate = new Date();
+
+      await this.billRepo.save(bill);
+
+      // Notify user
+      await this.notificationService.createNotification(
+        bill.userId,
+        'Xe đã đến điểm giao',
+        `Nhân viên đã giao xe ${bill.details[0].licensePlate} đến điểm hẹn. Vui lòng kiểm tra và nhận xe.`,
+        NotificationType.REMINDER,
+        { billId: bill.id.toString(), category: 'rental-vehicle' },
+      );
     } else if (isReturn) {
-        // Reuse ownerConfirmReturn logic
-        // But wait, "guest" usually implies the delivery guy.
-        // For RETURN, the guest (delivery guy) is picking up the car from the user.
-        // So this action is equivalent to "Owner Confirm Return".
-        
-        const dto = new ConfirmReturnDto();
-        dto.latitude = gps.lat;
-        dto.longitude = gps.lon;
-        // dto.returnCondition... defaulting to 'good' or we need frontend input.
-        // For simplicity, assume good or existing condition.
+      // Reuse ownerConfirmReturn logic
+      // But wait, "guest" usually implies the delivery guy.
+      // For RETURN, the guest (delivery guy) is picking up the car from the user.
+      // So this action is equivalent to "Owner Confirm Return".
 
-        // Verify distance (copy logic)
-        const userLat = Number(bill.returnLatitudeUser);
-        const userLon = Number(bill.returnLongitudeUser);
-        if (!userLat || !userLon) {
-             // If user hasn't requested return yet, we can't confirm return?
-             // Actually, owner/guest can confirm return directly sometimes.
-             // But traditionally flow is User Request -> Owner Confirm.
-             // If User hasn't requested, maybe we allow forcing it?
-             // Let's assume standard flow: User must have requested return first.
-             if (bill.rentalStatus !== RentalProgressStatus.RETURN_REQUESTED) {
-                 throw new BadRequestException('User has not requested return yet');
-             }
+      const dto = new ConfirmReturnDto();
+      dto.latitude = gps.lat;
+      dto.longitude = gps.lon;
+      // dto.returnCondition... defaulting to 'good' or we need frontend input.
+      // For simplicity, assume good or existing condition.
+
+      // Verify distance (copy logic)
+      const userLat = Number(bill.returnLatitudeUser);
+      const userLon = Number(bill.returnLongitudeUser);
+      if (!userLat || !userLon) {
+        // If user hasn't requested return yet, we can't confirm return?
+        // Actually, owner/guest can confirm return directly sometimes.
+        // But traditionally flow is User Request -> Owner Confirm.
+        // If User hasn't requested, maybe we allow forcing it?
+        // Let's assume standard flow: User must have requested return first.
+        if (bill.rentalStatus !== RentalProgressStatus.RETURN_REQUESTED) {
+          throw new BadRequestException('User has not requested return yet');
         }
-        
-        if (files?.length > 0) {
-            const uploaded = await this.cloudinaryService.uploadMultipleFiles(files, 'rentals/return_owner');
-            bill.returnPhotosOwner = uploaded.map(f => f.url);
+      }
+
+      if (files?.length > 0) {
+        const uploaded = await this.cloudinaryService.uploadMultipleFiles(
+          files,
+          'rentals/return_owner',
+        );
+        bill.returnPhotosOwner = uploaded.map((f) => f.url);
+      }
+
+      bill.returnLatitudeOwner = gps.lat;
+      bill.returnLongitudeOwner = gps.lon;
+
+      // Calculate distance check
+      if (userLat && userLon) {
+        const dist = this.mapService.calculateHaversineDistance(
+          userLat,
+          userLon,
+          gps.lat,
+          gps.lon,
+        );
+        if (dist > 0.05) {
+          // 50m
+          throw new BadRequestException(
+            `Vi trí quá xa so với khách hàng (${(dist * 1000).toFixed(0)}m)`,
+          );
         }
+      }
 
-        bill.returnLatitudeOwner = gps.lat;
-        bill.returnLongitudeOwner = gps.lon;
+      bill.status = RentalBillStatus.COMPLETED;
+      bill.rentalStatus = RentalProgressStatus.RETURN_CONFIRMED;
+      bill.returnDate = new Date(); // Actual return time
 
-        // Calculate distance check
-        if (userLat && userLon) {
-             const dist = this.mapService.calculateHaversineDistance(userLat, userLon, gps.lat, gps.lon);
-             if (dist > 0.05) { // 50m
-                 throw new BadRequestException(`Vi trí quá xa so với khách hàng (${(dist*1000).toFixed(0)}m)`);
-             }
-        }
-
-        bill.status = RentalBillStatus.COMPLETED;
-        bill.rentalStatus = RentalProgressStatus.RETURN_CONFIRMED;
-        bill.returnDate = new Date(); // Actual return time
-
-        await this.processRefundOrRelease(bill, 'release', ownerId);
-        await this.billRepo.save(bill);
+      await this.processRefundOrRelease(bill, 'release', ownerId);
+      await this.billRepo.save(bill);
     }
   }
 }

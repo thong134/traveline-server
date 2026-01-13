@@ -7,12 +7,18 @@ export class ConvertOldToNewDetailsDto {
   @IsNotEmpty()
   province: string;
 
-  @ApiPropertyOptional({ description: 'Legacy district name', example: 'Hải Châu' })
+  @ApiPropertyOptional({
+    description: 'Legacy district name',
+    example: 'Hải Châu',
+  })
   @IsString()
   @IsOptional()
   district?: string;
 
-  @ApiPropertyOptional({ description: 'Legacy ward name', example: 'Thạch Thang' })
+  @ApiPropertyOptional({
+    description: 'Legacy ward name',
+    example: 'Thạch Thang',
+  })
   @IsString()
   @IsOptional()
   ward?: string;
@@ -24,7 +30,10 @@ export class ConvertNewToOldDetailsDto {
   @IsNotEmpty()
   province: string;
 
-  @ApiPropertyOptional({ description: 'Reform commune name', example: 'Thạch Thang' })
+  @ApiPropertyOptional({
+    description: 'Reform commune name',
+    example: 'Thạch Thang',
+  })
   @IsString()
   @IsOptional()
   commune?: string;

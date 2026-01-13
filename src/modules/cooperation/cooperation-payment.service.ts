@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { BookingTransaction, ServiceType, TransactionPaymentStatus } from '../payment/entities/booking-transaction.entity';
+import {
+  BookingTransaction,
+  ServiceType,
+  TransactionPaymentStatus,
+} from '../payment/entities/booking-transaction.entity';
 import { Cooperation } from './entities/cooperation.entity';
 import { CommissionType } from './entities/cooperation-enums';
 
@@ -23,15 +27,18 @@ export class CooperationPaymentService {
     bookingId: string;
     totalAmount: number;
   }) {
-    const { cooperationId, userId, serviceType, bookingId, totalAmount } = params;
+    const { cooperationId, userId, serviceType, bookingId, totalAmount } =
+      params;
 
-    const cooperation = await this.cooperationRepo.findOne({ 
+    const cooperation = await this.cooperationRepo.findOne({
       where: { id: cooperationId },
-      select: ['id', 'commissionType', 'commissionValue', 'status']
+      select: ['id', 'commissionType', 'commissionValue', 'status'],
     });
 
     if (!cooperation) {
-      this.logger.error(`Cooperation ${cooperationId} not found for transaction logging`);
+      this.logger.error(
+        `Cooperation ${cooperationId} not found for transaction logging`,
+      );
       return null;
     }
 
@@ -57,7 +64,9 @@ export class CooperationPaymentService {
       paymentStatus: TransactionPaymentStatus.PAID,
     });
 
-    this.logger.log(`Logged transaction for coop ${cooperationId}, booking ${bookingId}: total=${totalAmount}, comm=${commissionAmount}`);
+    this.logger.log(
+      `Logged transaction for coop ${cooperationId}, booking ${bookingId}: total=${totalAmount}, comm=${commissionAmount}`,
+    );
     return this.transactionRepo.save(transaction);
   }
 

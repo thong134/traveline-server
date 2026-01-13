@@ -292,7 +292,10 @@ export class AuthService implements OnModuleInit {
     return { ok: true, token, expiresAt };
   }
 
-  async verifyEmailCode(dto: EmailVerifyDto, userId?: number): Promise<{ ok: boolean }> {
+  async verifyEmailCode(
+    dto: EmailVerifyDto,
+    userId?: number,
+  ): Promise<{ ok: boolean }> {
     this.checkRate(`email:verify:${dto.email}`, 10, 60 * 60 * 1000);
     let payload: { email: string; code: string };
     try {
@@ -314,14 +317,18 @@ export class AuthService implements OnModuleInit {
 
     // Use userId from session if available (guaranteed correct user)
     if (userId) {
-      console.log(`[Auth] Updating isEmailVerified using session User ID: ${userId}`);
+      console.log(
+        `[Auth] Updating isEmailVerified using session User ID: ${userId}`,
+      );
       await this.usersService.markEmailVerified(userId, dto.email);
       return { ok: true };
     }
 
     // Fallback: lookup by email
     const user = await this.usersService.findByEmail(dto.email);
-    console.log(`[Auth] Email verification lookup for ${dto.email}: ${user ? `Found User ID ${user.id}` : 'Not Found'}`);
+    console.log(
+      `[Auth] Email verification lookup for ${dto.email}: ${user ? `Found User ID ${user.id}` : 'Not Found'}`,
+    );
     if (!user) {
       throw new UnauthorizedException('Tài khoản không tồn tại');
     }
@@ -366,17 +373,24 @@ export class AuthService implements OnModuleInit {
     this.checkRate(`password:reset:verify:${email}`, 10, 60 * 60 * 1000);
     let payload: { email: string; code: string; kind?: string };
     try {
-      payload = this.jwtService.verify<{ email: string; code: string; kind?: string }>(
-        token,
-        {
-          secret: this.getEmailVerifySecret(),
-        },
-      );
+      payload = this.jwtService.verify<{
+        email: string;
+        code: string;
+        kind?: string;
+      }>(token, {
+        secret: this.getEmailVerifySecret(),
+      });
     } catch {
-      throw new UnauthorizedException('M� x�c th?c kh�ng h?p l? ho?c d� h?t h?n');
+      throw new UnauthorizedException(
+        'M� x�c th?c kh�ng h?p l? ho?c d� h?t h?n',
+      );
     }
 
-    if (payload.kind !== 'reset' || payload.email !== email || payload.code !== code) {
+    if (
+      payload.kind !== 'reset' ||
+      payload.email !== email ||
+      payload.code !== code
+    ) {
       throw new UnauthorizedException('M� x�c th?c kh�ng h?p l?');
     }
 
@@ -403,7 +417,9 @@ export class AuthService implements OnModuleInit {
     const user = await this.usersService.findOne(userId);
     const phone = user.phone;
     if (!phone) {
-      throw new BadRequestException('Vui l�ng di?n s? di?n tho?i tru?c khi x�c th?c');
+      throw new BadRequestException(
+        'Vui l�ng di?n s? di?n tho?i tru?c khi x�c th?c',
+      );
     }
     this.checkRate(`phone:start:${phone}`, 5, 60 * 60 * 1000);
     const apiKey = process.env.FIREBASE_API_KEY;
@@ -493,27 +509,37 @@ export class AuthService implements OnModuleInit {
       );
 
       const { phoneNumber } = response.data;
-      console.log(`[Auth] Firebase verified OTP. Returned phoneNumber: ${phoneNumber}, Original input phone: ${phone}`);
+      console.log(
+        `[Auth] Firebase verified OTP. Returned phoneNumber: ${phoneNumber}, Original input phone: ${phone}`,
+      );
 
       matched.used = true;
       await this.phoneOtpRepo.save(matched);
 
       // 1. If we have userId (from Request), use it directly
       if (userId) {
-        console.log(`[Auth] Updating isPhoneVerified using current session User ID: ${userId}`);
+        console.log(
+          `[Auth] Updating isPhoneVerified using current session User ID: ${userId}`,
+        );
         await this.usersService.markPhoneVerified(userId);
       } else {
         // 2. Fallback: Lookup by phone numbers
-        let user = phoneNumber ? await this.usersService.findByPhone(phoneNumber) : null;
+        let user = phoneNumber
+          ? await this.usersService.findByPhone(phoneNumber)
+          : null;
         if (!user) {
           user = await this.usersService.findByPhone(phone);
         }
-        
+
         if (user) {
-          console.log(`[Auth] Updating isPhoneVerified for linked User ID: ${user.id}`);
+          console.log(
+            `[Auth] Updating isPhoneVerified for linked User ID: ${user.id}`,
+          );
           await this.usersService.markPhoneVerified(user.id);
         } else {
-          console.warn(`[Auth] No user found to update for phone: ${phone} / ${phoneNumber}`);
+          console.warn(
+            `[Auth] No user found to update for phone: ${phone} / ${phoneNumber}`,
+          );
         }
       }
 
@@ -671,12 +697,19 @@ export class AuthService implements OnModuleInit {
       citizenFrontPhoto?: Express.Multer.File[];
       selfiePhoto?: Express.Multer.File[];
     },
-  ): Promise<{ ok: boolean; message: string; ocrData?: any; similarity?: number }> {
+  ): Promise<{
+    ok: boolean;
+    message: string;
+    ocrData?: any;
+    similarity?: number;
+  }> {
     const front = files.citizenFrontPhoto?.[0];
     const selfie = files.selfiePhoto?.[0];
 
     if (!front || !selfie) {
-      throw new BadRequestException('Vui lòng gửi 1 ảnh CCCD mặt trước và 1 ảnh Selfie khuôn mặt.');
+      throw new BadRequestException(
+        'Vui lòng gửi 1 ảnh CCCD mặt trước và 1 ảnh Selfie khuôn mặt.',
+      );
     }
 
     assertImageFile(front, { fieldName: 'citizenFrontPhoto' });
@@ -686,13 +719,18 @@ export class AuthService implements OnModuleInit {
     // We can do this BEFORE upload to save storage if it fails?
     // User requirement: "báo lỗi ảnh mặt không trùng khớp yêu cầu chụp lại... các thông tin bạn lấy được từ api quét căn cước công dân sẽ lấy ra các trường cần thiết của user mà lưu vào profile"
     // So if face matches, we process OCR and update.
-    
+
     // Call FaceMatch directly with buffers
-    const similarity = await this.fptAiService.faceMatch(selfie.buffer, front.buffer);
+    const similarity = await this.fptAiService.faceMatch(
+      selfie.buffer,
+      front.buffer,
+    );
     const THRESHOLD = 90; // User implied strict match.
 
     if (similarity < THRESHOLD) {
-         throw new BadRequestException(`Khuôn mặt không trùng khớp (Độ tin cậy: ${similarity?.toFixed(2)}%). Vui lòng chụp lại rõ hơn.`);
+      throw new BadRequestException(
+        `Khuôn mặt không trùng khớp (Độ tin cậy: ${similarity?.toFixed(2)}%). Vui lòng chụp lại rõ hơn.`,
+      );
     }
 
     // 2. Upload images (Only if FaceMatch passed)
@@ -711,87 +749,106 @@ export class AuthService implements OnModuleInit {
     // 3. OCR Extraction
     let ocrResult: any;
     try {
-        const user = await this.usersService.findOne(userId);
-        const isVietnam = !user.nationality || user.nationality.toLowerCase() === 'vietnam' || user.nationality.toLowerCase() === 'việt nam';
-        
-        if (isVietnam) {
-          const ocrResponse = await this.fptAiService.recognizeIdCard(front.buffer);
-          if (Array.isArray(ocrResponse) && ocrResponse.length > 0) {
-              ocrResult = ocrResponse[0];
-          } else {
-              throw new Error('No OCR data found');
-          }
+      const user = await this.usersService.findOne(userId);
+      const isVietnam =
+        !user.nationality ||
+        user.nationality.toLowerCase() === 'vietnam' ||
+        user.nationality.toLowerCase() === 'việt nam';
+
+      if (isVietnam) {
+        const ocrResponse = await this.fptAiService.recognizeIdCard(
+          front.buffer,
+        );
+        if (Array.isArray(ocrResponse) && ocrResponse.length > 0) {
+          ocrResult = ocrResponse[0];
         } else {
-          // Passport for foreigners
-          const ocrResponse = await this.fptAiService.recognizePassport(front.buffer);
-          if (Array.isArray(ocrResponse) && ocrResponse.length > 0) {
-              // Map Passport fields to generic OCR result
-              const passportData = ocrResponse[0];
-              ocrResult = {
-                name: passportData.name,
-                id: passportData.passport_number, // Use passport number as ID
-                address: passportData.place_of_birth || passportData.pob, // Passport often has POB, not full address
-                nationality: passportData.nationality,
-                dob: passportData.dob,
-                sex: passportData.sex,
-              };
-          } else {
-              throw new Error('No Passport OCR data found');
-          }
+          throw new Error('No OCR data found');
         }
+      } else {
+        // Passport for foreigners
+        const ocrResponse = await this.fptAiService.recognizePassport(
+          front.buffer,
+        );
+        if (Array.isArray(ocrResponse) && ocrResponse.length > 0) {
+          // Map Passport fields to generic OCR result
+          const passportData = ocrResponse[0];
+          ocrResult = {
+            name: passportData.name,
+            id: passportData.passport_number, // Use passport number as ID
+            address: passportData.place_of_birth || passportData.pob, // Passport often has POB, not full address
+            nationality: passportData.nationality,
+            dob: passportData.dob,
+            sex: passportData.sex,
+          };
+        } else {
+          throw new Error('No Passport OCR data found');
+        }
+      }
     } catch (e) {
-        this.logger.error('OCR failed', e);
-        // Even if OCR fails, FaceMatch passed. But we need OCR to update profile. 
-        throw new BadRequestException('Nhận diện khuôn mặt thành công nhưng không thể đọc thông tin trên giấy tờ. Vui lòng thử lại với ảnh rõ nét hơn.');
+      this.logger.error('OCR failed', e);
+      // Even if OCR fails, FaceMatch passed. But we need OCR to update profile.
+      throw new BadRequestException(
+        'Nhận diện khuôn mặt thành công nhưng không thể đọc thông tin trên giấy tờ. Vui lòng thử lại với ảnh rõ nét hơn.',
+      );
     }
 
     // 4. Parse & Auto-Update Profile
     const profileUpdate: any = {
-        fullName: ocrResult.name ? this.capitalizeName(ocrResult.name) : undefined,
-        citizenId: ocrResult.id,
-        address: ocrResult.address,
+      fullName: ocrResult.name
+        ? this.capitalizeName(ocrResult.name)
+        : undefined,
+      citizenId: ocrResult.id,
+      address: ocrResult.address,
     };
 
     // Date Parsing (dd/MM/yyyy)
     if (ocrResult.dob) {
-        try {
-            profileUpdate.dateOfBirth = parse(ocrResult.dob, 'dd/MM/yyyy', new Date());
-        } catch (e) {
-            this.logger.warn(`Failed to parse DOB: ${ocrResult.dob}`);
-        }
+      try {
+        profileUpdate.dateOfBirth = parse(
+          ocrResult.dob,
+          'dd/MM/yyyy',
+          new Date(),
+        );
+      } catch (e) {
+        this.logger.warn(`Failed to parse DOB: ${ocrResult.dob}`);
+      }
     }
 
     // Gender Parsing
     if (ocrResult.sex) {
-        const sex = ocrResult.sex.toUpperCase();
-        if (sex === 'NAM' || sex === 'M' || sex === 'MALE') profileUpdate.gender = 'male';
-        if (sex === 'NỮ' || sex === 'NU' || sex === 'F' || sex === 'FEMALE') profileUpdate.gender = 'female';
+      const sex = ocrResult.sex.toUpperCase();
+      if (sex === 'NAM' || sex === 'M' || sex === 'MALE')
+        profileUpdate.gender = 'male';
+      if (sex === 'NỮ' || sex === 'NU' || sex === 'F' || sex === 'FEMALE')
+        profileUpdate.gender = 'female';
     }
-    
+
     // Update User
     await this.usersService.update(userId, profileUpdate);
-    
+
     // Save Image URL (Front only, Back is null/undefined)
-    await this.usersService.updateCitizenImages(userId, frontUpload.url, null); 
-    
+    await this.usersService.updateCitizenImages(userId, frontUpload.url, null);
+
     // Mark Verified
     await this.usersService.markCitizenIdVerified(userId);
 
-    return { 
-        ok: true, 
-        message: 'Xác thực thành công. Thông tin đã được cập nhật.', 
-        ocrData: ocrResult,
-        similarity 
+    return {
+      ok: true,
+      message: 'Xác thực thành công. Thông tin đã được cập nhật.',
+      ocrData: ocrResult,
+      similarity,
     };
   }
 
   private capitalizeName(name: string): string {
-      // "TRẦN TRUNG THÔNG" -> "Trần Trung Thông"
-      return name.toLowerCase().replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
+    // "TRẦN TRUNG THÔNG" -> "Trần Trung Thông"
+    return name.toLowerCase().replace(/(?:^|\s)\S/g, function (a) {
+      return a.toUpperCase();
+    });
   }
 
   private normalizePhone(phone: string): string {
-    let cleaned = phone.replace(/\D/g, ''); // Keep only digits
+    const cleaned = phone.replace(/\D/g, ''); // Keep only digits
     if (cleaned.startsWith('84')) {
       return '+' + cleaned;
     }

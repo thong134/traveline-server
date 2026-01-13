@@ -13,8 +13,6 @@ import { Cooperation } from '../../../cooperation/entities/cooperation.entity';
 import { HotelBillDetail } from './hotel-bill-detail.entity';
 import { Voucher } from '../../../voucher/entities/voucher.entity';
 
-
-
 export enum HotelBillStatus {
   PENDING = 'pending',
   CONFIRMED = 'confirmed',
@@ -86,8 +84,6 @@ export class HotelBill {
 
   @Column({ type: 'varchar', length: 20, nullable: true })
   paymentMethod?: string;
-
-
 
   @Column({ nullable: true })
   contactName?: string;

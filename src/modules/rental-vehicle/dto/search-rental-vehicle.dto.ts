@@ -34,7 +34,8 @@ export class SearchRentalVehicleDto {
   vehicleType?: RentalVehicleType;
 
   @ApiPropertyOptional({
-    description: 'Giá tối thiểu (so với pricePerHour nếu hourly, pricePerDay nếu daily)',
+    description:
+      'Giá tối thiểu (so với pricePerHour nếu hourly, pricePerDay nếu daily)',
   })
   @Type(() => Number)
   @IsOptional()
@@ -43,7 +44,8 @@ export class SearchRentalVehicleDto {
   minPrice?: number;
 
   @ApiPropertyOptional({
-    description: 'Giá tối đa (so với pricePerHour nếu hourly, pricePerDay nếu daily)',
+    description:
+      'Giá tối đa (so với pricePerHour nếu hourly, pricePerDay nếu daily)',
   })
   @Type(() => Number)
   @IsOptional()
@@ -68,7 +70,6 @@ export class SearchRentalVehicleDto {
   @TransformDDMMYYYYHHmm()
   @IsDate()
   endDate?: Date;
-
 
   @ApiPropertyOptional({ description: 'Vĩ độ của vị trí nhận xe' })
   @Type(() => Number)

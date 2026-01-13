@@ -19,8 +19,15 @@ import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
     CloudinaryModule,
   ],
   controllers: [DestinationsController],
-  providers: [DestinationsService, DestinationEnrichmentService, DestinationAutoDescriptionService],
-  exports: [DestinationsService, DestinationEnrichmentService, DestinationAutoDescriptionService],
+  providers: [
+    DestinationsService,
+    DestinationEnrichmentService,
+    DestinationAutoDescriptionService,
+  ],
+  exports: [
+    DestinationsService,
+    DestinationEnrichmentService,
+    DestinationAutoDescriptionService,
+  ],
 })
 export class DestinationsModule {}
-

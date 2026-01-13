@@ -21,41 +21,53 @@ export class CreateFeedbackDto {
 
   @ApiPropertyOptional({ description: 'Destination internal id' })
   @IsOptional()
-  @Transform(({ value }) => (value === '' || value === 'null' ? undefined : Number(value)))
+  @Transform(({ value }) =>
+    value === '' || value === 'null' ? undefined : Number(value),
+  )
   @IsInt()
   @Min(1)
   destinationId?: number;
 
   @ApiPropertyOptional({ description: 'Travel route id' })
   @IsOptional()
-  @Transform(({ value }) => (value === '' || value === 'null' ? undefined : Number(value)))
+  @Transform(({ value }) =>
+    value === '' || value === 'null' ? undefined : Number(value),
+  )
   @IsInt()
   @Min(1)
   travelRouteId?: number;
 
   @ApiPropertyOptional({ description: 'Vehicle license plate' })
   @IsOptional()
-  @Transform(({ value }) => (value === '' || value === 'null' ? undefined : value))
+  @Transform(({ value }) =>
+    value === '' || value === 'null' ? undefined : value,
+  )
   @IsString()
   licensePlate?: string;
 
   @ApiPropertyOptional({ description: 'Cooperation id' })
   @IsOptional()
-  @Transform(({ value }) => (value === '' || value === 'null' ? undefined : Number(value)))
+  @Transform(({ value }) =>
+    value === '' || value === 'null' ? undefined : Number(value),
+  )
   @IsInt()
   @Min(1)
   cooperationId?: number;
 
   @ApiPropertyOptional({ description: 'Eatery id' })
   @IsOptional()
-  @Transform(({ value }) => (value === '' || value === 'null' ? undefined : Number(value)))
+  @Transform(({ value }) =>
+    value === '' || value === 'null' ? undefined : Number(value),
+  )
   @IsInt()
   @Min(1)
   eateryId?: number;
 
   @ApiPropertyOptional({ description: 'Feedback comment' })
   @IsOptional()
-  @Transform(({ value }) => (value === '' || value === 'null' ? undefined : value))
+  @Transform(({ value }) =>
+    value === '' || value === 'null' ? undefined : value,
+  )
   @IsString()
   comment?: string;
 
@@ -72,5 +84,4 @@ export class CreateFeedbackDto {
   @IsArray()
   @IsUrl(undefined, { each: true })
   videos?: string[];
-
 }

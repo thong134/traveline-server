@@ -43,7 +43,9 @@ export class FeedbackController {
 
   @Post('check-content')
   @RequireAuth()
-  @ApiOperation({ summary: 'Kiểm tra nội dung feedback với AI (để cảnh báo user)' })
+  @ApiOperation({
+    summary: 'Kiểm tra nội dung feedback với AI (để cảnh báo user)',
+  })
   @ApiBody({
     schema: {
       type: 'object',
@@ -294,7 +296,6 @@ export class FeedbackController {
     return this.feedbackService.findOne(id);
   }
 
-
   @Delete(':id')
   @RequireAuth()
   @ApiOperation({ summary: 'Xóa phản hồi' })
@@ -302,6 +303,4 @@ export class FeedbackController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.feedbackService.remove(id);
   }
-
-
 }

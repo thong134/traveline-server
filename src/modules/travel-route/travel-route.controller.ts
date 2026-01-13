@@ -56,8 +56,6 @@ function mapRouteStopMediaFiles(
   };
 }
 
-
-
 @ApiTags('travel-routes')
 @Controller('travel-routes')
 export class TravelRoutesController {
@@ -68,7 +66,9 @@ export class TravelRoutesController {
 
   @Post('test/anniversary')
   @RequireAuth()
-  @ApiOperation({ summary: '[TEST] Trigger anniversary notification check manually' })
+  @ApiOperation({
+    summary: '[TEST] Trigger anniversary notification check manually',
+  })
   @ApiOkResponse({ description: 'Anniversary check result' })
   testAnniversary() {
     return this.cronService.triggerAnniversaryCheck();
@@ -128,7 +128,9 @@ export class TravelRoutesController {
   }
 
   @Get('drafts')
-  @ApiOperation({ summary: 'Danh sách lộ trình của các người dùng khác (draft) theo tỉnh' })
+  @ApiOperation({
+    summary: 'Danh sách lộ trình của các người dùng khác (draft) theo tỉnh',
+  })
   @ApiQuery({
     name: 'province',
     required: false,
@@ -201,8 +203,7 @@ export class TravelRoutesController {
   @Post(':routeId/stops/:stopId/check-in')
   @RequireAuth()
   @ApiOperation({
-    summary:
-      'Xác nhận người dùng đã đến điểm dừng dựa trên vị trí hiện tại',
+    summary: 'Xác nhận người dùng đã đến điểm dừng dựa trên vị trí hiện tại',
   })
   @ApiOkResponse({ description: 'Kết quả check-in điểm dừng' })
   checkInStop(
@@ -221,7 +222,9 @@ export class TravelRoutesController {
 
   @Post('suggest/quick')
   @RequireAuth()
-  @ApiOperation({ summary: 'Đề xuất lộ trình du lịch nhanh (Chỉ cần Tỉnh và Ngày)' })
+  @ApiOperation({
+    summary: 'Đề xuất lộ trình du lịch nhanh (Chỉ cần Tỉnh và Ngày)',
+  })
   @ApiOkResponse({ description: 'Lộ trình đề xuất' })
   suggestQuick(
     @Body() dto: QuickSuggestTravelRouteDto,
@@ -232,7 +235,9 @@ export class TravelRoutesController {
 
   @Post('suggest/advanced')
   @RequireAuth()
-  @ApiOperation({ summary: 'Đề xuất lộ trình du lịch nâng cao (Tùy chỉnh điểm dừng, tọa độ)' })
+  @ApiOperation({
+    summary: 'Đề xuất lộ trình du lịch nâng cao (Tùy chỉnh điểm dừng, tọa độ)',
+  })
   @ApiOkResponse({ description: 'Lộ trình đề xuất' })
   suggestAdvanced(
     @Body() dto: AdvancedSuggestTravelRouteDto,
@@ -243,12 +248,11 @@ export class TravelRoutesController {
 
   @Post('suggest/claim')
   @RequireAuth()
-  @ApiOperation({ summary: 'Lưu lộ trình vừa được đề xuất vào tài khoản cá nhân' })
+  @ApiOperation({
+    summary: 'Lưu lộ trình vừa được đề xuất vào tài khoản cá nhân',
+  })
   @ApiOkResponse({ description: 'Lộ trình đã được lưu' })
-  claimSuggestedRoute(
-    @Body() data: any,
-    @CurrentUser() user: RequestUser,
-  ) {
+  claimSuggestedRoute(@Body() data: any, @CurrentUser() user: RequestUser) {
     return this.travelRoutesService.claimSuggestedRoute(user.userId, data);
   }
 
@@ -262,13 +266,13 @@ export class TravelRoutesController {
 
   @Get('me/favorites')
   @RequireAuth()
-  @ApiOperation({ summary: 'Danh sách hành trình du lịch yêu thích của chính mình' })
+  @ApiOperation({
+    summary: 'Danh sách hành trình du lịch yêu thích của chính mình',
+  })
   @ApiOkResponse({ description: 'Favorite travel route list of current user' })
   findMineFavorites(@CurrentUser() user: RequestUser) {
     return this.travelRoutesService.findFavoritesByUser(user.userId);
   }
-
-
 
   @Get('me/dates')
   @RequireAuth()
@@ -303,7 +307,9 @@ export class TravelRoutesController {
 
   @Get(':id/anniversary')
   @RequireAuth()
-  @ApiOperation({ summary: 'Lấy thông tin kỷ niệm và media của chuyến đi đã hoàn thành' })
+  @ApiOperation({
+    summary: 'Lấy thông tin kỷ niệm và media của chuyến đi đã hoàn thành',
+  })
   @ApiOkResponse({ description: 'Thông tin kỷ niệm thành công' })
   getAnniversaryDetail(
     @Param('id', ParseIntPipe) id: number,
@@ -372,7 +378,6 @@ export class TravelRoutesController {
     return { message: 'Removed from favorites' };
   }
 
-
   @Patch(':routeId/stops/:stopId/reorder')
   @RequireAuth()
   @ApiOperation({ summary: 'Thay đổi thứ tự điểm dừng trong hành trình' })
@@ -385,8 +390,6 @@ export class TravelRoutesController {
     return this.travelRoutesService.reorderStop(routeId, stopId, dto);
   }
 
-
-  
   @Delete(':routeId/stops/:stopId')
   @RequireAuth()
   @ApiOperation({ summary: 'Xóa một điểm dừng khỏi lộ trình' })

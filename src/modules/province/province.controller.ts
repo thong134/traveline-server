@@ -28,10 +28,7 @@ import { imageMulterOptions } from '../../common/upload/image-upload.config';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import { assertImageFile } from '../../common/upload/image-upload.utils';
 import type { Express } from 'express';
-import {
-  ApiConsumes,
-  ApiBody,
-} from '@nestjs/swagger';
+import { ApiConsumes, ApiBody } from '@nestjs/swagger';
 
 @ApiTags('provinces')
 @Controller('provinces')
@@ -75,7 +72,7 @@ export class ProvincesController {
     const upload = await this.cloudinaryService.uploadImage(file, {
       folder: 'traveline/provinces/avatars',
     });
-    
+
     // Update the province record with the new avatar URL
     return this.provincesService.update(code, { avatarUrl: upload.url });
   }
@@ -99,9 +96,7 @@ export class ProvincesController {
     type: Boolean,
   })
   @ApiOkResponse({ description: 'Province list' })
-  findAll(
-    @Query('q') q?: string,
-  ) {
+  findAll(@Query('q') q?: string) {
     return this.provincesService.findAll({ q });
   }
 
@@ -116,10 +111,7 @@ export class ProvincesController {
   @RequireAuth()
   @ApiOperation({ summary: 'Cập nhật tỉnh/thành' })
   @ApiOkResponse({ description: 'Province updated' })
-  update(
-    @Param('code') code: string,
-    @Body() dto: UpdateProvinceDto,
-  ) {
+  update(@Param('code') code: string, @Body() dto: UpdateProvinceDto) {
     return this.provincesService.update(code, dto);
   }
 

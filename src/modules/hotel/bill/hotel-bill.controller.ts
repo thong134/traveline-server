@@ -20,9 +20,7 @@ import {
 import { HotelBillsService } from './hotel-bill.service';
 import { CreateHotelBillDto } from './dto/create-hotel-bill.dto';
 import { UpdateHotelBillDto } from './dto/update-hotel-bill.dto';
-import {
-  HotelBillStatus,
-} from './entities/hotel-bill.entity';
+import { HotelBillStatus } from './entities/hotel-bill.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../../auth/decorators/current-user.decorator';
@@ -84,10 +82,7 @@ export class HotelBillsController {
 
   @Patch(':id/pay')
   @ApiOperation({ summary: 'Thanh toán hóa đơn' })
-  pay(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-  ) {
+  pay(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
     return this.hotelBillsService.pay(id, user.userId);
   }
 

@@ -67,7 +67,8 @@ export class AdministrativeMappingController {
 
   @Post('convert/new-to-old-details')
   @ApiOperation({
-    summary: 'Chuyển đổi chi tiết địa chỉ mới sang các chi tiết địa chỉ cũ tương ứng',
+    summary:
+      'Chuyển đổi chi tiết địa chỉ mới sang các chi tiết địa chỉ cũ tương ứng',
   })
   @ApiOkResponse({
     schema: {

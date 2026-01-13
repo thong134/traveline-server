@@ -37,8 +37,8 @@ export class HotelRoomsController {
   @Get()
   @ApiOperation({ summary: 'Tìm kiếm phòng khách sạn' })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
-  @ApiQuery({ name: 'city', required: false })
-  @ApiQuery({ name: 'province', required: false })
+  @ApiQuery({ name: 'provinceId', required: false })
+  @ApiQuery({ name: 'districtId', required: false })
   @ApiQuery({ name: 'maxPeople', required: false, type: Number })
   @ApiQuery({ name: 'numberOfBeds', required: false, type: Number })
   @ApiQuery({ name: 'minPrice', required: false, type: Number })
@@ -55,8 +55,8 @@ export class HotelRoomsController {
   @ApiOkResponse({ description: 'Hotel room list' })
   findAll(
     @Query('cooperationId') cooperationId?: string,
-    @Query('city') city?: string,
-    @Query('province') province?: string,
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
     @Query('maxPeople') maxPeople?: string,
     @Query('numberOfBeds') numberOfBeds?: string,
     @Query('minPrice') minPrice?: string,
@@ -68,8 +68,8 @@ export class HotelRoomsController {
   ) {
     return this.hotelRoomsService.findAll({
       cooperationId: cooperationId ? Number(cooperationId) : undefined,
-      city,
-      province,
+      provinceId,
+      districtId,
       maxPeople: maxPeople ? Number(maxPeople) : undefined,
       numberOfBeds: numberOfBeds ? Number(numberOfBeds) : undefined,
       minPrice: minPrice ? Number(minPrice) : undefined,

@@ -12,7 +12,6 @@ import { DeliveryVehicle } from '../../delivery-vehicle/entities/delivery-vehicl
 import { Voucher } from '../../../voucher/entities/voucher.entity';
 import { Cooperation } from '../../../cooperation/entities/cooperation.entity';
 
-
 export enum DeliveryBillStatus {
   PENDING = 'PENDING',
   CONFIRMED = 'CONFIRMED',
@@ -105,8 +104,6 @@ export class DeliveryBill {
 
   @Column({ type: 'varchar', length: 20, nullable: true })
   paymentMethod?: string;
-
-
 
   @Column({ type: 'text', nullable: true })
   notes?: string;

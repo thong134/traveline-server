@@ -38,12 +38,18 @@ export class CreateFlightDto {
   @MaxLength(255)
   arrivalAirport: string;
 
-  @ApiProperty({ description: 'Departure time (dd/MM/yyyy)', example: '13/04/2004' })
+  @ApiProperty({
+    description: 'Departure time (dd/MM/yyyy)',
+    example: '13/04/2004',
+  })
   @TransformDDMMYYYY()
   @IsDate()
   departureTime: Date;
 
-  @ApiProperty({ description: 'Arrival time (dd/MM/yyyy)', example: '13/04/2004' })
+  @ApiProperty({
+    description: 'Arrival time (dd/MM/yyyy)',
+    example: '13/04/2004',
+  })
   @TransformDDMMYYYY()
   @IsDate()
   arrivalTime: Date;

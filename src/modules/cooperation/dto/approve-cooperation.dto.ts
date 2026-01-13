@@ -7,7 +7,10 @@ export class ApproveCooperationDto {
   @IsEnum(CommissionType)
   commissionType: CommissionType;
 
-  @ApiProperty({ description: 'Giá trị hoa hồng (nếu PERCENT thì là %, nếu FIXED thì là số tiền)' })
+  @ApiProperty({
+    description:
+      'Giá trị hoa hồng (nếu PERCENT thì là %, nếu FIXED thì là số tiền)',
+  })
   @IsString()
   commissionValue: string;
 }

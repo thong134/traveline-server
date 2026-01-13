@@ -343,9 +343,9 @@ export class WalletService {
         type,
         referenceId,
       });
-      const persisted = (await manager
+      const persisted = await manager
         .getRepository(WalletTransaction)
-        .save(transaction)) as WalletTransaction;
+        .save(transaction);
 
       return {
         balance: wallet.balance,

@@ -15,8 +15,8 @@ import { assignDefined } from '../../../common/utils/object.util';
 
 interface RoomQueryOptions {
   cooperationId?: number;
-  city?: string;
-  province?: string;
+  provinceId?: string;
+  districtId?: string;
   maxPeople?: number;
   numberOfBeds?: number;
   minPrice?: number;
@@ -86,8 +86,8 @@ export class HotelRoomsService {
   async findAll(options: RoomQueryOptions = {}): Promise<HotelRoom[]> {
     const {
       cooperationId,
-      city,
-      province,
+      provinceId,
+      districtId,
       maxPeople,
       numberOfBeds,
       minPrice,
@@ -105,12 +105,16 @@ export class HotelRoomsService {
       qb.andWhere('room.cooperation_id = :cooperationId', { cooperationId });
     }
 
-    if (city) {
-      qb.andWhere('cooperation.city = :city', { city });
+    if (options.provinceId) {
+      qb.andWhere('cooperation.provinceId = :provinceId', {
+        provinceId: options.provinceId,
+      });
     }
 
-    if (province) {
-      qb.andWhere('cooperation.province = :province', { province });
+    if (options.districtId) {
+      qb.andWhere('cooperation.districtId = :districtId', {
+        districtId: options.districtId,
+      });
     }
 
     if (maxPeople) {

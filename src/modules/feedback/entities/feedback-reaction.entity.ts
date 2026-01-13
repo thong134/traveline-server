@@ -29,10 +29,13 @@ export class FeedbackReaction {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ type: 'enum', enum: FeedbackReactionType, default: FeedbackReactionType.LIKE })
+  @Column({
+    type: 'enum',
+    enum: FeedbackReactionType,
+    default: FeedbackReactionType.LIKE,
+  })
   type: FeedbackReactionType;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
-

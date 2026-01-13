@@ -83,15 +83,17 @@ export class BlockchainService {
     }
 
     const wallet = new Wallet(adminPrivateKey, this.provider);
-    
+
     // Check balance before deployment
     const balance = await this.provider.getBalance(wallet.address);
     const balanceEth = formatEther(balance);
     const feeData = await this.provider.getFeeData();
-    
+
     this.logger.log(`Admin wallet: ${wallet.address}`);
     this.logger.log(`Balance: ${balanceEth} ETH`);
-    this.logger.log(`Current Gas Price: ${formatEther(feeData.gasPrice ?? 0n)} ETH`);
+    this.logger.log(
+      `Current Gas Price: ${formatEther(feeData.gasPrice ?? 0n)} ETH`,
+    );
 
     if (balance === 0n) {
       throw new Error(
@@ -115,7 +117,9 @@ export class BlockchainService {
       wallet,
     );
 
-    this.logger.log(`Deploying RentalEscrow contract from ${wallet.address}...`);
+    this.logger.log(
+      `Deploying RentalEscrow contract from ${wallet.address}...`,
+    );
 
     try {
       // The RentalEscrow contract expects an owner address in the constructor.
@@ -125,7 +129,9 @@ export class BlockchainService {
         throw new Error('Failed to obtain deployment transaction.');
       }
 
-      this.logger.log(`Waiting for deployment transaction: ${deploymentTx.hash}`);
+      this.logger.log(
+        `Waiting for deployment transaction: ${deploymentTx.hash}`,
+      );
       const receipt = await deploymentTx.wait();
       if (!receipt) {
         throw new Error('Deployment transaction receipt not found.');
@@ -143,7 +149,10 @@ export class BlockchainService {
         transactionHash: receipt.hash,
       };
     } catch (error) {
-      if (error.code === 'CALL_EXCEPTION' || error.code === 'INSUFFICIENT_FUNDS') {
+      if (
+        error.code === 'CALL_EXCEPTION' ||
+        error.code === 'INSUFFICIENT_FUNDS'
+      ) {
         this.logger.error(
           `Deployment failed: ${error.reason || 'Insufficient funds or execution reverted'}. Check if wallet ${wallet.address} has enough ETH.`,
         );
@@ -368,7 +377,10 @@ export class BlockchainService {
       this.logger.log(
         `Admin released funds for rental ${rentalId} (tx: ${result.transactionHash})`,
       );
-      return { transactionHash: result.transactionHash, blockchainRecorded: true };
+      return {
+        transactionHash: result.transactionHash,
+        blockchainRecorded: true,
+      };
     } catch (error) {
       this.logger.error(
         `Admin release failed for rental ${rentalId}`,
@@ -400,7 +412,10 @@ export class BlockchainService {
       this.logger.log(
         `Admin refunded for rental ${rentalId} (tx: ${result.transactionHash})`,
       );
-      return { transactionHash: result.transactionHash, blockchainRecorded: true };
+      return {
+        transactionHash: result.transactionHash,
+        blockchainRecorded: true,
+      };
     } catch (error) {
       this.logger.error(
         `Admin refund failed for rental ${rentalId}`,

@@ -39,13 +39,15 @@ export class RestaurantBookingsService {
     if (isValid(date)) return date;
     date = new Date(dateStr);
     if (isValid(date)) return date;
-    throw new BadRequestException(`Invalid date format: ${dateStr}. Expected ISO 8601 or dd:MM:yyyy HH:mm`);
+    throw new BadRequestException(
+      `Invalid date format: ${dateStr}. Expected ISO 8601 or dd:MM:yyyy HH:mm`,
+    );
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
   async checkTimeouts() {
     const now = new Date();
-    
+
     // 30 min timeout for PENDING
     const pendingThreshold = new Date(now.getTime() - 30 * 60 * 1000);
     const pendingBookings = await this.bookingRepo.find({
@@ -58,11 +60,16 @@ export class RestaurantBookingsService {
     for (const booking of pendingBookings) {
       booking.status = RestaurantBookingStatus.CANCELLED;
       await this.bookingRepo.save(booking);
-      this.logger.log(`Restaurant Booking ${booking.id} (PENDING) cancelled due to 30min timeout`);
+      this.logger.log(
+        `Restaurant Booking ${booking.id} (PENDING) cancelled due to 30min timeout`,
+      );
     }
   }
 
-  async create(userId: number, dto: CreateRestaurantBookingDto): Promise<RestaurantBooking> {
+  async create(
+    userId: number,
+    dto: CreateRestaurantBookingDto,
+  ): Promise<RestaurantBooking> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
@@ -72,7 +79,11 @@ export class RestaurantBookingsService {
     });
     if (!table) throw new NotFoundException('Restaurant table not found');
 
-    if (table.maxPeople && dto.numberOfGuests && dto.numberOfGuests > table.maxPeople) {
+    if (
+      table.maxPeople &&
+      dto.numberOfGuests &&
+      dto.numberOfGuests > table.maxPeople
+    ) {
       throw new BadRequestException('Number of guests exceeds table capacity');
     }
 
@@ -102,22 +113,29 @@ export class RestaurantBookingsService {
       where: { id },
       relations: ['user', 'table', 'cooperation'],
     });
-    if (!booking) throw new NotFoundException(`Restaurant booking ${id} not found`);
+    if (!booking)
+      throw new NotFoundException(`Restaurant booking ${id} not found`);
     if (booking.user?.id !== userId) throw new ForbiddenException('Forbidden');
     return booking;
   }
 
-  async update(id: number, userId: number, dto: UpdateRestaurantBookingDto): Promise<RestaurantBooking> {
+  async update(
+    id: number,
+    userId: number,
+    dto: UpdateRestaurantBookingDto,
+  ): Promise<RestaurantBooking> {
     const booking = await this.findOne(id, userId);
     if (booking.status !== RestaurantBookingStatus.PENDING) {
-      throw new BadRequestException(`Cannot update booking in ${booking.status} status`);
+      throw new BadRequestException(
+        `Cannot update booking in ${booking.status} status`,
+      );
     }
 
     assignDefined(booking, {
-       contactName: dto.contactName,
-       contactPhone: dto.contactPhone,
-       numberOfGuests: dto.numberOfGuests,
-       notes: dto.notes,
+      contactName: dto.contactName,
+      contactPhone: dto.contactPhone,
+      numberOfGuests: dto.numberOfGuests,
+      notes: dto.notes,
     });
 
     return this.bookingRepo.save(booking);
@@ -137,20 +155,30 @@ export class RestaurantBookingsService {
 
   async cancel(id: number, userId: number): Promise<RestaurantBooking> {
     const booking = await this.findOne(id, userId);
-    if ([RestaurantBookingStatus.COMPLETED, RestaurantBookingStatus.CANCELLED].includes(booking.status)) {
+    if (
+      [
+        RestaurantBookingStatus.COMPLETED,
+        RestaurantBookingStatus.CANCELLED,
+      ].includes(booking.status)
+    ) {
       throw new BadRequestException('Finished');
     }
     booking.status = RestaurantBookingStatus.CANCELLED;
     return this.bookingRepo.save(booking);
   }
 
-  async findAll(userId: number, params: { status?: RestaurantBookingStatus } = {}): Promise<RestaurantBooking[]> {
+  async findAll(
+    userId: number,
+    params: { status?: RestaurantBookingStatus } = {},
+  ): Promise<RestaurantBooking[]> {
     const qb = this.bookingRepo.createQueryBuilder('booking');
     qb.where('booking.user_id = :userId', { userId });
-    if (params.status) qb.andWhere('booking.status = :status', { status: params.status });
-    return qb.leftJoinAndSelect('booking.user', 'user')
-             .leftJoinAndSelect('booking.table', 'table')
-             .orderBy('booking.createdAt', 'DESC')
-             .getMany();
+    if (params.status)
+      qb.andWhere('booking.status = :status', { status: params.status });
+    return qb
+      .leftJoinAndSelect('booking.user', 'user')
+      .leftJoinAndSelect('booking.table', 'table')
+      .orderBy('booking.createdAt', 'DESC')
+      .getMany();
   }
 }

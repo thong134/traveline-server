@@ -1,4 +1,3 @@
-
 import {
   BadRequestException,
   ForbiddenException,
@@ -9,7 +8,11 @@ import {
 import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AxiosError } from 'axios';
-import { differenceInDays, differenceInMonths, differenceInYears } from 'date-fns';
+import {
+  differenceInDays,
+  differenceInMonths,
+  differenceInYears,
+} from 'date-fns';
 import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import { TravelRoute, TravelRouteStatus } from './entities/travel-route.entity';
 import { RouteStop, RouteStopStatus } from './entities/route-stop.entity';
@@ -19,7 +22,10 @@ import { RouteStopDto } from './dto/route-stop.dto';
 import { Destination } from '../destination/entities/destinations.entity';
 import { User } from '../user/entities/user.entity';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
-import { assertImageFile, assertVideoFile } from '../../common/upload/image-upload.utils';
+import {
+  assertImageFile,
+  assertVideoFile,
+} from '../../common/upload/image-upload.utils';
 import { randomUUID } from 'crypto';
 import type { Express } from 'express';
 import { firstValueFrom } from 'rxjs';
@@ -74,8 +80,8 @@ export class TravelRoutesService {
       clone.endDate = source.endDate ?? undefined;
       clone.status = null as any; // Public clones have null status
       clone.user = source.user; // Still owned by the same user
-      clone.isPublic = true;     // This is the public version
-      clone.isEdited = false;    // Clones are not considered "edited" initially
+      clone.isPublic = true; // This is the public version
+      clone.isEdited = false; // Clones are not considered "edited" initially
       clone.totalTravelPoints = 0;
       clone.averageRating = 0;
       clone.clonedFromRoute = source;
@@ -91,8 +97,8 @@ export class TravelRoutesService {
           newStop.startTime = stop.startTime;
           newStop.endTime = stop.endTime;
           newStop.notes = undefined; // Clear personal notes
-          newStop.images = [];       // Clear personal media
-          newStop.videos = [];       // Clear personal media
+          newStop.images = []; // Clear personal media
+          newStop.videos = []; // Clear personal media
           newStop.status = null as any; // Public clones have null status for stops
           newStop.travelPoints = 0;
           if (stop.destination) {
@@ -210,7 +216,11 @@ export class TravelRoutesService {
     return Promise.all(routes.map((route) => this.findOne(route.id)));
   }
 
-  async useClone(routeId: number, userId: number, payload: { startDate: Date; endDate: Date; name?: string }): Promise<TravelRoute> {
+  async useClone(
+    routeId: number,
+    userId: number,
+    payload: { startDate: Date; endDate: Date; name?: string },
+  ): Promise<TravelRoute> {
     const savedId = await this.dataSource.transaction(async (manager) => {
       const routeRepo = manager.getRepository(TravelRoute);
       const stopRepo = manager.getRepository(RouteStop);
@@ -338,7 +348,9 @@ export class TravelRoutesService {
     }
 
     if (!route.isPublic) {
-      throw new BadRequestException('Chỉ có thể thêm hành trình công khai vào danh sách yêu thích');
+      throw new BadRequestException(
+        'Chỉ có thể thêm hành trình công khai vào danh sách yêu thích',
+      );
     }
 
     const current = user.favoriteTravelRouteIds ?? [];
@@ -358,7 +370,9 @@ export class TravelRoutesService {
 
     const current = user.favoriteTravelRouteIds ?? [];
     if (current.includes(routeId.toString())) {
-      user.favoriteTravelRouteIds = current.filter((id) => id !== routeId.toString());
+      user.favoriteTravelRouteIds = current.filter(
+        (id) => id !== routeId.toString(),
+      );
       await this.userRepo.save(user);
 
       await this.routeRepo.decrement({ id: routeId }, 'favouriteTimes', 1);
@@ -387,7 +401,7 @@ export class TravelRoutesService {
       route.isEdited = true;
       const newStops = await this.prepareStops(dtos, route, destinationRepo);
       const allStops = [...(route.stops ?? []), ...newStops];
-      
+
       this.resequenceStops(allStops);
       await stopRepo.save(allStops);
 
@@ -396,8 +410,6 @@ export class TravelRoutesService {
 
     return this.findOne(routeId);
   }
-
-
 
   async findOne(id: number): Promise<TravelRoute> {
     await this.refreshRouteState(id);
@@ -462,12 +474,17 @@ export class TravelRoutesService {
     }));
   }
 
-
-
-  async update(id: number, userId: number, dto: UpdateTravelRouteDto): Promise<TravelRoute> {
+  async update(
+    id: number,
+    userId: number,
+    dto: UpdateTravelRouteDto,
+  ): Promise<TravelRoute> {
     return this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(TravelRoute);
-      const route = await repo.findOne({ where: { id }, relations: { user: true } });
+      const route = await repo.findOne({
+        where: { id },
+        relations: { user: true },
+      });
       if (!route) {
         throw new NotFoundException(`Travel route ${id} not found`);
       }
@@ -478,7 +495,9 @@ export class TravelRoutesService {
 
       if (dto.startDate || dto.endDate) {
         if (route.status !== TravelRouteStatus.UPCOMING) {
-          throw new BadRequestException('Cannot change start/end date for a route that is not UPCOMING');
+          throw new BadRequestException(
+            'Cannot change start/end date for a route that is not UPCOMING',
+          );
         }
       }
 
@@ -548,7 +567,9 @@ export class TravelRoutesService {
       stop.startTime = nextStart;
       stop.endTime = nextEnd;
 
-      const route = await manager.getRepository(TravelRoute).findOne({ where: { id: routeId } });
+      const route = await manager
+        .getRepository(TravelRoute)
+        .findOne({ where: { id: routeId } });
       if (route) {
         route.isEdited = true;
         await manager.getRepository(TravelRoute).save(route);
@@ -558,7 +579,7 @@ export class TravelRoutesService {
 
       // Re-load all stops for the same day to ensure sequence is correct chronologically
       const allDayStops = await manager.getRepository(RouteStop).find({
-        where: { route: { id: routeId }, dayOrder: stop.dayOrder }
+        where: { route: { id: routeId }, dayOrder: stop.dayOrder },
       });
       this.resequenceStops(allDayStops);
       await manager.getRepository(RouteStop).save(allDayStops);
@@ -586,7 +607,9 @@ export class TravelRoutesService {
       });
 
       if (stop.status === RouteStopStatus.COMPLETED) {
-        throw new BadRequestException('Cannot update details for a completed stop');
+        throw new BadRequestException(
+          'Cannot update details for a completed stop',
+        );
       }
 
       let destination = stop.destination;
@@ -608,7 +631,9 @@ export class TravelRoutesService {
         stop.notes = payload.notes;
       }
 
-      const routeObj = await manager.getRepository(TravelRoute).findOne({ where: { id: routeId } });
+      const routeObj = await manager
+        .getRepository(TravelRoute)
+        .findOne({ where: { id: routeId } });
       if (routeObj) {
         routeObj.isEdited = true;
         await manager.getRepository(TravelRoute).save(routeObj);
@@ -652,7 +677,7 @@ export class TravelRoutesService {
           `Cannot reorder stops for a route that is ${route.status}`,
         );
       }
-      
+
       const targetStop = await stopRepo.findOne({
         where: { id: stopId, route: { id: routeId } },
       });
@@ -678,12 +703,15 @@ export class TravelRoutesService {
       // 2. Reorder the stops (destinations) based on the new sequence
       const currentIndex = stopsInDay.findIndex((s) => s.id === stopId);
       if (currentIndex === -1) {
-         // Should not happen as we fetched by ID earlier, but safe check
-         throw new NotFoundException(`Stop ${stopId} not found in day list`);
+        // Should not happen as we fetched by ID earlier, but safe check
+        throw new NotFoundException(`Stop ${stopId} not found in day list`);
       }
 
       const [movedStop] = stopsInDay.splice(currentIndex, 1);
-      const newSequence = Math.max(1, Math.min(payload.sequence, stopsInDay.length + 1));
+      const newSequence = Math.max(
+        1,
+        Math.min(payload.sequence, stopsInDay.length + 1),
+      );
       stopsInDay.splice(newSequence - 1, 0, movedStop);
 
       // 3. Re-assign the captured time slots to the stops in the new order
@@ -693,13 +721,15 @@ export class TravelRoutesService {
         stop.sequence = index + 1;
         // Assign time slot from the *position* (index)
         if (timeSlots[index]) {
-            stop.startTime = timeSlots[index].startTime;
-            stop.endTime = timeSlots[index].endTime;
+          stop.startTime = timeSlots[index].startTime;
+          stop.endTime = timeSlots[index].endTime;
         }
         updates.push(stop);
       });
 
-      const routeObj = await manager.getRepository(TravelRoute).findOne({ where: { id: routeId } });
+      const routeObj = await manager
+        .getRepository(TravelRoute)
+        .findOne({ where: { id: routeId } });
       if (routeObj) {
         routeObj.isEdited = true;
         await manager.getRepository(TravelRoute).save(routeObj);
@@ -741,7 +771,9 @@ export class TravelRoutesService {
       }
       await stopRepo.save(stopsInDay);
 
-      const routeObj = await manager.getRepository(TravelRoute).findOne({ where: { id: routeId } });
+      const routeObj = await manager
+        .getRepository(TravelRoute)
+        .findOne({ where: { id: routeId } });
       if (routeObj) {
         routeObj.isEdited = true;
         await manager.getRepository(TravelRoute).save(routeObj);
@@ -789,7 +821,9 @@ export class TravelRoutesService {
 
       await stopRepo.save(stop);
 
-      const routeObj = await manager.getRepository(TravelRoute).findOne({ where: { id: routeId } });
+      const routeObj = await manager
+        .getRepository(TravelRoute)
+        .findOne({ where: { id: routeId } });
       if (routeObj) {
         routeObj.isEdited = true;
         await manager.getRepository(TravelRoute).save(routeObj);
@@ -839,7 +873,9 @@ export class TravelRoutesService {
 
       await stopRepo.save(stop);
 
-      const routeObj = await manager.getRepository(TravelRoute).findOne({ where: { id: routeId } });
+      const routeObj = await manager
+        .getRepository(TravelRoute)
+        .findOne({ where: { id: routeId } });
       if (routeObj) {
         routeObj.isEdited = true;
         await manager.getRepository(TravelRoute).save(routeObj);
@@ -997,16 +1033,16 @@ export class TravelRoutesService {
     const parsedEnd = this.parseDateInput(endDate);
 
     if (parsedStart && parsedEnd && parsedStart > parsedEnd) {
-      throw new BadRequestException('startDate must be less than or equal to endDate');
+      throw new BadRequestException(
+        'startDate must be less than or equal to endDate',
+      );
     }
 
     if (parsedStart) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (parsedStart < today) {
-        throw new BadRequestException(
-          'startDate cannot be in the past.',
-        );
+        throw new BadRequestException('startDate cannot be in the past.');
       }
     }
 
@@ -1029,11 +1065,7 @@ export class TravelRoutesService {
 
     route.startDate = parsedStart;
     route.endDate = parsedEnd;
-
-
   }
-
-
 
   private calculateDurationDays(
     startDate?: Date,
@@ -1085,7 +1117,10 @@ export class TravelRoutesService {
     });
 
     const incompleteStopsByDay = new Map<number, RouteStopDto>();
-    const dayIntervals = new Map<number, Array<{ start: number; end: number; sequence: number }>>();
+    const dayIntervals = new Map<
+      number,
+      Array<{ start: number; end: number; sequence: number }>
+    >();
     const now = new Date();
 
     for (const dto of sortedDtos) {
@@ -1094,7 +1129,6 @@ export class TravelRoutesService {
           `dayOrder ${dto.dayOrder} exceeds route duration`,
         );
       }
-
 
       const stop = new RouteStop();
       stop.route = { id: route.id } as TravelRoute;
@@ -1154,7 +1188,12 @@ export class TravelRoutesService {
         );
       }
 
-      const startDateTime = this.buildDateWithTime(stopDate, dto.startTime, 0, 0);
+      const startDateTime = this.buildDateWithTime(
+        stopDate,
+        dto.startTime,
+        0,
+        0,
+      );
       if (startDateTime <= now) {
         throw new BadRequestException(
           `Start time of stop on day ${dto.dayOrder} (sequence ${dto.sequence}) must be in the future`,
@@ -1162,7 +1201,12 @@ export class TravelRoutesService {
       }
 
       if (dto.endTime) {
-        const endDateTime = this.buildDateWithTime(stopDate, dto.endTime, 23, 59);
+        const endDateTime = this.buildDateWithTime(
+          stopDate,
+          dto.endTime,
+          23,
+          59,
+        );
         const routeEndCutoff = this.buildDateWithTime(
           this.normalizeDate(routeEndDate),
           '23:59',
@@ -1195,14 +1239,19 @@ export class TravelRoutesService {
       const endMinutes = currentEndMinutes ?? currentStartMinutes;
       const intervals = dayIntervals.get(dto.dayOrder) ?? [];
       for (const interval of intervals) {
-        const overlap = startMinutes < interval.end && endMinutes > interval.start;
+        const overlap =
+          startMinutes < interval.end && endMinutes > interval.start;
         if (overlap) {
           throw new BadRequestException(
             `Thời gian điểm dừng (sequence ${dto.sequence}) trùng với điểm sequence ${interval.sequence} trên cùng ngày`,
           );
         }
       }
-      intervals.push({ start: startMinutes, end: endMinutes, sequence: dto.sequence });
+      intervals.push({
+        start: startMinutes,
+        end: endMinutes,
+        sequence: dto.sequence,
+      });
       dayIntervals.set(dto.dayOrder, intervals);
 
       const status = this.determineStopStatus(
@@ -1282,7 +1331,7 @@ export class TravelRoutesService {
 
   private async normalizeProvince(input: string): Promise<string> {
     if (!input) return input;
-    
+
     // Get unique provinces from DB
     const result = await this.destinationRepo
       .createQueryBuilder('dest')
@@ -1290,42 +1339,52 @@ export class TravelRoutesService {
       .where('dest.province IS NOT NULL')
       .getRawMany();
 
-    const provinces = result.map(row => row.province as string);
+    const provinces = result.map((row) => row.province as string);
 
-    const normalize = (str: string) => 
-      str.toLowerCase()
-         .normalize("NFD")
-         .replace(/[\u0300-\u036f]/g, "")
-         .replace(/đ/g, "d")
-         .replace(/Đ/g, "D")
-         .trim();
+    const normalize = (str: string) =>
+      str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .trim();
 
     const normalizedInput = normalize(input);
 
     // Try exact match first
-    const exactMatch = provinces.find(p => p.toLowerCase() === input.toLowerCase());
+    const exactMatch = provinces.find(
+      (p) => p.toLowerCase() === input.toLowerCase(),
+    );
     if (exactMatch) return exactMatch;
 
     // Try normalized match
-    const normalizedMatch = provinces.find(p => normalize(p) === normalizedInput);
+    const normalizedMatch = provinces.find(
+      (p) => normalize(p) === normalizedInput,
+    );
     if (normalizedMatch) return normalizedMatch;
 
     // Try substring match (e.g. "Hue" matches "Thừa Thiên Huế")
     // We favor matches where input is a distinct word or at end
-    const partialMatches = provinces.filter(p => normalize(p).includes(normalizedInput));
-    
+    const partialMatches = provinces.filter((p) =>
+      normalize(p).includes(normalizedInput),
+    );
+
     if (partialMatches.length > 0) {
       // Sort by length to find "best" match (usually the one where input is most significant part?)
       // Or just pick the first one?
-      // "Hue" -> "Thừa Thiên Huế" matches. 
+      // "Hue" -> "Thừa Thiên Huế" matches.
       // "Ha Noi" -> "Hà Nội" matches.
       return partialMatches.sort((a, b) => a.length - b.length)[0];
     }
-    
+
     return input;
   }
 
-  async suggestQuick(userId: number, dto: QuickSuggestTravelRouteDto): Promise<any> {
+  async suggestQuick(
+    userId: number,
+    dto: QuickSuggestTravelRouteDto,
+  ): Promise<any> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
@@ -1346,11 +1405,13 @@ export class TravelRoutesService {
       );
       const data = resp.data;
       if (data.stops?.length) {
-        const destIds = data.stops.map((s: any) => s.destinationId).filter((id: any) => typeof id === 'number');
+        const destIds = data.stops
+          .map((s: any) => s.destinationId)
+          .filter((id: any) => typeof id === 'number');
         const dests = await this.destinationRepo.find({
           where: { id: In(destIds) },
         });
-        const destMap = new Map(dests.map(d => [d.id, d]));
+        const destMap = new Map(dests.map((d) => [d.id, d]));
         data.stops = data.stops.map((s: any) => {
           const dest = destMap.get(s.destinationId);
           return {
@@ -1365,7 +1426,10 @@ export class TravelRoutesService {
     }
   }
 
-  async suggestAdvanced(userId: number, dto: AdvancedSuggestTravelRouteDto): Promise<any> {
+  async suggestAdvanced(
+    userId: number,
+    dto: AdvancedSuggestTravelRouteDto,
+  ): Promise<any> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
@@ -1388,11 +1452,13 @@ export class TravelRoutesService {
         );
         const data = resp.data;
         if (data.stops?.length) {
-          const destIds = data.stops.map((s: any) => s.destinationId).filter((id: any) => typeof id === 'number');
+          const destIds = data.stops
+            .map((s: any) => s.destinationId)
+            .filter((id: any) => typeof id === 'number');
           const dests = await this.destinationRepo.find({
             where: { id: In(destIds) },
           });
-          const destMap = new Map(dests.map(d => [d.id, d]));
+          const destMap = new Map(dests.map((d) => [d.id, d]));
           data.stops = data.stops.map((s: any) => ({
             ...s,
             destination: destMap.get(s.destinationId),
@@ -1454,7 +1520,9 @@ export class TravelRoutesService {
             stop.status = RouteStopStatus.UPCOMING;
 
             if (s.destinationId) {
-              const dest = await manager.findOne(Destination, { where: { id: s.destinationId } });
+              const dest = await manager.findOne(Destination, {
+                where: { id: s.destinationId },
+              });
               if (dest) {
                 stop.destination = dest;
               }
@@ -1472,7 +1540,9 @@ export class TravelRoutesService {
       });
 
       if (!finalRoute) {
-        throw new NotFoundException(`Travel route ${savedRoute.id} not found after creation`);
+        throw new NotFoundException(
+          `Travel route ${savedRoute.id} not found after creation`,
+        );
       }
       return finalRoute;
     });
@@ -1480,14 +1550,14 @@ export class TravelRoutesService {
 
   private mapHobbiesToCategories(userHobbies: string[]): string[] {
     const hobbyToCategoryMap: Record<string, string[]> = {
-      'Adventure': ['Thiên nhiên'],
-      'Relaxation': ['Thiên nhiên', 'Giải trí'],
+      Adventure: ['Thiên nhiên'],
+      Relaxation: ['Thiên nhiên', 'Giải trí'],
       'Culture&History': ['Công trình', 'Văn hóa', 'Lịch sử'],
-      'Entertainment': ['Giải trí'],
-      'Nature': ['Thiên nhiên'],
+      Entertainment: ['Giải trí'],
+      Nature: ['Thiên nhiên'],
       'Beach&Islands': ['Biển'],
       'Mountain&Forest': ['Núi'],
-      'Photography': ['Thiên nhiên', 'Công trình'],
+      Photography: ['Thiên nhiên', 'Công trình'],
       'Foods&Drinks': ['Công trình', 'Văn hóa'],
     };
 
@@ -1503,13 +1573,18 @@ export class TravelRoutesService {
     const axiosError = error as AxiosError<{ detail?: string; error?: string }>;
     if (axiosError.response) {
       const status = axiosError.response.status;
-      const detail = axiosError.response.data?.detail ?? axiosError.response.data?.error ?? axiosError.message;
+      const detail =
+        axiosError.response.data?.detail ??
+        axiosError.response.data?.error ??
+        axiosError.message;
       if (status >= 400 && status < 500) {
         throw new BadRequestException(detail);
       }
       throw new ServiceUnavailableException(detail);
     }
-    throw new ServiceUnavailableException('Không thể kết nối tới AI route service');
+    throw new ServiceUnavailableException(
+      'Không thể kết nối tới AI route service',
+    );
   }
 
   async getAnniversaryDetail(routeId: number, userId: number): Promise<any> {
@@ -1519,9 +1594,12 @@ export class TravelRoutesService {
     });
 
     if (!route) throw new NotFoundException('Route not found');
-    if (route.user?.id !== userId) throw new ForbiddenException('Not your route');
+    if (route.user?.id !== userId)
+      throw new ForbiddenException('Not your route');
     if (route.status !== TravelRouteStatus.COMPLETED) {
-      throw new BadRequestException('Chỉ có thể xem kỷ niệm cho chuyến đi đã hoàn thành');
+      throw new BadRequestException(
+        'Chỉ có thể xem kỷ niệm cho chuyến đi đã hoàn thành',
+      );
     }
 
     const today = new Date();
@@ -1571,7 +1649,10 @@ export class TravelRoutesService {
   }> {
     if (dto.startDestinationId) {
       await this.ensureDestinationsExist([dto.startDestinationId]);
-      return { startDestinationId: String(dto.startDestinationId), startLabel: dto.startLabel };
+      return {
+        startDestinationId: String(dto.startDestinationId),
+        startLabel: dto.startLabel,
+      };
     }
 
     if (dto.startCoordinates) {
@@ -1607,12 +1688,16 @@ export class TravelRoutesService {
     const foundIds = found.map((d) => d.id);
     const missing = uniqueIds.filter((id) => !foundIds.includes(id));
     if (missing.length) {
-      throw new NotFoundException(`Không tìm thấy địa điểm: ${missing.join(', ')}`);
+      throw new NotFoundException(
+        `Không tìm thấy địa điểm: ${missing.join(', ')}`,
+      );
     }
     return foundIds;
   }
 
-  private async findFallbackStart(province?: string): Promise<Destination | null> {
+  private async findFallbackStart(
+    province?: string,
+  ): Promise<Destination | null> {
     const qb = this.destinationRepo.createQueryBuilder('dest');
     if (province) {
       qb.where('LOWER(dest.province) = LOWER(:province)', { province });
@@ -1645,10 +1730,7 @@ export class TravelRoutesService {
     return result;
   }
 
-  private computeStopBaseDate(
-    routeStartDate: Date,
-    dayOrder: number,
-  ): Date {
+  private computeStopBaseDate(routeStartDate: Date, dayOrder: number): Date {
     const base = new Date(routeStartDate);
     base.setHours(0, 0, 0, 0);
     base.setDate(base.getDate() + Math.max(0, dayOrder - 1));
@@ -1670,9 +1752,22 @@ export class TravelRoutesService {
       return stop.status ?? RouteStopStatus.UPCOMING;
     }
 
-    const stopBaseDate = this.computeStopBaseDate(route.startDate, stop.dayOrder);
-    const startDateTime = this.buildDateWithTime(stopBaseDate, stop.startTime, 0, 0);
-    const endDateTime = this.buildDateWithTime(stopBaseDate, stop.endTime, 23, 59);
+    const stopBaseDate = this.computeStopBaseDate(
+      route.startDate,
+      stop.dayOrder,
+    );
+    const startDateTime = this.buildDateWithTime(
+      stopBaseDate,
+      stop.startTime,
+      0,
+      0,
+    );
+    const endDateTime = this.buildDateWithTime(
+      stopBaseDate,
+      stop.endTime,
+      23,
+      59,
+    );
 
     if (reference < startDateTime) {
       return RouteStopStatus.UPCOMING;
@@ -1780,7 +1875,9 @@ export class TravelRoutesService {
       (stop) => stop.status === RouteStopStatus.COMPLETED,
     ).length;
     const hasStops = stops.length > 0;
-    const hasMissed = stops.some((stop) => stop.status === RouteStopStatus.MISSED);
+    const hasMissed = stops.some(
+      (stop) => stop.status === RouteStopStatus.MISSED,
+    );
     const allCompleted = hasStops && totalCompleted === stops.length;
     const today = this.normalizeDate(now);
     const endDatePassed = route.endDate
@@ -1821,15 +1918,23 @@ export class TravelRoutesService {
 
       if (diff > 0 && route.user?.id) {
         // Award points to actual user balance
-        await this.userRepo.increment({ id: route.user.id }, 'travelPoint', diff);
-        
+        await this.userRepo.increment(
+          { id: route.user.id },
+          'travelPoint',
+          diff,
+        );
+
         // Notify User
         await this.notificationService.createNotification(
           route.user.id,
           'Thưởng điểm TravelPoints',
           `Bạn vừa nhận được ${diff} điểm từ việc cập nhật lộ trình ${route.name}.`,
           NotificationType.REMINDER,
-          { routeId: route.id.toString(), category: 'travel-route', type: 'reward_points' }
+          {
+            routeId: route.id.toString(),
+            category: 'travel-route',
+            type: 'reward_points',
+          },
         );
       }
     }
@@ -1839,14 +1944,22 @@ export class TravelRoutesService {
       updates.status = nextRouteStatus;
 
       // Notify route completion
-      if (nextRouteStatus === TravelRouteStatus.COMPLETED && oldStatus !== TravelRouteStatus.COMPLETED && route.user?.id) {
-         await this.notificationService.createNotification(
-           route.user.id,
-           'Lộ trình hoàn tất!',
-           `Chúc mừng! Bạn đã hoàn thành toàn bộ các điểm dừng trong lộ trình ${route.name}.`,
-           NotificationType.REMINDER,
-           { routeId: route.id.toString(), category: 'travel-route', type: 'route_completed' }
-         );
+      if (
+        nextRouteStatus === TravelRouteStatus.COMPLETED &&
+        oldStatus !== TravelRouteStatus.COMPLETED &&
+        route.user?.id
+      ) {
+        await this.notificationService.createNotification(
+          route.user.id,
+          'Lộ trình hoàn tất!',
+          `Chúc mừng! Bạn đã hoàn thành toàn bộ các điểm dừng trong lộ trình ${route.name}.`,
+          NotificationType.REMINDER,
+          {
+            routeId: route.id.toString(),
+            category: 'travel-route',
+            type: 'route_completed',
+          },
+        );
       }
     }
 
@@ -1861,14 +1974,20 @@ export class TravelRoutesService {
     });
   }
 
-  private ensureSequentialStopCoverage(route: TravelRoute, stops: RouteStop[]): void {
+  private ensureSequentialStopCoverage(
+    route: TravelRoute,
+    stops: RouteStop[],
+  ): void {
     if (!route.startDate || !route.endDate || !stops.length) {
       return;
     }
 
     const normalizedStart = this.normalizeDate(route.startDate);
     const normalizedEnd = this.normalizeDate(route.endDate);
-    const totalDays = this.calculateDurationDays(normalizedStart, normalizedEnd);
+    const totalDays = this.calculateDurationDays(
+      normalizedStart,
+      normalizedEnd,
+    );
 
     if (!totalDays) {
       return;
@@ -1890,7 +2009,9 @@ export class TravelRoutesService {
       const sortable = dayStops
         .map((stop) => ({
           stop,
-          start: stop.startTime ? this.parseTimeToMinutes(stop.startTime) : null,
+          start: stop.startTime
+            ? this.parseTimeToMinutes(stop.startTime)
+            : null,
           end: stop.endTime ? this.parseTimeToMinutes(stop.endTime) : null,
         }))
         .sort((a, b) => {
@@ -1933,13 +2054,15 @@ export class TravelRoutesService {
         // Use a very high value for null/undefined startTime so they go to the end of the day
         const timeA = a.startTime ? this.parseTimeToMinutes(a.startTime) : 9999;
         const timeB = b.startTime ? this.parseTimeToMinutes(b.startTime) : 9999;
-        
+
         if (timeA !== timeB) {
           return timeA - timeB;
         }
-        
+
         // Maintain relative order for stops at the same time
-        return (a.sequence ?? 0) - (b.sequence ?? 0) || (a.id ?? 0) - (b.id ?? 0);
+        return (
+          (a.sequence ?? 0) - (b.sequence ?? 0) || (a.id ?? 0) - (b.id ?? 0)
+        );
       });
 
       dayStops.forEach((stop, index) => {

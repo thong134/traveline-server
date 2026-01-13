@@ -8,7 +8,7 @@ export interface ShippingFeeResult {
 /**
  * Calculates shipping fee based on distance and vehicle type.
  * Consistency with RentalBillsService is required.
- * 
+ *
  * @param distance Road distance in km
  * @param vehicleType Type of vehicle (bike or car)
  */

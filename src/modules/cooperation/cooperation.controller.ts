@@ -61,19 +61,22 @@ export class CooperationsController {
   @Get()
   @ApiOperation({ summary: 'Danh sách đối tác hợp tác' })
   @ApiQuery({ name: 'type', required: false })
-  @ApiQuery({ name: 'city', required: false })
-  @ApiQuery({ name: 'province', required: false })
-  @ApiQuery({ name: 'active', required: false, type: Boolean })
+  @ApiQuery({ name: 'provinceId', required: false })
+  @ApiQuery({ name: 'districtId', required: false })
   @ApiQuery({ name: 'status', required: false, enum: CooperationStatus })
   @ApiOkResponse({ description: 'Cooperation list' })
   findAll(
     @Query('type') type?: string,
-    @Query('city') city?: string,
-    @Query('province') province?: string,
-    @Query('active', new ParseBoolPipe({ optional: true })) active?: boolean,
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
     @Query('status') status?: CooperationStatus,
   ) {
-    return this.cooperationsService.findAll({ type, city, province, active, status });
+    return this.cooperationsService.findAll({
+      type,
+      provinceId,
+      districtId,
+      status,
+    });
   }
 
   @Get('favorites')
@@ -184,9 +187,33 @@ export class CooperationsController {
     return this.cooperationsService.addContract(id, upload.url, data);
   }
 
+  @Post('upload-image')
+  @RequireAuth()
+  @ApiOperation({
+    summary: 'Tải lên hình ảnh cho hồ sơ hợp tác (Logo, Giấy phép, CCCD...)',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    const upload = await this.cloudinaryService.uploadImage(file, {
+      folder: 'traveline/cooperations/documents',
+    });
+    return { url: upload.url };
+  }
+
   @Get('contracts/all')
   @RequireAuth(UserRole.Admin)
-  @ApiOperation({ summary: 'Lấy danh sách tất cả hợp đồng của các đối tác (Admin)' })
+  @ApiOperation({
+    summary: 'Lấy danh sách tất cả hợp đồng của các đối tác (Admin)',
+  })
   findAllContracts() {
     return this.cooperationsService.findAllContracts();
   }

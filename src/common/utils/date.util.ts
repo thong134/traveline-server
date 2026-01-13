@@ -7,18 +7,18 @@ import { Transform } from 'class-transformer';
  */
 export function parseDDMMYYYY(value: string | any): Date | null {
   if (typeof value !== 'string') return null;
-  
+
   // Clean string
   const cleanStr = value.trim();
   if (!cleanStr) return null;
 
   // Expected format dd/MM/yyyy
   const parsed = parse(cleanStr, 'dd/MM/yyyy', new Date());
-  
+
   if (isValid(parsed)) {
     return parsed;
   }
-  
+
   return null;
 }
 

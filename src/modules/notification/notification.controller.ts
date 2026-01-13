@@ -38,7 +38,9 @@ export class NotificationController {
   }
 
   @Get('all')
-  @ApiOperation({ summary: 'Lấy tất cả thông báo của hệ thống (Dành cho Dev/Admin)' })
+  @ApiOperation({
+    summary: 'Lấy tất cả thông báo của hệ thống (Dành cho Dev/Admin)',
+  })
   @ApiOkResponse({ description: 'Danh sách tất cả thông báo' })
   findAllNotifications() {
     return this.notificationService.findAllNotifications();

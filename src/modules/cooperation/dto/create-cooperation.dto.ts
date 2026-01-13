@@ -13,7 +13,10 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { CommissionType, CooperationStatus } from '../entities/cooperation-enums';
+import {
+  CommissionType,
+  CooperationStatus,
+} from '../entities/cooperation-enums';
 
 export class CreateCooperationDto {
   @ApiProperty({ description: 'Partner display name' })
@@ -27,12 +30,6 @@ export class CreateCooperationDto {
   @IsString()
   type: string;
 
-  @ApiPropertyOptional({ description: 'Custom reference code' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(64)
-  code?: string;
-
   @ApiPropertyOptional({ description: 'User id who manages this cooperation' })
   @IsOptional()
   @Type(() => Number)
@@ -40,38 +37,6 @@ export class CreateCooperationDto {
   @Min(1)
   userId?: number;
 
-  @ApiPropertyOptional({
-    description: 'Total number of objects managed by the partner',
-    default: 0,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  numberOfObjects?: number;
-
-  @ApiPropertyOptional({
-    description: 'The number of object types that the partner manages',
-    default: 0,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  numberOfObjectTypes?: number;
-
-  @ApiPropertyOptional({ description: 'Primary representative name' })
-  @IsOptional()
-  @IsString()
-  bossName?: string;
-
-  @ApiPropertyOptional({ description: 'Primary representative phone number' })
-  @IsOptional()
-  @IsString()
-  bossPhone?: string;
-
-  @ApiPropertyOptional({ description: 'Primary representative email' })
-  @IsOptional()
-  @IsEmail()
-  bossEmail?: string;
 
   @ApiPropertyOptional({ description: 'Street address' })
   @IsOptional()
@@ -83,10 +48,6 @@ export class CreateCooperationDto {
   @IsString()
   district?: string;
 
-  @ApiPropertyOptional({ description: 'City' })
-  @IsOptional()
-  @IsString()
-  city?: string;
 
   @ApiPropertyOptional({ description: 'Province' })
   @IsOptional()
@@ -108,7 +69,10 @@ export class CreateCooperationDto {
   @IsString()
   introduction?: string;
 
-  @ApiPropertyOptional({ description: 'Contract effective date (dd/MM/yyyy)', example: '13/04/2004' })
+  @ApiPropertyOptional({
+    description: 'Contract effective date (dd/MM/yyyy)',
+    example: '13/04/2004',
+  })
   @IsOptional()
   @TransformDDMMYYYY()
   @IsDate()
@@ -134,13 +98,6 @@ export class CreateCooperationDto {
   @IsString()
   bankName?: string;
 
-  @ApiPropertyOptional({
-    description: 'Whether the cooperation is active',
-    default: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  active?: boolean;
 
   @ApiPropertyOptional({
     enum: CooperationStatus,
@@ -155,7 +112,9 @@ export class CreateCooperationDto {
   @IsEnum(CommissionType)
   commissionType?: CommissionType;
 
-  @ApiPropertyOptional({ description: 'Value for commission (percentage or fixed amount)' })
+  @ApiPropertyOptional({
+    description: 'Value for commission (percentage or fixed amount)',
+  })
   @IsOptional()
   @IsString()
   commissionValue?: string;

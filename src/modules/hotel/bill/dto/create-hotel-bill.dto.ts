@@ -13,12 +13,18 @@ import {
 import { HotelBillRoomDto } from './hotel-bill-room.dto';
 
 export class CreateHotelBillDto {
-  @ApiProperty({ description: 'Check-in date (ISO or dd:MM:yyyy HH:mm)', example: '25:12:2024 14:00' })
+  @ApiProperty({
+    description: 'Check-in date (ISO or dd:MM:yyyy HH:mm)',
+    example: '25:12:2024 14:00',
+  })
   @IsString()
   @IsNotEmpty()
   checkInDate: string;
 
-  @ApiProperty({ description: 'Check-out date (ISO or dd:MM:yyyy HH:mm)', example: '27:12:2024 12:00' })
+  @ApiProperty({
+    description: 'Check-out date (ISO or dd:MM:yyyy HH:mm)',
+    example: '27:12:2024 12:00',
+  })
   @IsString()
   @IsNotEmpty()
   checkOutDate: string;

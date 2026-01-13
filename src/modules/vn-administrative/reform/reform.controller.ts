@@ -1,5 +1,10 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { ReformAdministrativeService } from './reform.service';
 import { ReformProvince } from './entities/reform-province.entity';
 import { ReformCommune } from './entities/reform-commune.entity';
@@ -61,7 +66,7 @@ export class ReformAdministrativeController {
     const upload = await this.cloudinaryService.uploadImage(file, {
       folder: 'traveline/reform/provinces/avatars',
     });
-    
+
     return this.service.updateProvince(code, { avatarUrl: upload.url });
   }
 

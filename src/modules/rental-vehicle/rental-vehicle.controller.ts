@@ -52,7 +52,6 @@ function mapVehicleRegistrationFiles(
   };
 }
 
-
 @ApiTags('rental-vehicles')
 @Controller('rental-vehicles')
 export class RentalVehiclesController {
@@ -77,7 +76,11 @@ export class RentalVehiclesController {
     @Body() dto: CreateRentalVehicleDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.service.create(user.userId, dto, mapVehicleRegistrationFiles(files));
+    return this.service.create(
+      user.userId,
+      dto,
+      mapVehicleRegistrationFiles(files),
+    );
   }
 
   @Get('me')
@@ -102,7 +105,8 @@ export class RentalVehiclesController {
   @ApiOkResponse({ type: [RentalVehicle] })
   findFavorites(@CurrentUser() user: RequestUser) {
     return this.service.findFavoritesByUser(user.userId);
-  }  @Post(':licensePlate/favorite')
+  }
+  @Post(':licensePlate/favorite')
   @RequireAuth()
   @ApiOperation({ summary: 'Thêm xe vào danh sách yêu thích' })
   async favorite(
@@ -166,7 +170,9 @@ export class RentalVehiclesController {
 
   @Patch(':licensePlate')
   @RequireAuth()
-  @ApiOperation({ summary: 'Cập nhật thông tin xe cho thuê (giá, mô tả, yêu cầu)' })
+  @ApiOperation({
+    summary: 'Cập nhật thông tin xe cho thuê (giá, mô tả, yêu cầu)',
+  })
   @ApiOkResponse({ description: 'Cập nhật xe thành công' })
   update(
     @Param('licensePlate') licensePlate: string,

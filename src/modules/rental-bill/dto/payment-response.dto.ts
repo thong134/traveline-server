@@ -16,7 +16,10 @@ export class PaymentResponseDto {
   })
   payUrl: string;
 
-  @ApiProperty({ description: 'ID của bản ghi thanh toán trong hệ thống', example: 123 })
+  @ApiProperty({
+    description: 'ID của bản ghi thanh toán trong hệ thống',
+    example: 123,
+  })
   paymentId: number;
 }
 
@@ -32,7 +35,8 @@ export class QRCodeResponseDto {
 
   @ApiProperty({
     description: 'Thông báo hướng dẫn thanh toán',
-    example: 'Vui lòng quét mã để chuyển khoản vào tài khoản trung gian Traveline (Vietcombank)',
+    example:
+      'Vui lòng quét mã để chuyển khoản vào tài khoản trung gian Traveline (Vietcombank)',
   })
   message: string;
 }

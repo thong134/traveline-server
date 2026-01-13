@@ -185,9 +185,7 @@ export class RentalContractsService {
     const contract = await this.findOne(id, userId);
 
     if (contract.status !== RentalContractStatus.APPROVED) {
-      throw new BadRequestException(
-        'Only approved contracts can be suspended',
-      );
+      throw new BadRequestException('Only approved contracts can be suspended');
     }
 
     this.applyStatusUpdate(contract, RentalContractStatus.SUSPENDED, {

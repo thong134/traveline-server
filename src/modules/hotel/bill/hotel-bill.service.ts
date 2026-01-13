@@ -26,7 +26,6 @@ import { CooperationPaymentService } from '../../cooperation/cooperation-payment
 import { ServiceType } from '../../payment/entities/booking-transaction.entity';
 import { parse, isValid } from 'date-fns';
 
-
 const VND_TO_ETH_RATE = 80_000_000;
 
 interface BillQueryParams {
@@ -74,13 +73,15 @@ export class HotelBillsService {
     if (isValid(date)) return date;
     date = new Date(dateStr);
     if (isValid(date)) return date;
-    throw new BadRequestException(`Invalid date format: ${dateStr}. Expected ISO 8601 or dd:MM:yyyy HH:mm`);
+    throw new BadRequestException(
+      `Invalid date format: ${dateStr}. Expected ISO 8601 or dd:MM:yyyy HH:mm`,
+    );
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
   async checkTimeouts() {
     const now = new Date();
-    
+
     // 30 min timeout for PENDING
     const pendingThreshold = new Date(now.getTime() - 30 * 60 * 1000);
     const pendingBills = await this.billRepo.find({
@@ -93,7 +94,9 @@ export class HotelBillsService {
     for (const bill of pendingBills) {
       bill.status = HotelBillStatus.CANCELLED;
       await this.billRepo.save(bill);
-      this.logger.log(`Hotel Bill ${bill.id} (PENDING) cancelled due to 30min timeout`);
+      this.logger.log(
+        `Hotel Bill ${bill.id} (PENDING) cancelled due to 30min timeout`,
+      );
     }
 
     // 10 min timeout for CONFIRMED
@@ -108,7 +111,9 @@ export class HotelBillsService {
     for (const bill of confirmedBills) {
       bill.status = HotelBillStatus.CANCELLED;
       await this.billRepo.save(bill);
-      this.logger.log(`Hotel Bill ${bill.id} (CONFIRMED) cancelled due to 10min timeout`);
+      this.logger.log(
+        `Hotel Bill ${bill.id} (CONFIRMED) cancelled due to 10min timeout`,
+      );
     }
   }
 
@@ -126,7 +131,7 @@ export class HotelBillsService {
     const diff = checkOutDate.getTime() - checkInDate.getTime();
     const nights = Math.ceil(diff / (1000 * 60 * 60 * 24));
 
-    const roomIds = dto.rooms.map(r => r.roomId);
+    const roomIds = dto.rooms.map((r) => r.roomId);
     const rooms = await this.roomRepo.find({
       where: { id: In(roomIds) },
       relations: ['cooperation'],
@@ -137,8 +142,10 @@ export class HotelBillsService {
     }
 
     const cooperationId = rooms[0].cooperation.id;
-    if (rooms.some(r => r.cooperation.id !== cooperationId)) {
-      throw new BadRequestException('All rooms must belong to the same cooperation');
+    if (rooms.some((r) => r.cooperation.id !== cooperationId)) {
+      throw new BadRequestException(
+        'All rooms must belong to the same cooperation',
+      );
     }
 
     const bill = this.billRepo.create({
@@ -157,7 +164,7 @@ export class HotelBillsService {
     // Create details
     let totalRooms = 0;
     for (const roomDto of dto.rooms) {
-      const room = rooms.find(r => r.id === roomDto.roomId);
+      const room = rooms.find((r) => r.id === roomDto.roomId);
       if (!room) continue;
       for (let i = 0; i < roomDto.quantity; i++) {
         const detail = this.detailRepo.create({
@@ -181,7 +188,7 @@ export class HotelBillsService {
         saved.voucherId = voucher.id;
       }
     }
-    
+
     this.calculateTotal(saved);
     await this.billRepo.save(saved);
 
@@ -204,10 +211,19 @@ export class HotelBillsService {
     return bill;
   }
 
-  async update(id: number, userId: number, dto: UpdateHotelBillDto): Promise<HotelBill> {
+  async update(
+    id: number,
+    userId: number,
+    dto: UpdateHotelBillDto,
+  ): Promise<HotelBill> {
     const bill = await this.findOne(id, userId);
-    if (bill.status !== HotelBillStatus.PENDING && bill.status !== HotelBillStatus.CONFIRMED) {
-      throw new BadRequestException(`Cannot update bill in ${bill.status} status`);
+    if (
+      bill.status !== HotelBillStatus.PENDING &&
+      bill.status !== HotelBillStatus.CONFIRMED
+    ) {
+      throw new BadRequestException(
+        `Cannot update bill in ${bill.status} status`,
+      );
     }
 
     assignDefined(bill, {
@@ -224,7 +240,10 @@ export class HotelBillsService {
         const voucher = await this.vouchersService.findByCode(dto.voucherCode);
         if (!voucher) throw new NotFoundException('Voucher not found');
 
-        const baseTotal = bill.details.reduce((sum, d) => sum + parseFloat(d.total), 0);
+        const baseTotal = bill.details.reduce(
+          (sum, d) => sum + parseFloat(d.total),
+          0,
+        );
         this.vouchersService.validateVoucherForBooking(voucher, baseTotal);
 
         bill.voucher = voucher;
@@ -235,13 +254,17 @@ export class HotelBillsService {
     if (dto.travelPointsUsed !== undefined) {
       const points = Number(dto.travelPointsUsed);
       if (Number.isNaN(points) || points < 0) {
-        throw new BadRequestException('travelPointsUsed must be a non-negative number');
+        throw new BadRequestException(
+          'travelPointsUsed must be a non-negative number',
+        );
       }
-      
+
       if (bill.user && points > bill.user.travelPoint) {
-         throw new BadRequestException(`Bạn không đủ điểm (Hiện có: ${bill.user.travelPoint})`);
+        throw new BadRequestException(
+          `Bạn không đủ điểm (Hiện có: ${bill.user.travelPoint})`,
+        );
       }
-      
+
       bill.travelPointsUsed = Math.floor(points);
     }
 
@@ -255,7 +278,8 @@ export class HotelBillsService {
     paymentMethod: string,
   ): Promise<HotelBill> {
     const bill = await this.findOne(id, userId);
-    if (bill.status !== HotelBillStatus.PENDING) throw new BadRequestException('Not pending');
+    if (bill.status !== HotelBillStatus.PENDING)
+      throw new BadRequestException('Not pending');
 
     if (!bill.contactName || !bill.contactPhone) {
       throw new BadRequestException('Contact info required');
@@ -269,9 +293,8 @@ export class HotelBillsService {
 
   async pay(id: number, userId: number): Promise<HotelBill> {
     const bill = await this.findOne(id, userId);
-    if (bill.status !== HotelBillStatus.CONFIRMED) throw new BadRequestException('Not confirmed');
-
-
+    if (bill.status !== HotelBillStatus.CONFIRMED)
+      throw new BadRequestException('Not confirmed');
 
     bill.status = HotelBillStatus.PAID;
 
@@ -285,26 +308,37 @@ export class HotelBillsService {
         totalAmount: parseFloat(bill.total),
       });
     } catch (err) {
-      this.logger.error(`Failed to log cooperation transaction for bill ${bill.id}: ${err.message}`);
+      this.logger.error(
+        `Failed to log cooperation transaction for bill ${bill.id}: ${err.message}`,
+      );
     }
-    
+
     // Points deduction
     if (bill.travelPointsUsed > 0 && bill.user) {
-       const user = await this.userRepo.findOne({ where: { id: bill.user.id } });
-       if (user) {
-         user.travelPoint = Math.max(0, user.travelPoint - bill.travelPointsUsed);
-         await this.userRepo.save(user);
-       }
+      const user = await this.userRepo.findOne({ where: { id: bill.user.id } });
+      if (user) {
+        user.travelPoint = Math.max(
+          0,
+          user.travelPoint - bill.travelPointsUsed,
+        );
+        await this.userRepo.save(user);
+      }
     }
 
     // Voucher increment
     if (bill.voucherId) {
-       await this.vouchersService.incrementUsage(bill.voucherId);
+      await this.vouchersService.incrementUsage(bill.voucherId);
     }
 
     // Ensure room availability (reservation)
     for (const detail of bill.details) {
-      await this.hotelRoomsService.ensureRoomAvailability(detail.room, bill.checkInDate, bill.checkOutDate, 1, bill.id);
+      await this.hotelRoomsService.ensureRoomAvailability(
+        detail.room,
+        bill.checkInDate,
+        bill.checkOutDate,
+        1,
+        bill.id,
+      );
     }
 
     return this.billRepo.save(bill);
@@ -312,7 +346,8 @@ export class HotelBillsService {
 
   async complete(id: number, userId: number): Promise<HotelBill> {
     const bill = await this.findOne(id, userId);
-    if (bill.status !== HotelBillStatus.PAID) throw new BadRequestException('Not paid');
+    if (bill.status !== HotelBillStatus.PAID)
+      throw new BadRequestException('Not paid');
 
     bill.status = HotelBillStatus.COMPLETED;
     const ownerUserId = bill.cooperation?.manager?.id;
@@ -328,9 +363,11 @@ export class HotelBillsService {
 
   async cancel(id: number, userId: number): Promise<HotelBill> {
     const bill = await this.findOne(id, userId);
-    if (bill.status !== HotelBillStatus.PENDING && 
-        bill.status !== HotelBillStatus.CONFIRMED && 
-        bill.status !== HotelBillStatus.PAID) {
+    if (
+      bill.status !== HotelBillStatus.PENDING &&
+      bill.status !== HotelBillStatus.CONFIRMED &&
+      bill.status !== HotelBillStatus.PAID
+    ) {
       throw new BadRequestException('Cannot cancel');
     }
 
@@ -366,33 +403,48 @@ export class HotelBillsService {
     bill.total = this.formatMoney(finalAmount);
   }
 
-
-
-  private async processRefundOrRelease(bill: HotelBill, action: 'release' | 'refund', ownerUserId?: number) {
+  private async processRefundOrRelease(
+    bill: HotelBill,
+    action: 'release' | 'refund',
+    ownerUserId?: number,
+  ) {
     const amount = parseFloat(bill.total);
     if (amount <= 0) return;
-    await this.walletService.releaseFunds(bill.user.id, amount, `hotel:${bill.id}`, action === 'release' ? ownerUserId : undefined);
+
+    // For Hotels and other non-rental services, the app DOES NOT hold money.
+    // We only need to award points on 'release' (completion).
+    // No walletService.releaseFunds or blockchain calls needed as money was never held in escrow.
 
     if (action === 'release') {
-      await this.blockchainService.adminReleaseFundsForRental(bill.id);
       // 1000 VND = 10 pts => amount / 100
       const points = Math.floor(amount / 100);
       if (points > 0) {
-        await this.userRepo.increment({ id: bill.user.id }, 'travelPoint', points);
+        await this.userRepo.increment(
+          { id: bill.user.id },
+          'travelPoint',
+          points,
+        );
       }
-    } else {
-      await this.blockchainService.adminRefundForRental(bill.id);
+      this.logger.log(
+        `Awarded ${points} points to user ${bill.user.id} for completed hotel bill ${bill.id}`,
+      );
     }
   }
 
-  async findAll(userId: number, params: BillQueryParams = {}): Promise<HotelBill[]> {
+  async findAll(
+    userId: number,
+    params: BillQueryParams = {},
+  ): Promise<HotelBill[]> {
     const qb = this.billRepo.createQueryBuilder('bill');
     qb.where('bill.user_id = :userId', { userId });
-    if (params.status) qb.andWhere('bill.status = :status', { status: params.status });
-    if (params.cooperationId) qb.andWhere('bill.cooperation_id = :cid', { cid: params.cooperationId });
-    return qb.leftJoinAndSelect('bill.details', 'details')
-             .leftJoinAndSelect('details.room', 'room')
-             .orderBy('bill.createdAt', 'DESC')
-             .getMany();
+    if (params.status)
+      qb.andWhere('bill.status = :status', { status: params.status });
+    if (params.cooperationId)
+      qb.andWhere('bill.cooperation_id = :cid', { cid: params.cooperationId });
+    return qb
+      .leftJoinAndSelect('bill.details', 'details')
+      .leftJoinAndSelect('details.room', 'room')
+      .orderBy('bill.createdAt', 'DESC')
+      .getMany();
   }
 }

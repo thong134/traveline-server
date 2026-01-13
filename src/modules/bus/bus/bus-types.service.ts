@@ -56,12 +56,35 @@ export class BusTypesService {
     return this.busTypeRepo.save(busType);
   }
 
-  async findAll(params: { cooperationId?: number } = {}): Promise<BusType[]> {
-    const qb = this.busTypeRepo.createQueryBuilder('type');
+  async findAll(
+    params: {
+      cooperationId?: number;
+      provinceId?: string;
+      districtId?: string;
+      q?: string;
+    } = {},
+  ): Promise<BusType[]> {
+    const qb = this.busTypeRepo
+      .createQueryBuilder('type')
+      .leftJoinAndSelect('type.cooperation', 'cooperation');
+
     if (params.cooperationId) {
       qb.andWhere('type.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
       });
+    }
+    if (params.provinceId) {
+      qb.andWhere('cooperation.provinceId = :provinceId', {
+        provinceId: params.provinceId,
+      });
+    }
+    if (params.districtId) {
+      qb.andWhere('cooperation.districtId = :districtId', {
+        districtId: params.districtId,
+      });
+    }
+    if (params.q) {
+      qb.andWhere('type.route ILIKE :q', { q: `%${params.q}%` });
     }
     return qb.orderBy('type.createdAt', 'DESC').getMany();
   }

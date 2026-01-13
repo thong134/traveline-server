@@ -14,19 +14,16 @@ import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      TravelRoute,
-      RouteStop,
-      Destination,
-      User,
-    ]),
+    TypeOrmModule.forFeature([TravelRoute, RouteStop, Destination, User]),
     CloudinaryModule,
     NotificationModule,
     HttpModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        baseURL: configService.get<string>('AI_MODEL_SERVICE_URL') ?? 'http://localhost:8000',
+        baseURL:
+          configService.get<string>('AI_MODEL_SERVICE_URL') ??
+          'http://localhost:8000',
         timeout: 10_000,
         maxRedirects: 2,
       }),

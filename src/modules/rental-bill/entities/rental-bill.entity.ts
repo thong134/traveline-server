@@ -68,7 +68,7 @@ export class RentalBill {
   rentalType: RentalBillType;
 
   @ApiProperty()
-  @Column({ type: 'timestamp'})
+  @Column({ type: 'timestamp' })
   startDate: Date;
 
   @ApiProperty()
@@ -87,11 +87,15 @@ export class RentalBill {
   })
   vehicleType: RentalVehicleType;
 
-  @ApiProperty({ description: 'Gói thuê (1h, 4h, 8h, 12h, 1d, 2d, 3d, 5d, 7d)' })
+  @ApiProperty({
+    description: 'Gói thuê (1h, 4h, 8h, 12h, 1d, 2d, 3d, 5d, 7d)',
+  })
   @Column({ length: 32, default: '1d' })
   durationPackage: string;
 
-  @ApiPropertyOptional({ description: 'Phương thức thanh toán (momo, qr_code, ...)' })
+  @ApiPropertyOptional({
+    description: 'Phương thức thanh toán (momo, qr_code, ...)',
+  })
   @Column({ type: 'varchar', length: 20, nullable: true })
   paymentMethod?: string;
 
@@ -170,7 +174,9 @@ export class RentalBill {
   @Column('text', { array: true, default: '{}' })
   deliveryPhotos: string[];
 
-  @ApiPropertyOptional({ description: 'Ảnh selfie xác thực của khách khi nhận xe' })
+  @ApiPropertyOptional({
+    description: 'Ảnh selfie xác thực của khách khi nhận xe',
+  })
   @Column({ nullable: true })
   pickupSelfiePhoto?: string;
 

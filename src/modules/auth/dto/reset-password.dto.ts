@@ -11,7 +11,9 @@ export class ResetPasswordDto {
   @Length(6, 6)
   code: string;
 
-  @ApiProperty({ description: 'Token trả về từ bước request-reset, chứa metadata OTP' })
+  @ApiProperty({
+    description: 'Token trả về từ bước request-reset, chứa metadata OTP',
+  })
   @IsString()
   token: string;
 

@@ -34,10 +34,7 @@ import { FptAiModule } from '../../common/fpt-ai/fpt-ai.module';
     CloudinaryModule,
     FptAiModule,
   ],
-  providers: [
-    AuthService,
-    JwtStrategy,
-  ],
+  providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
   exports: [AuthService, UsersModule],
 })

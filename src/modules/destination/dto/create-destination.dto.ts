@@ -72,7 +72,8 @@ export class CreateDestinationDto {
   @ApiPropertyOptional({ description: 'Danh mục', type: [String] })
   @IsOptional()
   @Transform(({ value }) => {
-    if (typeof value === 'string') return value.split(',').filter(v => v.trim() !== '');
+    if (typeof value === 'string')
+      return value.split(',').filter((v) => v.trim() !== '');
     if (Array.isArray(value)) return value;
     return value;
   })
@@ -80,13 +81,21 @@ export class CreateDestinationDto {
   @IsString({ each: true })
   categories?: string[];
 
-  // Note: photos and videos are files in multipart/form-data, 
+  // Note: photos and videos are files in multipart/form-data,
   // but we can define them here for Swagger documentation.
-  @ApiPropertyOptional({ type: 'array', items: { type: 'string', format: 'binary' }, description: 'Ảnh địa điểm (Yêu cầu ít nhất 1 ảnh)' })
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'string', format: 'binary' },
+    description: 'Ảnh địa điểm (Yêu cầu ít nhất 1 ảnh)',
+  })
   @IsOptional()
   photos?: any[];
 
-  @ApiPropertyOptional({ type: 'array', items: { type: 'string', format: 'binary' }, description: 'Video địa điểm' })
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'string', format: 'binary' },
+    description: 'Video địa điểm',
+  })
   @IsOptional()
   videos?: any[];
 
@@ -95,7 +104,10 @@ export class CreateDestinationDto {
   @Matches(/^\d{2}:\d{2}$/)
   openTime?: string;
 
-  @ApiPropertyOptional({ description: 'Giờ đóng cửa (HH:mm)', example: '21:30' })
+  @ApiPropertyOptional({
+    description: 'Giờ đóng cửa (HH:mm)',
+    example: '21:30',
+  })
   @IsOptional()
   @Matches(/^\d{2}:\d{2}$/)
   closeTime?: string;

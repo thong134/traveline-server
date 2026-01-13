@@ -23,7 +23,9 @@ class CoordinatesDto {
 }
 
 export class AdvancedSuggestTravelRouteDto {
-  @ApiPropertyOptional({ description: 'ID điểm bắt đầu (ưu tiên nếu cung cấp)' })
+  @ApiPropertyOptional({
+    description: 'ID điểm bắt đầu (ưu tiên nếu cung cấp)',
+  })
   @IsOptional()
   @IsInt()
   startDestinationId?: number;
@@ -37,12 +39,17 @@ export class AdvancedSuggestTravelRouteDto {
   @Type(() => CoordinatesDto)
   startCoordinates?: CoordinatesDto;
 
-  @ApiPropertyOptional({ description: 'Nhãn hiển thị cho điểm xuất phát (khi dùng tọa độ)' })
+  @ApiPropertyOptional({
+    description: 'Nhãn hiển thị cho điểm xuất phát (khi dùng tọa độ)',
+  })
   @IsOptional()
   @IsString()
   startLabel?: string;
 
-  @ApiPropertyOptional({ description: 'Danh sách điểm muốn ghé thăm', type: [Number] })
+  @ApiPropertyOptional({
+    description: 'Danh sách điểm muốn ghé thăm',
+    type: [Number],
+  })
   @IsOptional()
   @IsArray()
   @IsInt({ each: true })
@@ -53,12 +60,18 @@ export class AdvancedSuggestTravelRouteDto {
   @IsString()
   province?: string;
 
-  @ApiPropertyOptional({ description: 'Ngày bắt đầu (dd/MM/yyyy)', example: '27/12/2024' })
+  @ApiPropertyOptional({
+    description: 'Ngày bắt đầu (dd/MM/yyyy)',
+    example: '27/12/2024',
+  })
   @IsOptional()
   @IsString()
   startDate?: string;
 
-  @ApiPropertyOptional({ description: 'Ngày kết thúc (dd/MM/yyyy)', example: '29/12/2024' })
+  @ApiPropertyOptional({
+    description: 'Ngày kết thúc (dd/MM/yyyy)',
+    example: '29/12/2024',
+  })
   @IsOptional()
   @IsString()
   endDate?: string;
@@ -69,14 +82,22 @@ export class AdvancedSuggestTravelRouteDto {
   @Min(0)
   maxTime?: number;
 
-  @ApiPropertyOptional({ description: 'Số điểm gợi ý', default: 5, minimum: 1, maximum: 20 })
+  @ApiPropertyOptional({
+    description: 'Số điểm gợi ý',
+    default: 5,
+    minimum: 1,
+    maximum: 20,
+  })
   @IsOptional()
   @IsInt()
   @Min(1)
   @Max(20)
   topN = 5;
 
-  @ApiPropertyOptional({ description: 'Bao gồm cả địa điểm đã được người dùng đánh giá', default: false })
+  @ApiPropertyOptional({
+    description: 'Bao gồm cả địa điểm đã được người dùng đánh giá',
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   includeRated = false;

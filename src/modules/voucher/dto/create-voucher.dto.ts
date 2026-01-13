@@ -53,13 +53,19 @@ export class CreateVoucherDto {
   @Min(0)
   maxUsage?: number;
 
-  @ApiPropertyOptional({ description: 'Voucher start datetime (dd/MM/yyyy)', example: '01/01/2024' })
+  @ApiPropertyOptional({
+    description: 'Voucher start datetime (dd/MM/yyyy)',
+    example: '01/01/2024',
+  })
   @IsOptional()
   @TransformDDMMYYYY()
   @IsDate()
   startsAt?: Date;
 
-  @ApiPropertyOptional({ description: 'Voucher expiry datetime (dd/MM/yyyy)', example: '31/12/2024' })
+  @ApiPropertyOptional({
+    description: 'Voucher expiry datetime (dd/MM/yyyy)',
+    example: '31/12/2024',
+  })
   @IsOptional()
   @TransformDDMMYYYY()
   @IsDate()

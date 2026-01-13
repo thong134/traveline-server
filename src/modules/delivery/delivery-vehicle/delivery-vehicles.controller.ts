@@ -37,10 +37,18 @@ export class DeliveryVehiclesController {
   @Get()
   @ApiOperation({ summary: 'Danh sách phương tiện giao hàng' })
   @ApiQuery({ name: 'cooperationId', required: false, type: Number })
+  @ApiQuery({ name: 'provinceId', required: false })
+  @ApiQuery({ name: 'districtId', required: false })
   @ApiOkResponse({ description: 'Delivery vehicle list' })
-  findAll(@Query('cooperationId') cooperationId?: string) {
+  findAll(
+    @Query('cooperationId') cooperationId?: string,
+    @Query('provinceId') provinceId?: string,
+    @Query('districtId') districtId?: string,
+  ) {
     return this.service.findAll({
       cooperationId: cooperationId ? Number(cooperationId) : undefined,
+      provinceId,
+      districtId,
     });
   }
 

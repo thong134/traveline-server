@@ -39,7 +39,9 @@ export class DestinationEnrichmentService {
 
     if (keys.length > 0) {
       this.geminiClients = keys.map((key) => new GoogleGenerativeAI(key));
-      this.logger.log(`Initialized ${this.geminiClients.length} Gemini API keys for enrichment`);
+      this.logger.log(
+        `Initialized ${this.geminiClients.length} Gemini API keys for enrichment`,
+      );
     } else {
       this.logger.warn('No Gemini API keys configured for enrichment service');
     }
@@ -48,14 +50,17 @@ export class DestinationEnrichmentService {
   private getNextClient(): GoogleGenerativeAI | null {
     if (this.geminiClients.length === 0) return null;
     const client = this.geminiClients[this.currentClientIndex];
-    this.currentClientIndex = (this.currentClientIndex + 1) % this.geminiClients.length;
+    this.currentClientIndex =
+      (this.currentClientIndex + 1) % this.geminiClients.length;
     return client;
   }
 
   /**
    * Generate bilingual descriptions for a single destination using Gemini AI.
    */
-  async generateDescriptions(destination: Destination): Promise<EnrichedDescription | null> {
+  async generateDescriptions(
+    destination: Destination,
+  ): Promise<EnrichedDescription | null> {
     const client = this.getNextClient();
     if (!client) {
       this.logger.error('No Gemini client available');
@@ -84,18 +89,22 @@ Trả lời theo định dạng JSON (KHÔNG có markdown code block):
       const model = client.getGenerativeModel({ model: this.modelName });
       const result = await model.generateContent(prompt);
       const text = result.response.text();
-      
+
       // Parse JSON from response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]) as EnrichedDescription;
         return parsed;
       }
-      
-      this.logger.warn(`Failed to parse JSON from Gemini response for destination ${destination.id}`);
+
+      this.logger.warn(
+        `Failed to parse JSON from Gemini response for destination ${destination.id}`,
+      );
       return null;
     } catch (error) {
-      this.logger.error(`Gemini API error for destination ${destination.id}: ${error.message}`);
+      this.logger.error(
+        `Gemini API error for destination ${destination.id}: ${error.message}`,
+      );
       return null;
     }
   }
@@ -115,10 +124,10 @@ Trả lời theo định dạng JSON (KHÔNG có markdown code block):
 
     destination.descriptionViet = descriptions.descriptionViet;
     destination.descriptionEng = descriptions.descriptionEng;
-    
+
     await this.destinationRepo.save(destination);
     this.logger.log(`Enriched destination ${id}: ${destination.name}`);
-    
+
     return destination;
   }
 
@@ -133,25 +142,28 @@ Trả lời theo định dạng JSON (KHÔNG có markdown code block):
     onlyEmpty: boolean = true,
     delayMs: number = 1000,
   ): Promise<{ processed: number; success: number; failed: number }> {
-    const query = this.destinationRepo.createQueryBuilder('d')
+    const query = this.destinationRepo
+      .createQueryBuilder('d')
       .where('d.available = :available', { available: true });
 
     if (onlyEmpty) {
-      query.andWhere('(d.descriptionViet IS NULL OR d.descriptionViet = :empty OR d.descriptionEng IS NULL OR d.descriptionEng = :empty)', 
-        { empty: '' });
+      query.andWhere(
+        '(d.descriptionViet IS NULL OR d.descriptionViet = :empty OR d.descriptionEng IS NULL OR d.descriptionEng = :empty)',
+        { empty: '' },
+      );
     }
 
     const destinations = await query.take(limit).getMany();
-    
+
     let processed = 0;
     let success = 0;
     let failed = 0;
 
     for (const dest of destinations) {
       processed++;
-      
+
       const descriptions = await this.generateDescriptions(dest);
-      
+
       if (descriptions) {
         dest.descriptionViet = descriptions.descriptionViet;
         dest.descriptionEng = descriptions.descriptionEng;
@@ -160,12 +172,14 @@ Trả lời theo định dạng JSON (KHÔNG có markdown code block):
         this.logger.log(`[${processed}/${destinations.length}] ✓ ${dest.name}`);
       } else {
         failed++;
-        this.logger.warn(`[${processed}/${destinations.length}] ✗ ${dest.name}`);
+        this.logger.warn(
+          `[${processed}/${destinations.length}] ✗ ${dest.name}`,
+        );
       }
 
       // Delay to avoid rate limiting
       if (processed < destinations.length) {
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
 
@@ -182,25 +196,37 @@ Trả lời theo định dạng JSON (KHÔNG có markdown code block):
     withBoth: number;
     needsEnrichment: number;
   }> {
-    const total = await this.destinationRepo.count({ where: { available: true } });
-    
+    const total = await this.destinationRepo.count({
+      where: { available: true },
+    });
+
     const withViDesc = await this.destinationRepo
       .createQueryBuilder('d')
       .where('d.available = true')
-      .andWhere('d.descriptionViet IS NOT NULL AND d.descriptionViet != :empty', { empty: '' })
+      .andWhere(
+        'd.descriptionViet IS NOT NULL AND d.descriptionViet != :empty',
+        { empty: '' },
+      )
       .getCount();
 
     const withEnDesc = await this.destinationRepo
       .createQueryBuilder('d')
       .where('d.available = true')
-      .andWhere('d.descriptionEng IS NOT NULL AND d.descriptionEng != :empty', { empty: '' })
+      .andWhere('d.descriptionEng IS NOT NULL AND d.descriptionEng != :empty', {
+        empty: '',
+      })
       .getCount();
 
     const withBoth = await this.destinationRepo
       .createQueryBuilder('d')
       .where('d.available = true')
-      .andWhere('d.descriptionViet IS NOT NULL AND d.descriptionViet != :empty', { empty: '' })
-      .andWhere('d.descriptionEng IS NOT NULL AND d.descriptionEng != :empty', { empty: '' })
+      .andWhere(
+        'd.descriptionViet IS NOT NULL AND d.descriptionViet != :empty',
+        { empty: '' },
+      )
+      .andWhere('d.descriptionEng IS NOT NULL AND d.descriptionEng != :empty', {
+        empty: '',
+      })
       .getCount();
 
     return {
@@ -220,9 +246,9 @@ Trả lời theo định dạng JSON (KHÔNG có markdown code block):
     const desc = dest.descriptionViet || '';
     const name = dest.name || '';
     const province = dest.province || '';
-    
+
     if (!desc || desc.length < 20) return true;
-    
+
     // Patterns that indicate generic province descriptions
     const genericPatterns = [
       'là một trong sáu thành phố trực thuộc',
@@ -238,13 +264,16 @@ Trả lời theo định dạng JSON (KHÔNG có markdown code block):
       'là một đảo quốc',
       `${province} là`,
     ];
-    
+
     const descLower = desc.toLowerCase();
-    const isGeneric = genericPatterns.some(pattern => descLower.includes(pattern.toLowerCase()));
-    
+    const isGeneric = genericPatterns.some((pattern) =>
+      descLower.includes(pattern.toLowerCase()),
+    );
+
     // Check if description mentions the destination name
-    const mentionsDestination = desc.includes(name) || descLower.includes(name.toLowerCase());
-    
+    const mentionsDestination =
+      desc.includes(name) || descLower.includes(name.toLowerCase());
+
     // Description is low quality if it's generic AND doesn't mention the destination
     return isGeneric && !mentionsDestination;
   }
@@ -257,25 +286,30 @@ Trả lời theo định dạng JSON (KHÔNG có markdown code block):
     summary: { total: number; needsEnglish: number; lowQuality: number };
     data: any[];
   }> {
-    let query = this.destinationRepo.createQueryBuilder('d')
+    let query = this.destinationRepo
+      .createQueryBuilder('d')
       .where('d.available = true');
 
     if (onlyNeedsTranslation) {
-      query = query.andWhere('(d.descriptionEng IS NULL OR d.descriptionEng = :empty)', { empty: '' });
+      query = query.andWhere(
+        '(d.descriptionEng IS NULL OR d.descriptionEng = :empty)',
+        { empty: '' },
+      );
     }
 
     const destinations = await query.orderBy('d.id', 'ASC').getMany();
-    
+
     let needsEnglish = 0;
     let lowQuality = 0;
-    
-    const data = destinations.map(dest => {
+
+    const data = destinations.map((dest) => {
       const isLowQuality = this.isLowQualityDescription(dest);
-      const needsEng = !dest.descriptionEng || dest.descriptionEng.trim() === '';
-      
+      const needsEng =
+        !dest.descriptionEng || dest.descriptionEng.trim() === '';
+
       if (needsEng) needsEnglish++;
       if (isLowQuality) lowQuality++;
-      
+
       return {
         id: dest.id,
         name: dest.name,
@@ -288,7 +322,8 @@ Trả lời theo định dạng JSON (KHÔNG có markdown code block):
         isLowQuality,
         needsEnglish: needsEng,
         // Truncated preview for review
-        descriptionPreview: (dest.descriptionViet || '').substring(0, 100) + '...',
+        descriptionPreview:
+          (dest.descriptionViet || '').substring(0, 100) + '...',
       };
     });
 
@@ -314,8 +349,10 @@ Trả lời theo định dạng JSON (KHÔNG có markdown code block):
 
     for (const item of data) {
       try {
-        const dest = await this.destinationRepo.findOne({ where: { id: item.id } });
-        
+        const dest = await this.destinationRepo.findOne({
+          where: { id: item.id },
+        });
+
         if (!dest) {
           errors.push(`Destination ${item.id} not found`);
           skipped++;
@@ -323,12 +360,12 @@ Trả lời theo định dạng JSON (KHÔNG có markdown code block):
         }
 
         let hasChanges = false;
-        
+
         if (item.descriptionViet && item.descriptionViet.trim() !== '') {
           dest.descriptionViet = item.descriptionViet.trim();
           hasChanges = true;
         }
-        
+
         if (item.descriptionEng && item.descriptionEng.trim() !== '') {
           dest.descriptionEng = item.descriptionEng.trim();
           hasChanges = true;

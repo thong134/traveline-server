@@ -44,7 +44,6 @@ export class CreateRentalContractDto {
   @IsString()
   businessName?: string;
 
-
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

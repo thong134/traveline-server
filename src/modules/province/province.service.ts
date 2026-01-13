@@ -17,16 +17,17 @@ export class ProvincesService {
     return this.repo.save(province);
   }
 
-  async findAll(
-    options: { q?: string } = {},
-  ): Promise<Province[]> {
+  async findAll(options: { q?: string } = {}): Promise<Province[]> {
     const { q } = options;
     const qb = this.repo.createQueryBuilder('province');
 
     if (q) {
-      qb.andWhere('(province.name ILIKE :q OR province.code ILIKE :q OR province.fullName ILIKE :q)', {
-        q: `%${q}%`,
-      });
+      qb.andWhere(
+        '(province.name ILIKE :q OR province.code ILIKE :q OR province.fullName ILIKE :q)',
+        {
+          q: `%${q}%`,
+        },
+      );
     }
 
     return qb.orderBy('province.name', 'ASC').getMany();
@@ -59,7 +60,8 @@ export class ProvincesService {
     for (const update of updates) {
       const province = provinceMap.get(update.code);
       if (province) {
-        if (update.avatarUrl !== undefined) province.avatarUrl = update.avatarUrl;
+        if (update.avatarUrl !== undefined)
+          province.avatarUrl = update.avatarUrl;
       }
     }
 

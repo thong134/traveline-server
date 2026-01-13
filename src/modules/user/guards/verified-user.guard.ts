@@ -29,7 +29,9 @@ export class VerifiedUserGuard implements CanActivate {
       throw new ForbiddenException('Số điện thoại của bạn chưa được xác thực');
     }
     if (!userDetail.isCitizenIdVerified) {
-      throw new ForbiddenException('Căn cước công dân của bạn chưa được xác thực');
+      throw new ForbiddenException(
+        'Căn cước công dân của bạn chưa được xác thực',
+      );
     }
 
     return true;

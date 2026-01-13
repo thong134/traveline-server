@@ -68,7 +68,9 @@ export class LegacyAdministrativeService {
     return district;
   }
 
-  async findDistrictsByProvince(provinceCode: string): Promise<LegacyDistrict[]> {
+  async findDistrictsByProvince(
+    provinceCode: string,
+  ): Promise<LegacyDistrict[]> {
     return this.districtRepo.find({
       where: { provinceCode },
       order: { name: 'ASC' },

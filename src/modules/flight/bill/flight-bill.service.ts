@@ -361,11 +361,11 @@ export class FlightBillsService {
       const cooperationId =
         bill.flight?.cooperation?.id ?? bill.cooperation?.id;
       if (cooperationId) {
-      await this.cooperationsService.adjustBookingMetrics(
+        await this.cooperationsService.adjustBookingMetrics(
           cooperationId,
-        bill.numberOfTickets,
-        Number(bill.total),
-      );
+          bill.numberOfTickets,
+          Number(bill.total),
+        );
       }
       if (bill.voucher?.id) {
         await this.vouchersService.incrementUsage(bill.voucher.id);
@@ -390,11 +390,11 @@ export class FlightBillsService {
       const cooperationId =
         bill.flight?.cooperation?.id ?? bill.cooperation?.id;
       if (cooperationId) {
-      await this.cooperationsService.adjustBookingMetrics(
+        await this.cooperationsService.adjustBookingMetrics(
           cooperationId,
-        -bill.numberOfTickets,
-        -Number(bill.total),
-      );
+          -bill.numberOfTickets,
+          -Number(bill.total),
+        );
       }
     }
 

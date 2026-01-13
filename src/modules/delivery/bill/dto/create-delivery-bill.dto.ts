@@ -17,7 +17,10 @@ export class CreateDeliveryBillDto {
   @Min(1)
   vehicleId: number;
 
-  @ApiProperty({ description: 'Scheduled delivery date (ISO or dd:MM:yyyy HH:mm)', example: '25:12:2024 10:00' })
+  @ApiProperty({
+    description: 'Scheduled delivery date (ISO or dd:MM:yyyy HH:mm)',
+    example: '25:12:2024 10:00',
+  })
   @IsString()
   @IsNotEmpty()
   deliveryDate: string;

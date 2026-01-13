@@ -50,12 +50,30 @@ export class RestaurantTablesService {
   }
 
   async findAll(
-    params: { cooperationId?: number; active?: boolean } = {},
+    params: {
+      cooperationId?: number;
+      active?: boolean;
+      provinceId?: string;
+      districtId?: string;
+    } = {},
   ): Promise<RestaurantTable[]> {
-    const qb = this.tableRepo.createQueryBuilder('table');
+    const qb = this.tableRepo
+      .createQueryBuilder('table')
+      .leftJoinAndSelect('table.cooperation', 'cooperation');
+
     if (params.cooperationId) {
       qb.andWhere('table.cooperation_id = :cooperationId', {
         cooperationId: params.cooperationId,
+      });
+    }
+    if (params.provinceId) {
+      qb.andWhere('cooperation.provinceId = :provinceId', {
+        provinceId: params.provinceId,
+      });
+    }
+    if (params.districtId) {
+      qb.andWhere('cooperation.districtId = :districtId', {
+        districtId: params.districtId,
       });
     }
     if (typeof params.active === 'boolean') {
