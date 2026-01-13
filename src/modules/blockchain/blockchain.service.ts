@@ -49,14 +49,20 @@ export class BlockchainService {
       this.configService.get<string>('ETHEREUM_RPC_URL');
 
     if (!rpcUrl) {
-      throw new Error(
-        'Missing Ethereum RPC URL configuration (SEPOLIA_RPC_URL)',
+      this.logger.warn(
+        'Missing Ethereum RPC URL configuration (SEPOLIA_RPC_URL). Blockchain operations will be unavailable.',
       );
+      // We don't throw here to avoid crashing the whole App during boot on serverless
+      return;
     }
 
-    this.provider = new JsonRpcProvider(rpcUrl);
-    this.rentalEscrowAddress =
-      this.configService.get<string>('RENTAL_ESCROW_ADDRESS') ?? undefined;
+    try {
+      this.provider = new JsonRpcProvider(rpcUrl);
+      this.rentalEscrowAddress =
+        this.configService.get<string>('RENTAL_ESCROW_ADDRESS') ?? undefined;
+    } catch (err) {
+      this.logger.error('Failed to initialize Blockchain provider', err);
+    }
   }
 
   /**

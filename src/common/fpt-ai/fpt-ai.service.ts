@@ -14,7 +14,10 @@ export class FptAiService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
-    this.apiKey = this.configService.getOrThrow<string>('FPT_AI_API_KEY');
+    this.apiKey = this.configService.get<string>('FPT_AI_API_KEY') || '';
+    if (!this.apiKey) {
+      this.logger.warn('FPT_AI_API_KEY is missing. FPT AI features will be disabled.');
+    }
   }
 
   async recognizeIdCard(
