@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
@@ -15,55 +16,66 @@ let cachedApp: INestApplication;
 async function createServer(): Promise<INestApplication> {
   if (cachedApp) return cachedApp;
 
-  const app = await NestFactory.create(
-    AppModule,
-    new ExpressAdapter(expressApp),
-  );
+  console.log('--- Khởi tạo NestJS Application ---');
+  try {
+    const app = await NestFactory.create(
+      AppModule,
+      new ExpressAdapter(expressApp),
+    );
 
-  // Allow local frontend (3001) to call the API during dev
-  app.enableCors({
-    origin: ['http://localhost:3001', '*'],
-    credentials: true,
-  });
+    app.enableCors({
+      origin: ['http://localhost:3001', '*'],
+      credentials: true,
+    });
 
-  // Bật validation cho DTO
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true, // tự bỏ field lạ
-      transform: true, // tự convert kiểu (e.g. string->number)
-      forbidNonWhitelisted: true, // chặn field không khai báo
-    }),
-  );
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
 
-  app.useGlobalInterceptors(new LocalTimeInterceptor());
+    app.useGlobalInterceptors(new LocalTimeInterceptor());
 
-  const config = new DocumentBuilder()
-    .setTitle('Traveline API')
-    .setDescription('Tài liệu API cho đồ án Traveline')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document, {
-    swaggerOptions: { persistAuthorization: true },
-  });
+    const config = new DocumentBuilder()
+      .setTitle('Traveline API')
+      .setDescription('Tài liệu API cho đồ án Traveline')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document, {
+      swaggerOptions: { persistAuthorization: true },
+    });
 
-  await app.init();
-  cachedApp = app;
-  return app;
+    console.log('Đang chạy app.init()...');
+    await app.init();
+    console.log('app.init() thành công.');
+    
+    cachedApp = app;
+    return app;
+  } catch (err) {
+    console.error('Lỗi khi khởi tạo NestJS:', err);
+    throw err;
+  }
 }
 
 // Chế độ 1: Chạy standalone (Local development)
 async function bootstrap() {
-  const app = await createServer();
-  const portValue =
-    process.env.PORT ?? process.env.APP_PORT ?? process.env.HTTP_PORT ?? '3000';
-  const port = Number.isFinite(Number(portValue)) ? Number(portValue) : 3000;
+  try {
+    const app = await createServer();
+    const portValue =
+      process.env.PORT ?? process.env.APP_PORT ?? process.env.HTTP_PORT ?? '3000';
+    const port = Number.isFinite(Number(portValue)) ? Number(portValue) : 3000;
 
-  await app.listen(port);
-  console.log(`\nMODE: STANDALONE`);
-  console.log(`API đang chạy: http://localhost:${port}`);
-  console.log(`Swagger UI: http://localhost:${port}/docs`);
+    await app.listen(port);
+    console.log(`\nMODE: STANDALONE`);
+    console.log(`API đang chạy: http://localhost:${port}`);
+    console.log(`Swagger UI: http://localhost:${port}/docs`);
+  } catch (err) {
+    console.error('Bootstrap failed:', err);
+  }
 }
 
 // Chế độ 2: Chạy trên Vercel (Serverless)
@@ -73,6 +85,12 @@ if (!process.env.VERCEL) {
 
 // Export server cho Vercel handler
 export default async (req: any, res: any) => {
-  await createServer();
-  expressApp(req, res);
+  try {
+    console.log(`--- Request: ${req.method} ${req.url} ---`);
+    await createServer();
+    expressApp(req, res);
+  } catch (err) {
+    console.error('Vercel Handler Error:', err);
+    res.status(500).send('Internal Server Error during initialization');
+  }
 };

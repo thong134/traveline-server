@@ -48,6 +48,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
     "ethers": "^6.15.0",
+    "express": "^5.2.1",
     "firebase-admin": "^12.7.0",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",

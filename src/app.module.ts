@@ -44,7 +44,10 @@ import { SeederModule } from './modules/seeder/seeder.module';
         type: 'postgres',
         url: process.env.DATABASE_URL,
         autoLoadEntities: true,
-        synchronize: true,
+        synchronize: process.env.VERCEL ? false : true, // Tắt sync trên Vercel để boot nhanh hơn
+        ssl: process.env.DATABASE_URL?.includes('render.com') || process.env.DATABASE_URL?.includes('neon.tech') 
+          ? { rejectUnauthorized: false } 
+          : false,
         timezone: 'Asia/Ho_Chi_Minh',
         extra: {
           options: '-c timezone=Asia/Ho_Chi_Minh',
