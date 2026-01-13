@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import 'dotenv/config';
 import express from 'express';
@@ -9,12 +9,15 @@ import { LocalTimeInterceptor } from './common/interceptors/local-time.intercept
 
 process.env.TZ = 'Asia/Ho_Chi_Minh';
 
-const server = express();
+const expressApp = express();
+let cachedApp: INestApplication;
 
-async function createServer() {
+async function createServer(): Promise<INestApplication> {
+  if (cachedApp) return cachedApp;
+
   const app = await NestFactory.create(
     AppModule,
-    new ExpressAdapter(server),
+    new ExpressAdapter(expressApp),
   );
 
   // Allow local frontend (3001) to call the API during dev
@@ -27,8 +30,8 @@ async function createServer() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // tự bỏ field lạ
-      forbidNonWhitelisted: true, // chặn field không khai báo
       transform: true, // tự convert kiểu (e.g. string->number)
+      forbidNonWhitelisted: true, // chặn field không khai báo
     }),
   );
 
@@ -36,7 +39,7 @@ async function createServer() {
 
   const config = new DocumentBuilder()
     .setTitle('Traveline API')
-    .setDescription('REST API documentation for Traveline platform')
+    .setDescription('Tài liệu API cho đồ án Traveline')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
@@ -46,6 +49,7 @@ async function createServer() {
   });
 
   await app.init();
+  cachedApp = app;
   return app;
 }
 
@@ -70,5 +74,5 @@ if (!process.env.VERCEL) {
 // Export server cho Vercel handler
 export default async (req: any, res: any) => {
   await createServer();
-  server(req, res);
+  expressApp(req, res);
 };
