@@ -17,6 +17,11 @@ async function createServer(): Promise<INestApplication> {
   if (cachedApp) return cachedApp;
 
   console.log('--- Khởi tạo NestJS Application ---');
+  
+  if (!process.env.DATABASE_URL) {
+    console.error('CRITICAL ERROR: DATABASE_URL is not defined in environment variables!');
+  }
+
   try {
     const app = await NestFactory.create(
       AppModule,

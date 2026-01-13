@@ -311,25 +311,30 @@ export class DestinationsService {
 
     const csvContent = csvHeader + csvRows.join('\n');
     
-    // Path to AI service data directory - assuming local development structure
-    // IMPORTANT: In production, this would be an API call or shared volume
-    const aiDataPath = 'd:/ai-model-service/data/destinations.csv';
-    const fs = require('fs');
-    
-    try {
-      fs.writeFileSync(aiDataPath, csvContent);
-    } catch (e) {
-      console.warn('Failed to write CSV to AI service dir:', e.message);
-      return; 
-    }
-    
     // Trigger reload in AI Service
     const aiUrl = this.configService.get<string>('AI_SERVICE_URL') ?? 'http://localhost:8000';
+    
+    // Path to AI service data directory - only used in local development
+    const aiDataPath = this.configService.get<string>('AI_DATA_PATH') || 'd:/ai-model-service/data/destinations.csv';
+    
+    // Only attempt to write CSV locally if we're not on Vercel and the path exists
+    if (!process.env.VERCEL) {
+      const fs = require('fs');
+      try {
+        if (fs.existsSync(require('path').dirname(aiDataPath))) {
+          fs.writeFileSync(aiDataPath, csvContent);
+          console.log(`✓ CSV exported locally to: ${aiDataPath}`);
+        }
+      } catch (e) {
+        console.warn('Local CSV sync skipped:', e.message);
+      }
+    }
+    
     try {
       await firstValueFrom(this.httpService.post(`${aiUrl}/reload`, {}));
-      console.log('✓ AI Model reloaded with fresh data from Database');
+      console.log('✓ AI Model reload triggered');
     } catch (e) {
-      console.error('Failed to reload AI model endpoint:', e.message);
+      console.error('Failed to trigger AI reload:', e.message);
     }
   }
 
