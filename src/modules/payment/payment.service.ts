@@ -200,9 +200,10 @@ export class PaymentService {
     const secretKey = process.env.MOMO_SECRET_KEY;
     const endpoint = process.env.MOMO_ENDPOINT;
     const ipnUrl = process.env.MOMO_IPN_URL;
-    const redirectUrl =
-      process.env.FRONTEND_RETURN_URL ||
-      `${process.env.APP_URL || 'http://localhost:8080'}/payments/momo/result`;
+    
+    // Chuẩn hóa redirectUrl: Loại bỏ dấu / ở cuối APP_URL nếu có và thêm path
+    const baseUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const redirectUrl = process.env.FRONTEND_RETURN_URL || `${baseUrl}/payments/momo/result`;
 
     if (!partnerCode || !accessKey || !secretKey || !endpoint || !ipnUrl) {
       throw new BadRequestException(
@@ -262,10 +263,16 @@ export class PaymentService {
       }
       return { payUrl, paymentId: saved.id };
     } catch (error) {
-      this.logger.error(
-        'MoMo createPayment failed',
-        error instanceof Error ? error.stack : undefined,
-      );
+      if (axios.isAxiosError(error) && error.response) {
+        this.logger.error(
+          `MoMo createPayment failed with data: ${JSON.stringify(error.response.data)}`,
+        );
+      } else {
+        this.logger.error(
+          'MoMo createPayment failed',
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
       const raw: Record<string, unknown> | undefined =
         error instanceof Error ? { message: error.message } : undefined;
       await this.paymentRepo.update(saved.id, {
