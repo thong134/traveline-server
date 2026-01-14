@@ -892,7 +892,7 @@ export class TravelRoutesService {
     stopId: number,
     latitude: number,
     longitude: number,
-    toleranceMeters = 100,
+    toleranceMeters = 3000,
   ): Promise<{ matched: boolean; distanceMeters: number; stop: RouteStop }> {
     const result = await this.dataSource.transaction(
       async (
