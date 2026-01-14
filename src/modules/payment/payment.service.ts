@@ -200,7 +200,9 @@ export class PaymentService {
     const secretKey = process.env.MOMO_SECRET_KEY;
     const endpoint = process.env.MOMO_ENDPOINT;
     const ipnUrl = process.env.MOMO_IPN_URL;
-    const redirectUrl = process.env.FRONTEND_RETURN_URL ?? 'https://localhost';
+    const redirectUrl =
+      process.env.FRONTEND_RETURN_URL ||
+      `${process.env.APP_URL || 'http://localhost:8080'}/payments/momo/result`;
 
     if (!partnerCode || !accessKey || !secretKey || !endpoint || !ipnUrl) {
       throw new BadRequestException(
