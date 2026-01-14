@@ -27,9 +27,25 @@ export class PaymentController {
 
   @Get('momo/result')
   @ApiOperation({ summary: 'Trang kết quả thanh toán MoMo (HTML)' })
-  handleMomoResult(@Query() query: any) {
-    const isSuccess = query.resultCode === '0';
-    const message = query.message || (isSuccess ? 'Thanh toán thành công' : 'Thanh toán thất bại');
+  async handleMomoResult(@Query() query: any) {
+    const isValid = this.paymentService.verifyMomoSignature(query);
+    let errorMsg = '';
+    
+    if (!isValid) {
+      errorMsg = 'Chữ ký không hợp lệ';
+    } else {
+      try {
+        const result = await this.paymentService.finishMomoPayment(query);
+        if (!result.ok) {
+          errorMsg = result.message || 'Thanh toán thất bại';
+        }
+      } catch (err) {
+        errorMsg = 'Lỗi hệ thống khi xử lý thanh toán';
+      }
+    }
+
+    const isSuccess = query.resultCode === '0' && !errorMsg;
+    const message = errorMsg || query.message || (isSuccess ? 'Thanh toán thành công' : 'Thanh toán thất bại');
     const color = isSuccess ? '#28a745' : '#dc3545';
     const icon = isSuccess ? '✅' : '❌';
 

@@ -441,6 +441,12 @@ export class PaymentService {
 
     this.logger.log(`Signature verified for orderId: ${orderId}`);
 
+    return this.finishMomoPayment(payload);
+  }
+
+  async finishMomoPayment(payload: MomoIpnPayload) {
+    const { orderId, requestId, resultCode, transId, amount } = payload;
+    
     const payment = await this.paymentRepo.findOne({
       where: { orderId, requestId },
     });
@@ -456,28 +462,26 @@ export class PaymentService {
       return { ok: true, message: 'Payment already processed' };
     }
 
-    if (resultCode !== 0) {
+    if (resultCode != 0) {
       this.logger.warn(
-        `MoMo payment failed with resultCode ${resultCode}: ${message}`,
+        `MoMo payment failed with resultCode ${resultCode}`,
       );
-      const raw: Record<string, unknown> = payload as Record<string, unknown>;
       await this.paymentRepo.update(payment.id, {
         status: PaymentStatus.FAILED,
-        rawResponse: raw as any,
+        rawResponse: payload as any,
         transactionId: transId ? String(transId) : undefined,
       });
-      return { ok: true, message: 'Payment failed' };
+      return { ok: false, message: 'Payment failed' };
     }
 
     this.logger.log(
       `Processing successful payment for rentalId: ${payment.rentalId}`,
     );
 
-    const rawOk: Record<string, unknown> = payload as Record<string, unknown>;
     await this.paymentRepo.update(payment.id, {
       status: PaymentStatus.SUCCESS,
       transactionId: transId ? String(transId) : undefined,
-      rawResponse: rawOk as any,
+      rawResponse: payload as any,
     });
 
     const rental = await this.rentalRepo.findOne({
@@ -487,7 +491,7 @@ export class PaymentService {
       this.logger.log(`Found rental ${rental.id}, starting wallet escrow...`);
       // 1. Wallet escrow: Deposit from MoMo and Lock for rental
       try {
-        const amountNum = parseFloat(payment.amount);
+        const amountNum = parseFloat(String(amount || payment.amount));
         if (amountNum > 0) {
           await this.walletService.deposit(
             rental.userId,
@@ -524,7 +528,7 @@ export class PaymentService {
               deducted,
             );
             this.logger.log(
-              `Deducted ${deducted} points from user ${user.id} (MoMo IPN)`,
+              `Deducted ${deducted} points from user ${user.id} (MoMo Process)`,
             );
           }
         }
@@ -551,6 +555,34 @@ export class PaymentService {
     }
 
     return { ok: true };
+  }
+
+  verifyMomoSignature(payload: MomoIpnPayload): boolean {
+    const accessKey = process.env.MOMO_ACCESS_KEY;
+    const secretKey = process.env.MOMO_SECRET_KEY;
+    if (!accessKey || !secretKey) return false;
+
+    const {
+      amount,
+      orderId,
+      requestId,
+      resultCode,
+      message,
+      transId,
+      signature,
+      orderInfo,
+      orderType,
+      payType,
+      responseTime,
+      extraData,
+    } = payload;
+
+    const rawSignature = `accessKey=${accessKey}&amount=${amount ?? ''}&extraData=${extraData ?? ''}&message=${message ?? ''}&orderId=${orderId}&orderInfo=${orderInfo ?? ''}&orderType=${orderType ?? ''}&partnerCode=${payload.partnerCode ?? ''}&payType=${payType ?? ''}&requestId=${requestId}&responseTime=${responseTime ?? ''}&resultCode=${resultCode ?? ''}&transId=${transId ?? ''}`;
+    const expected = createHmac('sha256', secretKey)
+      .update(rawSignature)
+      .digest('hex');
+
+    return expected === signature;
   }
 
   async refundMomo(paymentId: number) {
