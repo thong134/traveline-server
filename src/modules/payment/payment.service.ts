@@ -201,9 +201,9 @@ export class PaymentService {
     const endpoint = process.env.MOMO_ENDPOINT;
     const ipnUrl = process.env.MOMO_IPN_URL;
     
-    // Chuẩn hóa redirectUrl: Loại bỏ dấu / ở cuối APP_URL nếu có và thêm path
-    const baseUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
-    const redirectUrl = process.env.FRONTEND_RETURN_URL || `${baseUrl}/payments/momo/result`;
+    // Khôi phục về https://localhost vì MoMo Sandbox bắt buộc dùng HTTPS
+    // Nếu dùng http://localhost:3000 MoMo sẽ báo lỗi 403 Forbidden.
+    const redirectUrl = process.env.FRONTEND_RETURN_URL || 'https://localhost';
 
     if (!partnerCode || !accessKey || !secretKey || !endpoint || !ipnUrl) {
       throw new BadRequestException(
