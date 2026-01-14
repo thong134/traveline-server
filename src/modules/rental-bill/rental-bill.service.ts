@@ -837,7 +837,7 @@ export class RentalBillsService {
       throw new BadRequestException('Khách hàng chưa gửi yêu cầu trả xe');
     }
 
-    // GPS Validation (< 50m)
+    // GPS Validation (< 150m)
     if (bill.returnLatitudeUser && bill.returnLongitudeUser) {
       const distance = this.calculateDistance(
         dto.latitude,
@@ -845,10 +845,10 @@ export class RentalBillsService {
         Number(bill.returnLatitudeUser),
         Number(bill.returnLongitudeUser),
       );
-      if (distance > 0.05) {
-        // 0.05 km = 50m
+      if (distance > 0.15) {
+        // 0.15 km = 150m
         throw new BadRequestException(
-          `Vị trí xác nhận quá xa điểm trả xe của khách (${Math.round(distance * 1000)}m > 50m)`,
+          `Vị trí xác nhận quá xa điểm trả xe của khách (${Math.round(distance * 1000)}m > 150m)`,
         );
       }
     }
