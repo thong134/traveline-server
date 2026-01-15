@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
+import { MapService } from '../../../common/map/map.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import { HotelRoom } from './entities/hotel-room.entity';
@@ -43,7 +45,10 @@ export class HotelRoomsService {
     private readonly billRepo: Repository<HotelBill>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly mapService: MapService,
   ) {}
+
+  private readonly logger = new Logger(HotelRoomsService.name);
 
   private formatMoney(value: number | string | undefined): string {
     if (value === undefined || value === null) {
@@ -455,25 +460,63 @@ export class HotelRoomsService {
     const qb = this.cooperationRepo
       .createQueryBuilder('coop')
       .leftJoinAndSelect('coop.rooms', 'rooms')
-      .where('coop.type = :type', { type: 'hotel' })
+      .where({ type: ILike('hotel') })
+      .andWhere('coop.latitude IS NOT NULL')
+      .andWhere('coop.longitude IS NOT NULL')
       .andWhere('coop.status = :status', { status: CooperationStatus.ACTIVE });
 
+    this.logger.log(`Searching hotels with query: ${JSON.stringify(query)}`);
     let hotels = await qb.getMany();
+    this.logger.log(`Found ${hotels.length} hotels from DB with coordinates.`);
 
     // Distance filtering if lat/lon provided
     if (query.latitude && query.longitude) {
-      hotels = hotels.filter((h) => {
-        if (!h.latitude || !h.longitude) return false;
-        const dist = calculateDistance(
+      // 1. Pre-filter using Haversine (lightweight) to reduce OSRM calls
+      const PRE_FILTER_RADIUS = 50; // 50km buffer for pre-filtering
+      const candidateHotels = hotels.filter((h) => {
+        if (!h.latitude || !h.longitude) {
+           this.logger.warn(`Hotel ${h.name} (ID: ${h.id}) is missing coordinates. Lat: ${h.latitude}, Long: ${h.longitude}`);
+           return false;
+        }
+        const haversineDist = calculateDistance(
           query.latitude!,
           query.longitude!,
           Number(h.latitude),
           Number(h.longitude),
         );
-        (h as any).distance = dist;
-        return dist <= 20; // 20km radius
+        return haversineDist <= PRE_FILTER_RADIUS;
       });
+
+      this.logger.log(`Pre-filtered ${candidateHotels.length}/${hotels.length} hotels within ${PRE_FILTER_RADIUS}km (Haversine).`);
+
+      // 2. Accurate filtering using OSRM (heavy)
+      const hotelsWithDistance = await Promise.all(
+        candidateHotels.map(async (h) => {
+          try {
+            const dist = await this.mapService.getDistance(
+              query.latitude!,
+              query.longitude!,
+              Number(h.latitude),
+              Number(h.longitude),
+            );
+            (h as any).distance = dist;
+            this.logger.log(`Hotel ${h.name}: Lat=${h.latitude}, Long=${h.longitude}, Distance=${dist}km (Threshold: 20km)`);
+            
+            if (dist > 20) {
+              this.logger.log(`Hotel ${h.name} excluded due to OSRM distance > 20km`);
+            }
+            return dist <= 20 ? h : null;
+          } catch (error) {
+            this.logger.error(`Failed to calculate distance for hotel ${h.name}`, error);
+            return null;
+          }
+        }),
+      );
+
+      // Filter out nulls
+      hotels = hotelsWithDistance.filter((h) => h !== null) as Cooperation[];
       hotels.sort((a, b) => (a as any).distance - (b as any).distance);
+      this.logger.log(`After OSRM distance filter: ${hotels.length} hotels.`);
     }
 
     // Process rooms and Mock Availability

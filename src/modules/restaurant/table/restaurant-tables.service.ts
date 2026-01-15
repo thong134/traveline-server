@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
+import { MapService } from '../../../common/map/map.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import { Cooperation } from '../../cooperation/entities/cooperation.entity';
@@ -23,7 +25,10 @@ export class RestaurantTablesService {
     private readonly cooperationRepo: Repository<Cooperation>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly mapService: MapService,
   ) {}
+
+  private readonly logger = new Logger(RestaurantTablesService.name);
 
   private async ensureCooperation(id: number): Promise<Cooperation> {
     const cooperation = await this.cooperationRepo.findOne({ where: { id } });
@@ -216,25 +221,63 @@ export class RestaurantTablesService {
     const qb = this.cooperationRepo
       .createQueryBuilder('coop')
       .leftJoinAndSelect('coop.restaurantTables', 'tables')
-      .where('coop.type = :type', { type: 'restaurant' })
+      .where({ type: ILike('restaurant') })
+      .andWhere('coop.latitude IS NOT NULL')
+      .andWhere('coop.longitude IS NOT NULL')
       .andWhere('coop.status = :status', { status: CooperationStatus.ACTIVE });
 
+    this.logger.log(`Searching restaurants with query: ${JSON.stringify(query)}`);
     let restaurants = await qb.getMany();
+    this.logger.log(`Found ${restaurants.length} restaurants from DB before filtering.`);
 
     // Distance filtering
     if (query.latitude && query.longitude) {
-      restaurants = restaurants.filter((r) => {
-        if (!r.latitude || !r.longitude) return false;
-        const dist = calculateDistance(
+      // 1. Pre-filter using Haversine (lightweight)
+      const PRE_FILTER_RADIUS = 50; // 50km buffer
+      const candidateRestaurants = restaurants.filter((r) => {
+        if (!r.latitude || !r.longitude) {
+           this.logger.warn(`Restaurant ${r.name} (ID: ${r.id}) is missing coordinates.`);
+           return false;
+        }
+        const haversineDist = calculateDistance(
           query.latitude!,
           query.longitude!,
           Number(r.latitude),
           Number(r.longitude),
         );
-        (r as any).distance = dist;
-        return dist <= 15; // 15km radius
+        return haversineDist <= PRE_FILTER_RADIUS;
       });
+
+      this.logger.log(`Pre-filtered ${candidateRestaurants.length}/${restaurants.length} restaurants within ${PRE_FILTER_RADIUS}km (Haversine).`);
+
+      // 2. Accurate filtering using OSRM (heavy)
+      const restaurantsWithDistance = await Promise.all(
+        candidateRestaurants.map(async (r) => {
+          try {
+            const dist = await this.mapService.getDistance(
+              query.latitude!,
+              query.longitude!,
+              Number(r.latitude),
+              Number(r.longitude),
+            );
+            (r as any).distance = dist;
+            this.logger.log(`Restaurant ${r.name}: Lat=${r.latitude}, Long=${r.longitude}, Distance=${dist}km`);
+            
+            if (dist > 15) { // 15km radius for restaurants
+               this.logger.log(`Restaurant ${r.name} excluded due to OSRM distance > 15km`);
+            }
+
+            return dist <= 15 ? r : null;
+          } catch (error) {
+             this.logger.error(`Failed to calculate distance for restaurant ${r.name}`, error);
+             return null;
+          }
+        }),
+      );
+      
+      restaurants = restaurantsWithDistance.filter((r) => r !== null) as Cooperation[];
       restaurants.sort((a, b) => (a as any).distance - (b as any).distance);
+      this.logger.log(`After OSRM distance filter: ${restaurants.length} restaurants.`);
     }
 
     return restaurants
