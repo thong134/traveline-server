@@ -26,6 +26,41 @@ import { RequireAuth } from '../../auth/decorators/require-auth.decorator';
 export class HotelRoomsController {
   constructor(private readonly hotelRoomsService: HotelRoomsService) {}
 
+  @Post('seed')
+  @ApiOperation({ summary: 'Gieo dữ liệu mẫu khách sạn và phòng' })
+  seed() {
+    return this.hotelRoomsService.seedHotels();
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Tìm kiếm khách sạn kèm phòng trống (Mock)' })
+  @ApiQuery({ name: 'latitude', required: false, type: Number })
+  @ApiQuery({ name: 'longitude', required: false, type: Number })
+  @ApiQuery({ name: 'checkInDate', required: false })
+  @ApiQuery({ name: 'checkOutDate', required: false })
+  @ApiQuery({ name: 'guests', required: false, type: Number })
+  @ApiQuery({ name: 'minPrice', required: false, type: Number })
+  @ApiQuery({ name: 'maxPrice', required: false, type: Number })
+  search(
+    @Query('latitude') latitude?: string,
+    @Query('longitude') longitude?: string,
+    @Query('checkInDate') checkInDate?: string,
+    @Query('checkOutDate') checkOutDate?: string,
+    @Query('guests') guests?: string,
+    @Query('minPrice') minPrice?: string,
+    @Query('maxPrice') maxPrice?: string,
+  ) {
+    return this.hotelRoomsService.searchHotels({
+      latitude: latitude ? Number(latitude) : undefined,
+      longitude: longitude ? Number(longitude) : undefined,
+      checkInDate,
+      checkOutDate,
+      guests: guests ? Number(guests) : undefined,
+      minPrice: minPrice ? Number(minPrice) : undefined,
+      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+    });
+  }
+
   @Post()
   @RequireAuth()
   @ApiOperation({ summary: 'Tạo phòng khách sạn' })

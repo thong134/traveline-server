@@ -952,8 +952,7 @@ export class ChatService {
       name: coop.name,
       address: this.joinAddress([
         coop.address,
-        coop.districtId,
-        coop.provinceId,
+        coop.province,
       ]),
       description: coop.introduction ?? coop.extension ?? undefined,
       type: 'restaurant' as const,
@@ -1004,8 +1003,7 @@ export class ChatService {
       name: coop.name,
       address: this.joinAddress([
         coop.address,
-        coop.districtId,
-        coop.provinceId,
+        coop.province,
       ]),
       description: coop.introduction ?? coop.extension ?? undefined,
       type: 'hotel' as const,
@@ -3177,7 +3175,6 @@ export class ChatService {
     );
     const results = await this.cooperationsService.findAll({
       type: type,
-      provinceId: params.location,
       q: params.q,
     });
 

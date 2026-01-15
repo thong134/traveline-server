@@ -1387,7 +1387,7 @@ export class RentalBillsService {
   async generateGuestLink(
     id: number,
     userId: number,
-  ): Promise<{ token: string; expiresAt: Date }> {
+  ): Promise<{ token: string; expiresAt: Date; guestLink: string }> {
     const bill = await this.findOne(id, userId);
 
     // Ensure caller is the owner (only owner can generate links)
@@ -1415,7 +1415,11 @@ export class RentalBillsService {
 
     await this.billRepo.save(bill);
 
-    return { token, expiresAt };
+    // Sinh link đầy đủ dựa trên cấu hình môi trường
+    const baseUrl = process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000';
+    const guestLink = `${baseUrl.replace(/\/$/, '')}/guest/tracking/${token}`;
+
+    return { token, expiresAt, guestLink };
   }
 
   async getBillByGuestToken(token: string): Promise<any> {

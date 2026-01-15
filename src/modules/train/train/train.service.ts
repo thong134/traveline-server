@@ -4,11 +4,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { TrainRoute } from './entities/train-route.entity';
 import { Cooperation } from '../../cooperation/entities/cooperation.entity';
 import { CreateTrainRouteDto } from './dto/create-train-route.dto';
 import { UpdateTrainRouteDto } from './dto/update-train-route.dto';
+import { CooperationStatus } from '../../cooperation/entities/cooperation-enums';
+import { User } from '../../user/entities/user.entity';
 import { assignDefined } from '../../../common/utils/object.util';
 
 @Injectable()
@@ -18,6 +20,8 @@ export class TrainRoutesService {
     private readonly routeRepo: Repository<TrainRoute>,
     @InjectRepository(Cooperation)
     private readonly cooperationRepo: Repository<Cooperation>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   private async ensureCooperation(id: number): Promise<Cooperation> {
@@ -146,5 +150,124 @@ export class TrainRoutesService {
     const route = await this.findOne(id);
     await this.routeRepo.remove(route);
     return { id, message: 'Train route removed' };
+  }
+
+  // --- SEEDER LOGIC ---
+  async seedTrain() {
+    let admin = await this.userRepo.findOne({ where: { id: 1 } });
+    const partners = [
+      {
+        name: 'Đường sắt Việt Nam (DSVN)',
+        brandLogo:
+          'https://res.cloudinary.com/traveline/image/upload/v1/dsvn_logo',
+        representativeName: 'Tổng Công Ty DSVN',
+        province: 'Hà Nội',
+      },
+    ];
+
+    for (const p of partners) {
+      let coop = await this.cooperationRepo.findOne({
+        where: { name: ILike(p.name) },
+      });
+      if (!coop) {
+        coop = this.cooperationRepo.create({
+          ...p,
+          type: 'train',
+          status: CooperationStatus.ACTIVE,
+          manager: admin || undefined,
+          revenue: '0',
+          averageRating: '4.5',
+          bookingTimes: 0,
+        });
+        await this.cooperationRepo.save(coop);
+      }
+
+      // Seed Train Routes
+      const count = await this.routeRepo.count({
+        where: { cooperation: { id: coop.id } },
+      });
+      if (count === 0) {
+        await this.routeRepo.save([
+          this.routeRepo.create({
+            name: 'Tàu Thống Nhất SE1',
+            departureStation: 'Hà Nội',
+            arrivalStation: 'Sài Gòn',
+            departureTime: '22:15:00+07',
+            arrivalTime: '05:45:00+07',
+            basePrice: '1100000',
+            seatCapacity: 400,
+            cooperation: coop,
+          }),
+          this.routeRepo.create({
+            name: 'Tàu SE3',
+            departureStation: 'Hà Nội',
+            arrivalStation: 'Đà Nẵng',
+            departureTime: '19:25:00+07',
+            arrivalTime: '11:15:00+07',
+            basePrice: '750000',
+            seatCapacity: 300,
+            cooperation: coop,
+          }),
+        ]);
+      }
+    }
+    return { message: 'Train partners and routes seeded successfully' };
+  }
+
+  // --- SEARCH TRAIN ROUTES WITH MOCK SEAT MAPS ---
+  async searchTrainRoutes(query: {
+    from: string;
+    to: string;
+    date: string;
+    isRoundTrip?: boolean;
+    passengers?: number;
+  }) {
+    const qb = this.cooperationRepo
+      .createQueryBuilder('coop')
+      .leftJoinAndSelect('coop.trainRoutes', 'routes')
+      .where('coop.type = :type', { type: 'train' })
+      .andWhere('coop.status = :status', { status: CooperationStatus.ACTIVE });
+
+    const partners = await qb.getMany();
+    const results: any[] = [];
+
+    const searchFrom = query.from?.toLowerCase() || '';
+    const searchTo = query.to?.toLowerCase() || '';
+
+    for (const p of partners) {
+      if (!p.trainRoutes) continue;
+
+      const matchedRoutes = p.trainRoutes.filter((route) => {
+        const fromMatch = route.departureStation?.toLowerCase().includes(searchFrom);
+        const toMatch = route.arrivalStation?.toLowerCase().includes(searchTo);
+        return fromMatch && toMatch;
+      });
+
+      for (const route of matchedRoutes) {
+        results.push({
+          ...route,
+          partnerName: p.name,
+          partnerLogo: p.brandLogo,
+          departureDate: query.date,
+          seatMap: this.generateSeatMap(route.seatCapacity || 400),
+          availableSeats: Math.floor(Math.random() * (route.seatCapacity || 400)),
+        });
+      }
+    }
+
+    return results;
+  }
+
+  private generateSeatMap(total: number) {
+    const map: any[] = [];
+    const actualSeats = Math.min(total, 60); // Show max 60 seats for performance
+    for (let i = 1; i <= actualSeats; i++) {
+      map.push({
+        id: i,
+        label: `${Math.ceil(i / 4)}${String.fromCharCode(65 + (i % 4))}`,
+        booked: Math.random() > 0.5,
+      });
+    }
+    return map;
   }
 }

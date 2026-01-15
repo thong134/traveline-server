@@ -4,8 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { HotelRoom } from './entities/hotel-room.entity';
+import { CooperationStatus } from '../../cooperation/entities/cooperation-enums';
+import { User } from '../../user/entities/user.entity';
+import { calculateDistance } from '../../../common/utils/location.util';
 import { CreateHotelRoomDto } from './dto/create-hotel-room.dto';
 import { UpdateHotelRoomDto } from './dto/update-hotel-room.dto';
 import { Cooperation } from '../../cooperation/entities/cooperation.entity';
@@ -38,6 +41,8 @@ export class HotelRoomsService {
     private readonly billDetailRepo: Repository<HotelBillDetail>,
     @InjectRepository(HotelBill)
     private readonly billRepo: Repository<HotelBill>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   private formatMoney(value: number | string | undefined): string {
@@ -354,5 +359,157 @@ export class HotelRoomsService {
     const currentRevenue = Number(room.totalRevenue ?? 0);
     room.totalRevenue = this.formatMoney(currentRevenue + revenueDelta);
     await this.roomRepo.save(room);
+  }
+
+  // --- SEEDER LOGIC (Migrated from SeederService) ---
+  async seedHotels() {
+    let admin = await this.userRepo.findOne({ where: { id: 1 } });
+    const partners = [
+      {
+        name: 'Khách sạn Hà Nội Daewoo',
+        brandLogo:
+          'https://firebasestorage.googleapis.com/v0/b/tour-guide-app-50140.appspot.com/o/places_photos%2FC00001_0.jpg?alt=media&token=74d00636-f7e8-4355-9fa7-4718fc7ddd69',
+        representativeName: 'Daewoo Group',
+        province: 'Hà Nội',
+        address: '360 Kim Mã, Ngọc Khánh, Ba Đình, Hà Nội',
+        latitude: 21.0307546,
+        longitude: 105.8120637,
+        introduction:
+          'Khách sạn trang nhã, phòng ở thoáng mát, nhiều nhà họ hàng, quán bar sôi động và bể bơi ngoài trời.',
+      },
+      {
+        name: 'Vinpearl Hotels',
+        brandLogo:
+          'https://res.cloudinary.com/traveline/image/upload/v1/vinpearl_logo',
+        representativeName: 'Vingroup',
+        province: 'Hồ Chí Minh',
+        latitude: 10.7769,
+        longitude: 106.7009,
+      },
+      {
+        name: 'Fusion Hotels',
+        brandLogo:
+          'https://res.cloudinary.com/traveline/image/upload/v1/fusion_logo',
+        representativeName: 'Fusion Group',
+        province: 'Hà Nội',
+      },
+    ];
+
+    for (const p of partners) {
+      let coop = await this.cooperationRepo.findOne({
+        where: { name: ILike(p.name) },
+      });
+      if (!coop) {
+        coop = this.cooperationRepo.create({
+          ...p,
+          type: 'hotel',
+          status: CooperationStatus.ACTIVE,
+          manager: admin || undefined,
+          revenue: '0',
+          averageRating: '4.5',
+          bookingTimes: 0,
+        });
+        await this.cooperationRepo.save(coop);
+      }
+
+      // Seed Rooms for each hotel
+      const count = await this.roomRepo.count({
+        where: { cooperation: { id: coop.id } },
+      });
+      if (count === 0) {
+        await this.roomRepo.save([
+          this.roomRepo.create({
+            name: 'Phòng Deluxe Double',
+            price: '1200000',
+            maxPeople: 2,
+            numberOfRooms: 10,
+            cooperation: coop,
+            amenities: ['Wifi', 'AC'],
+            status: 'active',
+          }),
+          this.roomRepo.create({
+            name: 'Phòng Suite King',
+            price: '2500000',
+            maxPeople: 2,
+            numberOfRooms: 5,
+            cooperation: coop,
+            amenities: ['Wifi', 'AC', 'Bathtub'],
+            status: 'active',
+          }),
+        ]);
+      }
+    }
+    return { message: 'Hotels and rooms seeded successfully' };
+  }
+
+  // --- SEARCH HOTELS WITH MOCK AVAILABILITY ---
+  async searchHotels(query: {
+    latitude?: number;
+    longitude?: number;
+    checkInDate?: string;
+    checkOutDate?: string;
+    guests?: number;
+    minPrice?: number;
+    maxPrice?: number;
+  }) {
+    const qb = this.cooperationRepo
+      .createQueryBuilder('coop')
+      .leftJoinAndSelect('coop.rooms', 'rooms')
+      .where('coop.type = :type', { type: 'hotel' })
+      .andWhere('coop.status = :status', { status: CooperationStatus.ACTIVE });
+
+    let hotels = await qb.getMany();
+
+    // Distance filtering if lat/lon provided
+    if (query.latitude && query.longitude) {
+      hotels = hotels.filter((h) => {
+        if (!h.latitude || !h.longitude) return false;
+        const dist = calculateDistance(
+          query.latitude!,
+          query.longitude!,
+          Number(h.latitude),
+          Number(h.longitude),
+        );
+        (h as any).distance = dist;
+        return dist <= 20; // 20km radius
+      });
+      hotels.sort((a, b) => (a as any).distance - (b as any).distance);
+    }
+
+    // Process rooms and Mock Availability
+    return hotels
+      .map((hotel) => {
+        let filteredRooms = hotel.rooms || [];
+
+        // Apply filters to rooms
+        if (query.guests) {
+          filteredRooms = filteredRooms.filter(
+            (r) => r.maxPeople >= query.guests!,
+          );
+        }
+        if (query.minPrice) {
+          filteredRooms = filteredRooms.filter(
+            (r) => Number(r.price) >= query.minPrice!,
+          );
+        }
+        if (query.maxPrice) {
+          filteredRooms = filteredRooms.filter(
+            (r) => Number(r.price) <= query.maxPrice!,
+          );
+        }
+
+        // Mock availability based on dates
+        const roomsWithMock = filteredRooms.map((room) => ({
+          ...room,
+          availableRooms: Math.floor(Math.random() * room.numberOfRooms) + 1,
+          isAvailable: Math.random() > 0.1, // 90% chance
+        }));
+
+        return {
+          ...hotel,
+          rooms: roomsWithMock,
+        };
+      })
+      .filter((hotel) => hotel.rooms.length > 0);
   }
 }

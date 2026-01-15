@@ -26,6 +26,35 @@ import { RequireAuth } from '../../auth/decorators/require-auth.decorator';
 export class RestaurantTablesController {
   constructor(private readonly service: RestaurantTablesService) {}
 
+  @Post('seed')
+  @ApiOperation({ summary: 'Gieo dữ liệu mẫu nhà hàng và bàn' })
+  seed() {
+    return this.service.seedRestaurants();
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Tìm kiếm nhà hàng kèm bàn trống (Mock)' })
+  @ApiQuery({ name: 'latitude', required: false, type: Number })
+  @ApiQuery({ name: 'longitude', required: false, type: Number })
+  @ApiQuery({ name: 'reservationTime', required: false })
+  @ApiQuery({ name: 'guests', required: false, type: Number })
+  @ApiQuery({ name: 'dishType', required: false })
+  search(
+    @Query('latitude') latitude?: string,
+    @Query('longitude') longitude?: string,
+    @Query('reservationTime') reservationTime?: string,
+    @Query('guests') guests?: string,
+    @Query('dishType') dishType?: string,
+  ) {
+    return this.service.searchRestaurants({
+      latitude: latitude ? Number(latitude) : undefined,
+      longitude: longitude ? Number(longitude) : undefined,
+      reservationTime,
+      guests: guests ? Number(guests) : undefined,
+      dishType,
+    });
+  }
+
   @Post()
   @RequireAuth()
   @ApiOperation({ summary: 'Tạo bàn nhà hàng' })

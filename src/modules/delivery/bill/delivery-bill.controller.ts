@@ -32,6 +32,33 @@ import { RequireVerification } from '../../auth/decorators/require-verification.
 export class DeliveryBillsController {
   constructor(private readonly service: DeliveryBillsService) {}
 
+  @Post('seed')
+  @RequireVerification()
+  @ApiOperation({ summary: 'Gieo dữ liệu mẫu đối tác giao hàng' })
+  seed() {
+    return this.service.seedDelivery();
+  }
+
+  @Get('quotes/:id')
+  @ApiOperation({ summary: 'Lấy báo giá từ các nhà xe cho đơn hàng' })
+  getQuotes(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.service.getQuotes(id, user.userId);
+  }
+
+  @Patch(':id/select-vehicle')
+  @ApiOperation({ summary: 'Chọn nhà xe và loại xe cụ thể cho đơn hàng' })
+  @ApiQuery({ name: 'vehicleId', required: true, type: Number })
+  selectVehicle(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('vehicleId', ParseIntPipe) vehicleId: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.service.selectVehicle(id, vehicleId, user.userId);
+  }
+
   @RequireVerification()
   @Post()
   @ApiOperation({ summary: 'Tạo hóa đơn vận chuyển (pending)' })

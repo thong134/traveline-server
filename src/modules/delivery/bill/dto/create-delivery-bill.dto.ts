@@ -11,11 +11,12 @@ import {
 } from 'class-validator';
 
 export class CreateDeliveryBillDto {
-  @ApiProperty({ description: 'Selected delivery vehicle id' })
+  @ApiPropertyOptional({ description: 'Selected delivery vehicle id' })
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  vehicleId: number;
+  vehicleId?: number;
 
   @ApiProperty({
     description: 'Scheduled delivery date (ISO or dd:MM:yyyy HH:mm)',

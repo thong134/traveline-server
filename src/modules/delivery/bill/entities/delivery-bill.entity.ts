@@ -36,18 +36,18 @@ export class DeliveryBill {
   user: User;
 
   @ManyToOne(() => DeliveryVehicle, (vehicle) => vehicle.bills, {
-    nullable: false,
-    onDelete: 'RESTRICT',
+    nullable: true,
+    onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'vehicle_id' })
-  vehicle: DeliveryVehicle;
+  vehicle?: DeliveryVehicle;
 
   @ManyToOne(() => Cooperation, (cooperation) => cooperation.deliveryBills, {
-    nullable: false,
-    onDelete: 'RESTRICT',
+    nullable: true,
+    onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'cooperation_id' })
-  cooperation: Cooperation;
+  cooperation?: Cooperation;
 
   @Column({ type: 'timestamptz' })
   deliveryDate: Date;

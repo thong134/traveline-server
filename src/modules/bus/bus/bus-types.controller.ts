@@ -26,6 +26,35 @@ import { RequireAuth } from '../../auth/decorators/require-auth.decorator';
 export class BusTypesController {
   constructor(private readonly service: BusTypesService) {}
 
+  @Post('seed')
+  @ApiOperation({ summary: 'Gieo dữ liệu mẫu xe khách' })
+  seed() {
+    return this.service.seedBus();
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Tìm kiếm chuyến xe kèm sơ đồ ghế (Mock)' })
+  @ApiQuery({ name: 'from', required: true })
+  @ApiQuery({ name: 'to', required: true })
+  @ApiQuery({ name: 'date', required: true })
+  @ApiQuery({ name: 'isRoundTrip', required: false, type: Boolean })
+  @ApiQuery({ name: 'passengers', required: false, type: Number })
+  search(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('date') date: string,
+    @Query('isRoundTrip') isRoundTrip?: string,
+    @Query('passengers') passengers?: string,
+  ) {
+    return this.service.searchBusTrips({
+      from,
+      to,
+      date,
+      isRoundTrip: isRoundTrip === 'true',
+      passengers: passengers ? Number(passengers) : undefined,
+    });
+  }
+
   @Post()
   @RequireAuth()
   @ApiOperation({ summary: 'Tạo loại xe buýt' })

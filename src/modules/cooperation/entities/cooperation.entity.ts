@@ -44,15 +44,6 @@ export class Cooperation {
   province?: string;
 
   @Column({ nullable: true })
-  district?: string;
-
-  @Column({ nullable: true })
-  provinceId?: string;
-
-  @Column({ nullable: true })
-  districtId?: string;
-
-  @Column({ nullable: true })
   wardCode?: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })

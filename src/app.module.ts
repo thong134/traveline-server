@@ -32,7 +32,6 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { ProvincesModule } from './modules/province/province.module';
 import { MapModule } from './common/map/map.module';
 import { FptAiModule } from './common/fpt-ai/fpt-ai.module';
-import { SeederModule } from './modules/seeder/seeder.module';
 
 @Module({
   imports: [
@@ -85,7 +84,6 @@ import { SeederModule } from './modules/seeder/seeder.module';
     ProvincesModule,
     MapModule,
     FptAiModule,
-    SeederModule,
   ],
 })
 export class AppModule {}

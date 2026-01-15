@@ -33,20 +33,7 @@ export class RegisterCooperationDto {
   @IsString()
   province?: string;
 
-  @ApiPropertyOptional({ description: 'Tên Quận/Huyện' })
-  @IsOptional()
-  @IsString()
-  district?: string;
 
-  @ApiPropertyOptional({ description: 'ID Tỉnh/Thành' })
-  @IsOptional()
-  @IsString()
-  provinceId?: string;
-
-  @ApiPropertyOptional({ description: 'ID Quận/Huyện' })
-  @IsOptional()
-  @IsString()
-  districtId?: string;
 
   @ApiPropertyOptional({ description: 'Mã Phường/Xã' })
   @IsOptional()

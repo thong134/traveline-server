@@ -6,8 +6,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository, LessThan, ILike } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { CooperationStatus } from '../../cooperation/entities/cooperation-enums';
+import { Cooperation } from '../../cooperation/entities/cooperation.entity';
 import {
   DeliveryBill,
   DeliveryBillStatus,
@@ -37,6 +39,8 @@ export class DeliveryBillsService {
     private readonly vehicleRepo: Repository<DeliveryVehicle>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(Cooperation)
+    private readonly coopRepo: Repository<Cooperation>,
     private readonly vouchersService: VouchersService,
     private readonly cooperationsService: CooperationsService,
     private readonly walletService: WalletService,
@@ -115,20 +119,25 @@ export class DeliveryBillsService {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
-    const vehicle = await this.vehicleRepo.findOne({
-      where: { id: dto.vehicleId },
-      relations: ['cooperation'],
-    });
-    if (!vehicle) throw new NotFoundException('Delivery vehicle not found');
+    let vehicle: DeliveryVehicle | undefined = undefined;
+    let subtotal = 0;
+    const distanceKm = dto.distanceKm || 2; 
 
-    const distanceKm = dto.distanceKm || 0;
-    const subtotal = this.calculateSubtotal(distanceKm, vehicle);
+    if (dto.vehicleId) {
+      const found = await this.vehicleRepo.findOne({
+        where: { id: dto.vehicleId },
+        relations: ['cooperation'],
+      });
+      if (!found) throw new NotFoundException('Delivery vehicle not found');
+      vehicle = found;
+      subtotal = this.calculateSubtotal(distanceKm, vehicle);
+    }
 
     const bill = this.billRepo.create({
       code: this.generateBillCode(),
       user,
       vehicle,
-      cooperation: vehicle.cooperation,
+      cooperation: vehicle?.cooperation,
       deliveryDate: this.parseCustomDate(dto.deliveryDate),
       deliveryAddress: dto.deliveryAddress,
       receiveAddress: dto.receiveAddress,
@@ -150,6 +159,51 @@ export class DeliveryBillsService {
     this.calculateTotal(saved);
     await this.billRepo.save(saved);
     return this.findOne(saved.id, userId);
+  }
+
+  async getQuotes(billId: number, userId: number) {
+    const bill = await this.findOne(billId, userId);
+    const vehicles = await this.vehicleRepo.find({
+      relations: ['cooperation'],
+    });
+
+    const distance = parseFloat(bill.distanceKm);
+
+    return vehicles.map((v) => {
+      const subtotal = this.calculateSubtotal(distance, v);
+      return {
+        vehicleId: v.id,
+        typeName: v.typeName,
+        brandName: v.cooperation?.name,
+        brandLogo: v.cooperation?.brandLogo,
+        price: this.formatMoney(subtotal),
+        weightLimit: v.weightLimit,
+        sizeLimit: v.sizeLimit,
+      };
+    });
+  }
+
+  async selectVehicle(
+    billId: number,
+    vehicleId: number,
+    userId: number,
+  ): Promise<DeliveryBill> {
+    const bill = await this.findOne(billId, userId);
+    const vehicle = await this.vehicleRepo.findOne({
+      where: { id: vehicleId },
+      relations: ['cooperation'],
+    });
+
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+
+    const subtotal = this.calculateSubtotal(parseFloat(bill.distanceKm), vehicle);
+
+    bill.vehicle = vehicle;
+    bill.cooperation = vehicle.cooperation;
+    bill.subtotal = this.formatMoney(subtotal);
+
+    this.calculateTotal(bill);
+    return this.billRepo.save(bill);
   }
 
   async findOne(id: number, userId: number): Promise<DeliveryBill> {
@@ -364,5 +418,70 @@ export class DeliveryBillsService {
       .leftJoinAndSelect('bill.vehicle', 'vehicle')
       .orderBy('bill.createdAt', 'DESC')
       .getMany();
+  }
+
+  // --- SEEDER LOGIC ---
+  async seedDelivery() {
+    let admin = await this.userRepo.findOne({ where: { id: 1 } });
+    const partners = [
+      {
+        name: 'Giao Hàng Nhanh (GHN)',
+        brandLogo:
+          'https://res.cloudinary.com/traveline/image/upload/v1/ghn_logo',
+        representativeName: 'GHN Logistics',
+        province: 'Hồ Chí Minh',
+      },
+      {
+        name: 'Lalamove',
+        brandLogo:
+          'https://res.cloudinary.com/traveline/image/upload/v1/lalamove_logo',
+        representativeName: 'Lalamove VN',
+        province: 'Hồ Chí Minh',
+      },
+    ];
+
+    for (const p of partners) {
+      let coop = await this.coopRepo.findOne({
+        where: { name: ILike(p.name) },
+      });
+      if (!coop) {
+        coop = this.coopRepo.create({
+          ...p,
+          type: 'delivery',
+          status: CooperationStatus.ACTIVE,
+          manager: admin || undefined,
+          revenue: '0',
+          averageRating: '4.6',
+          bookingTimes: 0,
+        });
+        await this.coopRepo.save(coop);
+      }
+
+      // Seed Vehicles
+      const count = await this.vehicleRepo.count({
+        where: { cooperation: { id: coop.id } },
+      });
+      if (count === 0) {
+        await this.vehicleRepo.save([
+          this.vehicleRepo.create({
+            typeName: 'Xe máy',
+            weightLimit: '30kg',
+            sizeLimit: '40x40x40',
+            priceLessThan10Km: '15000',
+            priceMoreThan10Km: '5000',
+            cooperation: coop,
+          }),
+          this.vehicleRepo.create({
+            typeName: 'Xe tải nhỏ (500kg)',
+            weightLimit: '500kg',
+            sizeLimit: '1.5x1x1m',
+            priceLessThan10Km: '150000',
+            priceMoreThan10Km: '12000',
+            cooperation: coop,
+          }),
+        ]);
+      }
+    }
+    return { message: 'Delivery partners and vehicles seeded successfully' };
   }
 }

@@ -62,20 +62,14 @@ export class CooperationsController {
   @Get()
   @ApiOperation({ summary: 'Danh sách đối tác hợp tác' })
   @ApiQuery({ name: 'type', required: false })
-  @ApiQuery({ name: 'provinceId', required: false })
-  @ApiQuery({ name: 'districtId', required: false })
   @ApiQuery({ name: 'status', required: false, enum: CooperationStatus })
   @ApiOkResponse({ description: 'Cooperation list' })
   findAll(
     @Query('type') type?: string,
-    @Query('provinceId') provinceId?: string,
-    @Query('districtId') districtId?: string,
     @Query('status') status?: CooperationStatus,
   ) {
     return this.cooperationsService.findAll({
       type,
-      provinceId,
-      districtId,
       status,
     });
   }
@@ -234,10 +228,18 @@ export class CooperationsController {
   @Post('sync-firebase')
   @RequireAuth(UserRole.Admin)
   @ApiOperation({
-    summary: 'Đồng bộ tọa độ và tỉnh thành từ Firebase JSON',
-    description: 'Chấp nhận mảng đối tượng Firebase [{ name, latitude, longitude, province }] và cập nhật vào DB.',
+    summary: 'Đồng bộ tọa độ và tỉnh thành từ Firebase',
+    description: 'Nếu không truyền body, hệ thống sẽ tự động fetch từ collection COOPERATION trên Firebase Firestore. Nếu truyền mảng JSON, sẽ đồng bộ theo dữ liệu đó.',
   })
-  syncFirebase(@Body() data: any[]) {
+  @ApiBody({ required: false, type: [Object] })
+  syncFirebase(@Body() data?: any[]) {
+    const isBodyEmpty = !data || 
+      (Array.isArray(data) && data.length === 0) || 
+      (typeof data === 'object' && Object.keys(data).length === 0);
+
+    if (isBodyEmpty) {
+      return this.cooperationsService.syncWithFirebaseDirectly();
+    }
     return this.cooperationsService.syncWithFirebase(data);
   }
 }

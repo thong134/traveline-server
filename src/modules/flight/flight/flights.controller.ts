@@ -26,6 +26,35 @@ import { RequireAuth } from '../../auth/decorators/require-auth.decorator';
 export class FlightsController {
   constructor(private readonly service: FlightsService) {}
 
+  @Post('seed')
+  @ApiOperation({ summary: 'Gieo dữ liệu mẫu chuyến bay' })
+  seed() {
+    return this.service.seedFlights();
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Tìm kiếm chuyến bay kèm sơ đồ ghế (Mock)' })
+  @ApiQuery({ name: 'from', required: true })
+  @ApiQuery({ name: 'to', required: true })
+  @ApiQuery({ name: 'date', required: true })
+  @ApiQuery({ name: 'isRoundTrip', required: false, type: Boolean })
+  @ApiQuery({ name: 'passengers', required: false, type: Number })
+  search(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('date') date: string,
+    @Query('isRoundTrip') isRoundTrip?: string,
+    @Query('passengers') passengers?: string,
+  ) {
+    return this.service.searchFlights({
+      from,
+      to,
+      date,
+      isRoundTrip: isRoundTrip === 'true',
+      passengers: passengers ? Number(passengers) : undefined,
+    });
+  }
+
   @Post()
   @RequireAuth()
   @ApiOperation({ summary: 'Tạo chuyến bay' })

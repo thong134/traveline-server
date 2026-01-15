@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import * as admin from 'firebase-admin';
+import { ConfigService } from '@nestjs/config';
 import { MapService } from '../../common/map/map.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Repository, ILike } from 'typeorm';
 import { Cooperation } from './entities/cooperation.entity';
 import { CooperationContract } from './entities/cooperation-contract.entity';
 import { CooperationServiceConfig } from './entities/cooperation-service-config.entity';
@@ -31,7 +33,10 @@ export class CooperationsService {
     private readonly configRepo: Repository<CooperationServiceConfig>,
     private readonly usersService: UsersService,
     private readonly mapService: MapService,
+    private readonly configService: ConfigService,
   ) {}
+
+  private readonly logger = new Logger(CooperationsService.name);
 
   private formatMoney(value: number | string | undefined): string {
     if (value === undefined || value === null) {
@@ -50,7 +55,6 @@ export class CooperationsService {
       type: dto.type,
       address: dto.address,
       province: dto.province,
-      district: dto.district,
       latitude: dto.latitude,
       longitude: dto.longitude,
       photo: dto.photo,
@@ -91,12 +95,10 @@ export class CooperationsService {
     params: {
       q?: string;
       type?: string;
-      provinceId?: string;
-      districtId?: string;
       status?: CooperationStatus;
     } = {},
   ): Promise<Cooperation[]> {
-    const { q, type, provinceId, districtId, status } = params;
+    const { q, type, status } = params;
     const qb = this.cooperationRepo
       .createQueryBuilder('cooperation')
       .leftJoinAndSelect('cooperation.manager', 'manager');
@@ -109,26 +111,6 @@ export class CooperationsService {
 
     if (type) {
       qb.andWhere('cooperation.type = :type', { type });
-    }
-
-    if (provinceId) {
-      if (/^\d+$/.test(provinceId)) {
-        qb.andWhere('cooperation.provinceId = :provinceId', { provinceId });
-      } else {
-        qb.andWhere('cooperation.province ILIKE :province', {
-          province: `%${provinceId}%`,
-        });
-      }
-    }
-
-    if (districtId) {
-      if (/^\d+$/.test(districtId)) {
-        qb.andWhere('cooperation.districtId = :districtId', { districtId });
-      } else {
-        qb.andWhere('cooperation.district ILIKE :district', {
-          district: `%${districtId}%`,
-        });
-      }
     }
 
     if (status) {
@@ -157,7 +139,6 @@ export class CooperationsService {
       type: dto.type,
       address: dto.address,
       province: dto.province,
-      district: dto.district,
       latitude: dto.latitude,
       longitude: dto.longitude,
       photo: dto.photo,
@@ -455,7 +436,7 @@ export class CooperationsService {
 
       const name = item.name.trim();
       const cooperation = await this.cooperationRepo.findOne({
-        where: { name: In([name]) }, // Using In or ILike for safer matching
+        where: { name: ILike(name) },
       });
 
       if (cooperation) {
@@ -474,5 +455,43 @@ export class CooperationsService {
     }
 
     return { updated, skipped, details };
+  }
+
+  async syncWithFirebaseDirectly(): Promise<{ updated: number; skipped: number; details: any[] }> {
+    if (admin.apps.length === 0) {
+      const saPath = this.configService.get('FIREBASE_ADMIN_CREDENTIAL_PATH') || 
+                     this.configService.get('FIREBASE_SERVICE_ACCOUNT_PATH');
+      if (saPath) {
+        const absolutePath = saPath.startsWith('/') || saPath.includes(':')
+          ? saPath
+          : require('path').join(process.cwd(), saPath);
+        admin.initializeApp({
+          credential: admin.credential.cert(absolutePath),
+        });
+        this.logger.log(`Firebase Admin initialized at: ${absolutePath}`);
+      } else {
+        admin.initializeApp({
+          credential: admin.credential.applicationDefault(),
+        });
+      }
+    }
+
+    const firestore = admin.firestore();
+    const collectionName = 'COOPERATION';
+    
+    this.logger.log(`Fetching from Firebase collection: ${collectionName}...`);
+    const snapshot = await firestore.collection(collectionName).get();
+    this.logger.log(`Found ${snapshot.size} documents in Firestore.`);
+    
+    const data = snapshot.docs.map(doc => {
+      const d = doc.data();
+      return {
+        ...d,
+        name: d.name || d.Name || '', // Fallback for capitalized Name
+        id: doc.id
+      };
+    });
+
+    return this.syncWithFirebase(data);
   }
 }

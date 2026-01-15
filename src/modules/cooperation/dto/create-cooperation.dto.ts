@@ -43,11 +43,6 @@ export class CreateCooperationDto {
   @IsString()
   address?: string;
 
-  @ApiPropertyOptional({ description: 'District' })
-  @IsOptional()
-  @IsString()
-  district?: string;
-
 
   @ApiPropertyOptional({ description: 'Province' })
   @IsOptional()

@@ -52,7 +52,8 @@ export class NotificationService implements OnModuleInit {
     }
 
     try {
-      const saPath = this.configService.get('FIREBASE_SERVICE_ACCOUNT_PATH');
+      const saPath = this.configService.get('FIREBASE_ADMIN_CREDENTIAL_PATH') || 
+                     this.configService.get('FIREBASE_SERVICE_ACCOUNT_PATH');
 
       if (saPath) {
         const absolutePath =

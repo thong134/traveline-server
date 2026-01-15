@@ -4,11 +4,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { BusType } from './entities/bus-type.entity';
 import { Cooperation } from '../../cooperation/entities/cooperation.entity';
 import { CreateBusTypeDto } from './dto/create-bus-type.dto';
 import { UpdateBusTypeDto } from './dto/update-bus-type.dto';
+import { CooperationStatus } from '../../cooperation/entities/cooperation-enums';
+import { User } from '../../user/entities/user.entity';
 import { assignDefined } from '../../../common/utils/object.util';
 
 @Injectable()
@@ -18,6 +20,8 @@ export class BusTypesService {
     private readonly busTypeRepo: Repository<BusType>,
     @InjectRepository(Cooperation)
     private readonly cooperationRepo: Repository<Cooperation>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   private async ensureCooperation(id: number): Promise<Cooperation> {
@@ -122,5 +126,132 @@ export class BusTypesService {
     const busType = await this.findOne(id);
     await this.busTypeRepo.remove(busType);
     return { id, message: 'Bus type removed' };
+  }
+
+  // --- SEEDER LOGIC ---
+  async seedBus() {
+    let admin = await this.userRepo.findOne({ where: { id: 1 } });
+    const partners = [
+      {
+        name: 'Phương Trang (FUTA Bus)',
+        brandLogo:
+          'https://res.cloudinary.com/traveline/image/upload/v1/futa_logo',
+        representativeName: 'Nguyễn Văn A',
+        province: 'Hồ Chí Minh',
+      },
+      {
+        name: 'Mai Linh Express',
+        brandLogo:
+          'https://res.cloudinary.com/traveline/image/upload/v1/mailinh_logo',
+        representativeName: 'Trần Văn B',
+        province: 'Hồ Chí Minh',
+      },
+      {
+        name: 'Thành Bưởi',
+        brandLogo:
+          'https://res.cloudinary.com/traveline/image/upload/v1/thanhbuoi_logo',
+        representativeName: 'Lê Văn C',
+        province: 'Lâm Đồng',
+      },
+    ];
+
+    for (const p of partners) {
+      let coop = await this.cooperationRepo.findOne({
+        where: { name: ILike(p.name) },
+      });
+      if (!coop) {
+        coop = this.cooperationRepo.create({
+          ...p,
+          type: 'bus',
+          status: CooperationStatus.ACTIVE,
+          manager: admin || undefined,
+          revenue: '0',
+          averageRating: '4.7',
+          bookingTimes: 0,
+        });
+        await this.cooperationRepo.save(coop);
+      }
+
+      // Seed Bus Types/Trips
+      const count = await this.busTypeRepo.count({
+        where: { cooperation: { id: coop.id } },
+      });
+      if (count === 0) {
+        await this.busTypeRepo.save([
+          this.busTypeRepo.create({
+            name: 'Xe giường nằm 36 chỗ',
+            numberOfSeats: 36,
+            numberOfBuses: 50,
+            price: '250000',
+            route: 'Hồ Chí Minh - Đà Lạt',
+            cooperation: coop,
+          }),
+          this.busTypeRepo.create({
+            name: 'Xe Limousine 9 chỗ',
+            numberOfSeats: 9,
+            numberOfBuses: 20,
+            price: '450000',
+            route: 'Hồ Chí Minh - Vũng Tàu',
+            cooperation: coop,
+          }),
+        ]);
+      }
+    }
+    return { message: 'Bus partners and trips seeded successfully' };
+  }
+
+  // --- SEARCH BUS TRIPS WITH MOCK SEAT MAPS ---
+  async searchBusTrips(query: {
+    from: string;
+    to: string;
+    date: string;
+    isRoundTrip?: boolean;
+    passengers?: number;
+  }) {
+    const qb = this.cooperationRepo
+      .createQueryBuilder('coop')
+      .leftJoinAndSelect('coop.busTypes', 'types')
+      .where('coop.type = :type', { type: 'bus' })
+      .andWhere('coop.status = :status', { status: CooperationStatus.ACTIVE });
+
+    const partners = await qb.getMany();
+    const results: any[] = [];
+
+    const searchFrom = query.from?.toLowerCase() || '';
+    const searchTo = query.to?.toLowerCase() || '';
+
+    for (const p of partners) {
+      if (!p.busTypes) continue;
+
+      const matchedTrips = p.busTypes.filter((trip) => {
+        const route = trip.route?.toLowerCase() || '';
+        return route.includes(searchFrom) && route.includes(searchTo);
+      });
+
+      for (const trip of matchedTrips) {
+        results.push({
+          ...trip,
+          partnerName: p.name,
+          partnerLogo: p.brandLogo,
+          departureDate: query.date,
+          seatMap: this.generateSeatMap(trip.numberOfSeats || 36),
+          availableSeats: Math.floor(Math.random() * (trip.numberOfSeats || 36)),
+        });
+      }
+    }
+
+    return results;
+  }
+
+  private generateSeatMap(total: number) {
+    const map: any[] = [];
+    for (let i = 1; i <= total; i++) {
+      map.push({
+        id: i,
+        label: `${Math.ceil(i / 2)}${i % 2 === 0 ? 'B' : 'A'}`,
+        booked: Math.random() > 0.6,
+      });
+    }
+    return map;
   }
 }
