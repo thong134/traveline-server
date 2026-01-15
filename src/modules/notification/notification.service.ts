@@ -3,6 +3,8 @@ import {
   Logger,
   OnModuleInit,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import { createTransport, Transporter, SentMessageInfo } from 'nodemailer';
@@ -12,6 +14,7 @@ import { Repository } from 'typeorm';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { User } from '../user/entities/user.entity';
 import { NotificationGateway } from './notification.gateway';
+import { TravelRoutesService } from '../travel-route/travel-route.service';
 
 @Injectable()
 export class NotificationService implements OnModuleInit {
@@ -26,7 +29,47 @@ export class NotificationService implements OnModuleInit {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly gateway: NotificationGateway,
+    @Inject(forwardRef(() => TravelRoutesService))
+    private readonly travelRoutesService: TravelRoutesService,
   ) {}
+
+  // ... init methods ...
+
+  async findMyNotifications(userId: number, type?: NotificationType): Promise<Notification[]> {
+    const qb = this.notificationRepo.createQueryBuilder('notification');
+    qb.where('notification.user_id = :userId', { userId });
+    
+    if (type) {
+      qb.andWhere('notification.type = :type', { type });
+    }
+    
+    qb.orderBy('notification.createdAt', 'DESC');
+    const notifications = await qb.getMany();
+
+    // Enrich anniversary notifications with full route details
+    const enriched = await Promise.all(notifications.map(async (notif) => {
+      // Check if it's an anniversary notification and has routeId
+      if (notif.type === NotificationType.ANNIVERSARY && notif.data?.routeId) {
+        try {
+           const routeDetail = await this.travelRoutesService.getRouteWithMediaAggregates(Number(notif.data.routeId));
+           if (routeDetail) {
+             return {
+               ...notif,
+               data: {
+                 ...notif.data,
+                 ...routeDetail, // This merges stops, aggregatedMedia, etc. into data
+               }
+             };
+           }
+        } catch (e) {
+           this.logger.warn(`Failed to enrich notification ${notif.id}: ${e.message}`);
+        }
+      }
+      return notif;
+    }));
+
+    return enriched as Notification[];
+  }
 
   onModuleInit() {
     this.initMailTransporter();
@@ -57,7 +100,7 @@ export class NotificationService implements OnModuleInit {
 
       if (saPath) {
         const absolutePath =
-          saPath.startsWith('/') || saPath.includes(':')
+          saPath.startsWith('/') || saPath.includes(':') // Windows check roughly
             ? saPath
             : require('path').join(process.cwd(), saPath);
 
@@ -151,13 +194,6 @@ export class NotificationService implements OnModuleInit {
     }
 
     return saved;
-  }
-
-  async findMyNotifications(userId: number): Promise<Notification[]> {
-    return this.notificationRepo.find({
-      where: { user: { id: userId } },
-      order: { createdAt: 'DESC' },
-    });
   }
 
   async markAsRead(id: number, userId: number): Promise<Notification> {

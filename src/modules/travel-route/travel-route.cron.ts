@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { TravelRoute, TravelRouteStatus } from './entities/travel-route.entity';
 import { Repository } from 'typeorm';
 import { NotificationService } from '../notification/notification.service';
+import { TravelRoutesService } from './travel-route.service';
 import {
   addDays,
   addMonths,
@@ -22,6 +23,7 @@ export class TravelRouteCronService {
     @InjectRepository(TravelRoute)
     private readonly routeRepo: Repository<TravelRoute>,
     private readonly notificationService: NotificationService,
+    private readonly travelRouteService: TravelRoutesService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
@@ -34,7 +36,7 @@ export class TravelRouteCronService {
   async triggerAnniversaryCheck() {
     const routes = await this.routeRepo.find({
       where: { status: TravelRouteStatus.COMPLETED },
-      relations: { user: true, stops: true },
+      relations: { user: true }, // stops derived in service
     });
 
     this.logger.log(`Found ${routes.length} completed routes to check`);
@@ -68,30 +70,16 @@ export class TravelRouteCronService {
         await this.sendAnniversaryNotification(route, period);
         notificationsSent++;
 
-        // Add to response with stops and a flattened media list for convenience
-        const allMedia: any[] = [];
-        (route.stops || []).forEach((stop) => {
-          if (stop.images) {
-            stop.images.forEach((url) =>
-              allMedia.push({ url, type: 'image', stopId: stop.id }),
-            );
-          }
-          if (stop.videos) {
-            stop.videos.forEach((url) =>
-              allMedia.push({ url, type: 'video', stopId: stop.id }),
-            );
-          }
-        });
+        // Fetch full details using shared service
+        const detailedRoute = await this.travelRouteService.getRouteWithMediaAggregates(route.id);
 
-        matchedRoutes.push({
-          id: route.id,
-          name: route.name,
-          endDate: route.endDate,
-          period,
-          userName: route.user.fullName || route.user.username,
-          stops: route.stops,
-          aggregatedMedia: allMedia,
-        });
+        if (detailedRoute) {
+          matchedRoutes.push({
+            ...detailedRoute,
+            period,
+            userName: route.user.fullName || route.user.username,
+          });
+        }
       } else {
         this.logger.log(
           `Route ${route.id} does not match any anniversary date`,

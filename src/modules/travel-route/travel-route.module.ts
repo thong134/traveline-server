@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -16,7 +16,7 @@ import { NotificationModule } from '../notification/notification.module';
   imports: [
     TypeOrmModule.forFeature([TravelRoute, RouteStop, Destination, User]),
     CloudinaryModule,
-    NotificationModule,
+    forwardRef(() => NotificationModule),
     HttpModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

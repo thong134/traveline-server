@@ -5,13 +5,15 @@ import {
   Patch,
   Post,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { NotificationService } from './notification.service';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { ReminderCronService } from './reminder.cron';
+import { NotificationType } from './entities/notification.entity';
 
 @ApiTags('notifications')
 @Controller('notifications')
@@ -33,8 +35,12 @@ export class NotificationController {
   @RequireAuth()
   @ApiOperation({ summary: 'Lấy danh sách thông báo của tôi (Hộp thư)' })
   @ApiOkResponse({ description: 'Danh sách thông báo thành công' })
-  findMyNotifications(@CurrentUser() user: RequestUser) {
-    return this.notificationService.findMyNotifications(user.userId);
+  @ApiQuery({ name: 'type', enum: NotificationType, required: false })
+  findMyNotifications(
+    @CurrentUser() user: RequestUser,
+    @Query('type') type?: NotificationType,
+  ) {
+    return this.notificationService.findMyNotifications(user.userId, type);
   }
 
   @Get('all')

@@ -1928,7 +1928,7 @@ export class TravelRoutesService {
         await this.notificationService.createNotification(
           route.user.id,
           'Thưởng điểm TravelPoints',
-          `Bạn vừa nhận được ${diff} điểm từ việc cập nhật lộ trình ${route.name}.`,
+          `Bạn vừa nhận được ${diff} điểm từ việc hoàn thành lộ trình ${route.name}.`,
           NotificationType.REMINDER,
           {
             routeId: route.id.toString(),
@@ -2069,5 +2069,33 @@ export class TravelRoutesService {
         stop.sequence = index + 1;
       });
     }
+  }
+
+  async getRouteWithMediaAggregates(routeId: number) {
+    const route = await this.routeRepo.findOne({
+      where: { id: routeId },
+      relations: { user: true, stops: true },
+    });
+
+    if (!route) return null;
+
+    const allMedia: any[] = [];
+    (route.stops || []).forEach((stop) => {
+      if (stop.images) {
+        stop.images.forEach((url) =>
+          allMedia.push({ url, type: 'image', stopId: stop.id }),
+        );
+      }
+      if (stop.videos) {
+        stop.videos.forEach((url) =>
+          allMedia.push({ url, type: 'video', stopId: stop.id }),
+        );
+      }
+    });
+
+    return {
+      ...route,
+      aggregatedMedia: allMedia,
+    };
   }
 }

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateEateryDto {
   @ApiProperty({ description: 'Tên quán ăn nổi tiếng' })
@@ -34,4 +34,14 @@ export class CreateEateryDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Vĩ độ (Latitude)' })
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @ApiPropertyOptional({ description: 'Kinh độ (Longitude)' })
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
 }

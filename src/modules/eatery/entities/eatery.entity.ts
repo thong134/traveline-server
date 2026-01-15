@@ -29,6 +29,12 @@ export class Eatery {
   @Column({ nullable: true })
   imageUrl?: string;
 
+  @Column({ type: 'float', nullable: true })
+  latitude?: number;
+
+  @Column({ type: 'float', nullable: true })
+  longitude?: number;
+
   @Column({ type: 'float', default: 0 })
   averageRating: number;
 

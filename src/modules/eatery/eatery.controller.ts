@@ -9,8 +9,10 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
@@ -23,6 +25,7 @@ import { UpdateEateryDto } from './dto/update-eatery.dto';
 import { RequireAuth } from '../auth/decorators/require-auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/decorators/current-user.decorator';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 
 @ApiTags('eateries')
 @Controller('eateries')
@@ -49,15 +52,45 @@ export class EateriesController {
     return this.service.findAll({ province, keyword });
   }
 
-  @Get('random')
-  @ApiOperation({ summary: 'Gợi ý quán ăn ngẫu nhiên theo tỉnh' })
-  @ApiQuery({ name: 'province', required: true })
-  @ApiOkResponse({ description: 'Quán ăn ngẫu nhiên theo tỉnh' })
-  random(@Query('province') province?: string) {
-    if (!province || !province.trim()) {
-      throw new BadRequestException('province là bắt buộc');
+  @Get('nearby')
+  @ApiOperation({ summary: 'Tìm quán ăn gần đây' })
+  @ApiQuery({ name: 'latitude', required: true, type: Number })
+  @ApiQuery({ name: 'longitude', required: true, type: Number })
+  @ApiOkResponse({ description: 'Danh sách quán ăn gần nhất' })
+  searchNearby(
+    @Query('latitude', { transform: (val) => Number(val) }) latitude: number,
+    @Query('longitude', { transform: (val) => Number(val) }) longitude: number,
+  ) {
+    if (!latitude || !longitude) {
+       throw new BadRequestException('Latitude and Longitude are required');
     }
-    return this.service.randomByProvince(province);
+    return this.service.searchNearby({ latitude, longitude });
+  }
+
+  @Get('debug/dump-names')
+  @ApiOperation({ summary: 'Dump tên quán ăn để tìm tọa độ' })
+  dumpNames() {
+    return this.service.dumpNames();
+  }
+
+  @Get('random')
+  @ApiOperation({ summary: 'Gợi ý quán ăn ngẫu nhiên' })
+  @ApiQuery({ name: 'province', required: false })
+  @ApiQuery({ name: 'ids', required: false, description: 'Danh sách ID quán ăn (cách nhau bởi dấu phẩy) để random trong danh sách này' })
+  @ApiQuery({ name: 'scope', required: false, enum: ['all', 'favorites'] })
+  @ApiOkResponse({ description: 'Quán ăn ngẫu nhiên' })
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiBearerAuth()
+  random(
+    @Query('province') province?: string,
+    @Query('ids') ids?: string,
+    @Query('scope') scope?: 'all' | 'favorites',
+    @CurrentUser() user?: RequestUser,
+  ) {
+    if (scope === 'favorites' && !user) {
+         throw new BadRequestException('Vui lòng đăng nhập để random từ danh sách yêu thích');
+    }
+    return this.service.random({ province, ids, scope, userId: user?.userId });
   }
 
   @Get(':id')
