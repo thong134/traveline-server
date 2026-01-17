@@ -68,7 +68,7 @@ export class FeedbackService {
     private readonly configService: ConfigService,
   ) {}
 
-  async checkContent(userId: number, content: string) {
+  async checkContent(userId: number, content: string, lang: string = 'vi') {
     const trimmed = content?.trim();
     if (!trimmed) {
       return { decision: 'approved', reasons: [] };
@@ -76,7 +76,7 @@ export class FeedbackService {
 
     let aiResult;
     try {
-      aiResult = await this.coordinateModeration(trimmed);
+      aiResult = await this.coordinateModeration(trimmed, lang);
     } catch (e) {
       console.error('Moderation API failed', e);
       // Fallback: approve if AI fails? or allow manual?
@@ -127,15 +127,18 @@ export class FeedbackService {
   }
 
   // Helper to call AI
-  async coordinateModeration(text: string) {
+  async coordinateModeration(text: string, lang: string = 'vi') {
     const baseUrl =
       this.configService.get<string>('AI_REVIEW_BASE_URL') ??
       this.configService.get<string>('AI_SERVICE_URL') ??
       'http://localhost:8000';
 
-    const observable = this.httpService.post(`${baseUrl}/moderation/predict`, {
-      text,
-    });
+    const observable = this.httpService.post(
+      `${baseUrl}/moderation/predict/${lang}`,
+      {
+        text,
+      },
+    );
     const response: AxiosResponse = await lastValueFrom(observable);
     return response.data;
   }

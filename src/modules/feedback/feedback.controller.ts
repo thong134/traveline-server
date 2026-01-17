@@ -41,10 +41,48 @@ type FeedbackMediaFiles = {
 export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 
+  @Post('check-content/vi')
+  @RequireAuth()
+  @ApiOperation({
+    summary: 'Kiểm tra nội dung feedback (Tiếng Việt) với AI',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['content'],
+      properties: { content: { type: 'string' } },
+    },
+  })
+  checkContentVi(
+    @Body('content') content: string,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.feedbackService.checkContent(user.userId, content, 'vi');
+  }
+
+  @Post('check-content/en')
+  @RequireAuth()
+  @ApiOperation({
+    summary: 'Kiểm tra nội dung feedback (Tiếng Anh) với AI',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['content'],
+      properties: { content: { type: 'string' } },
+    },
+  })
+  checkContentEn(
+    @Body('content') content: string,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.feedbackService.checkContent(user.userId, content, 'en');
+  }
+
   @Post('check-content')
   @RequireAuth()
   @ApiOperation({
-    summary: 'Kiểm tra nội dung feedback với AI (để cảnh báo user)',
+    summary: 'Kiểm tra nội dung feedback với AI (Legacy - Default to VI)',
   })
   @ApiBody({
     schema: {
@@ -57,7 +95,7 @@ export class FeedbackController {
     @Body('content') content: string,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.feedbackService.checkContent(user.userId, content);
+    return this.feedbackService.checkContent(user.userId, content, 'vi');
   }
 
   @Post()
