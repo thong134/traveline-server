@@ -268,7 +268,6 @@ export class HotelRoomsService {
 
     const overlappingStatuses = [
       HotelBillStatus.PENDING,
-      HotelBillStatus.CONFIRMED,
       HotelBillStatus.PAID,
     ];
 

@@ -12,6 +12,7 @@ import { User } from '../user/entities/user.entity';
 import { Voucher } from '../voucher/entities/voucher.entity';
 import { VouchersModule } from '../voucher/voucher.module';
 import { CooperationsModule } from '../cooperation/cooperation.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { CooperationsModule } from '../cooperation/cooperation.module';
     ]),
     VouchersModule,
     CooperationsModule,
+    WalletModule,
   ],
   controllers: [FlightsController, FlightBillsController],
   providers: [FlightsService, FlightBillsService],

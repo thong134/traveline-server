@@ -405,6 +405,32 @@ export class DestinationsController {
     );
   }
 
+  @Get('debug-score')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Debug Recommendation Score (GET convenience)' })
+  @ApiQuery({
+    name: 'province',
+    required: false,
+    type: String
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number
+  })
+  debugScore(
+    @CurrentUser() user: RequestUser,
+    @Query('province') province?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.destinationsService.inspectRecommendation(
+      user.userId,
+      province,
+      limit ? Number(limit) : 50,
+    );
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Chi tiết địa điểm theo ID' })
   @ApiOkResponse({ description: 'Destination detail' })
