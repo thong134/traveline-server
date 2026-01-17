@@ -18,6 +18,7 @@ import { DeliveryBill } from '../delivery/bill/entities/delivery-bill.entity';
 import { CooperationPaymentService } from '../cooperation/cooperation-payment.service';
 import { Cooperation } from '../cooperation/entities/cooperation.entity';
 import { CooperationsModule } from '../cooperation/cooperation.module';
+import { HotelRoomsModule } from '../hotel/room/hotel-room.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { CooperationsModule } from '../cooperation/cooperation.module';
     WalletModule,
     VouchersModule,
     CooperationsModule,
+    HotelRoomsModule,
   ],
   providers: [PaymentService, RolesGuard],
   controllers: [PaymentController],

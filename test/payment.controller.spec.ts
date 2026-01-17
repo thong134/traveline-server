@@ -3,6 +3,7 @@ import { PaymentController } from '../src/modules/payment/payment.controller';
 import { PaymentService } from '../src/modules/payment/payment.service';
 import { UserRole } from '../src/modules/user/entities/user-role.enum';
 import { PayoutStatus } from '../src/modules/payment/entities/payout.entity';
+import { ServiceType } from '../src/modules/payment/entities/booking-transaction.entity';
 
 describe('PaymentController guards', () => {
   let paymentService: jest.Mocked<PaymentService>;
@@ -44,7 +45,16 @@ describe('PaymentController guards', () => {
   });
 
   it('should allow payout status update for admin', () => {
-    paymentService.updatePayoutStatus.mockResolvedValueOnce({ id: 10 });
+    paymentService.updatePayoutStatus.mockResolvedValueOnce({ 
+      id: 10,
+      ownerUserId: 1,
+      amount: '1000.00',
+      status: PayoutStatus.PAID,
+      serviceType: ServiceType.RENTAL,
+      rentalId: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any);
     const result = controller.updatePayoutStatus(
       10,
       { status: PayoutStatus.PAID },

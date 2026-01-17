@@ -13,13 +13,21 @@ export enum PayoutStatus {
   FAILED = 'FAILED',
 }
 
+import { ServiceType } from './booking-transaction.entity';
+
 @Entity('payouts')
 export class Payout {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'int' })
-  rentalId: number;
+  @Column({ type: 'int', nullable: true })
+  rentalId?: number;
+
+  @Column({ type: 'enum', enum: ServiceType, default: ServiceType.RENTAL })
+  serviceType: ServiceType;
+
+  @Column({ type: 'int', nullable: true })
+  billId?: number;
 
   @Column({ type: 'int' })
   ownerUserId: number;

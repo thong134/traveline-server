@@ -30,6 +30,7 @@ import { PaymentModule } from '../../payment/payment.module';
     WalletModule,
     BlockchainModule,
     PaymentModule,
+    VouchersModule,
   ],
   controllers: [HotelBillsController],
   providers: [HotelBillsService],

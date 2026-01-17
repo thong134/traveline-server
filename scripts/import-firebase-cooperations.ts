@@ -5,6 +5,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { DataSource } from 'typeorm';
 import { Cooperation } from '../src/modules/cooperation/entities/cooperation.entity';
 import { Eatery } from '../src/modules/eatery/entities/eatery.entity';
+import { CooperationStatus } from '../src/modules/cooperation/entities/cooperation-enums';
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -195,14 +196,10 @@ async function bootstrap(): Promise<void> {
       code,
       name,
       type: normalizedType,
-      numberOfObjects: coerceNumber(data.numberOfObjects) ?? 0,
-      numberOfObjectTypes: coerceNumber(data.numberOfObjectTypes) ?? 0,
-      bossName: coerceString(data.bossName),
-      bossPhone: coerceString(data.bossPhone),
-      bossEmail: coerceString(data.bossEmail),
+      representativeName: coerceString(data.bossName),
+      representativePhone: coerceString(data.bossPhone),
+      representativeEmail: coerceString(data.bossEmail),
       address: coerceString(data.address),
-      district: coerceString(data.district),
-      city: coerceString(data.city),
       province: coerceString(data.province),
       photo: coerceString(data.photo),
       extension: coerceString(data.extension),
@@ -215,8 +212,9 @@ async function bootstrap(): Promise<void> {
       bookingTimes: coerceNumber(data.bookingTimes) ?? 0,
       revenue: (coerceNumber(data.revenue) ?? 0).toFixed(2),
       averageRating: (coerceNumber(data.averageRating) ?? 0).toFixed(2),
-      active:
-        typeof data.active === 'boolean' ? data.active : true,
+      status: (typeof data.active === 'boolean' ? data.active : true) 
+        ? CooperationStatus.ACTIVE 
+        : CooperationStatus.STOPPED,
     };
 
     let entity = await cooperationRepo.findOne({ where: { code } });

@@ -34,6 +34,9 @@ export class Cooperation {
   @Column()
   name: string;
 
+  @Column({ nullable: true, unique: true })
+  code?: string;
+
   @Column({ default: 'hotel' })
   type: string;
 

@@ -117,7 +117,6 @@ async function bootstrap() {
 
     const payload: Partial<Destination> = {
       name,
-      type: typeof data.type === 'string' ? data.type : undefined,
       descriptionViet: typeof data.descriptionViet === 'string' ? data.descriptionViet : undefined,
       descriptionEng: typeof data.descriptionEng === 'string' ? data.descriptionEng : undefined,
       province: typeof data.province === 'string' ? data.province : undefined,
