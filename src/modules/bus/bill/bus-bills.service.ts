@@ -235,10 +235,10 @@ export class BusBillsService {
       where: { id },
       relations: {
         user: true,
-        busType: true,
+        busType: { cooperation: { manager: true } },
         voucher: true,
         details: true,
-        cooperation: true,
+        cooperation: { manager: true },
       },
       order: { details: { id: 'ASC' } },
     });

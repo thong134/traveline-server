@@ -189,7 +189,14 @@ export class HotelBillsService {
   async findOne(id: number, userId: number): Promise<HotelBill> {
     const bill = await this.billRepo.findOne({
       where: { id },
-      relations: ['details', 'details.room', 'user', 'cooperation', 'voucher'],
+      relations: [
+        'details',
+        'details.room',
+        'user',
+        'cooperation',
+        'cooperation.manager',
+        'voucher',
+      ],
     });
     if (!bill) throw new NotFoundException(`Hotel bill ${id} not found`);
     if (bill.user?.id !== userId) throw new ForbiddenException('Forbidden');
@@ -278,6 +285,7 @@ export class HotelBillsService {
     let commissionAmount = 0;
 
     try {
+    console.log('LOGGING TRANSACTION...');
       const transaction = await this.cooperationPaymentService.logTransaction({
         cooperationId: bill.cooperation.id,
         userId: bill.user.id,
@@ -285,6 +293,7 @@ export class HotelBillsService {
         bookingId: bill.code,
         totalAmount: parseFloat(bill.total),
       });
+      console.log('TRANSACTION LOGGED:', transaction?.id);
       if (transaction) {
           partnerAmount = parseFloat(transaction.partnerAmount);
           commissionAmount = parseFloat(transaction.commissionAmount);
@@ -299,6 +308,7 @@ export class HotelBillsService {
     // Actual money movement to Partner will be handled via Payout system based on logged transactions.
     // UPDATE: As per user request, we credit the Partner's internal wallet immediately (System -> Partner).
     const ownerUserId = bill.cooperation?.manager?.id;
+    console.log('CREDITING PARTNER:', ownerUserId, partnerAmount);
     if (ownerUserId && partnerAmount > 0) {
         // Use deposit to inject funds from System to Owner
         await this.walletService.deposit(
@@ -307,6 +317,7 @@ export class HotelBillsService {
             `REVENUE_HOTEL_${bill.code}`
         );
     }
+    console.log('CREDIT DONE');
 
     // Points deduction
     if (bill.travelPointsUsed > 0 && bill.user) {

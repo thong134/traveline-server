@@ -298,6 +298,16 @@ export class DeliveryBillsService {
                 partnerAmount = parseFloat(transaction.partnerAmount);
                 commissionAmount = parseFloat(transaction.commissionAmount);
             }
+
+            // Credit Partner Wallet
+            const ownerUserId = bill.cooperation?.manager?.id || bill.vehicle?.cooperation?.manager?.id;
+            if (ownerUserId && partnerAmount > 0) {
+                 await this.walletService.deposit(
+                    ownerUserId,
+                    partnerAmount,
+                    `REVENUE_DELIVERY_${bill.code}`
+                 );
+            }
         } catch (err) {
             this.logger.error(`Failed to log transaction for bill ${bill.id}`, err);
         }

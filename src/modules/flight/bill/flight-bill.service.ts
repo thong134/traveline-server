@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -22,6 +23,7 @@ import { ServiceType } from '../../payment/entities/booking-transaction.entity';
 
 @Injectable()
 export class FlightBillsService {
+  private readonly logger = new Logger(FlightBillsService.name);
   constructor(
     @InjectRepository(FlightBill)
     private readonly billRepo: Repository<FlightBill>,
@@ -190,10 +192,10 @@ export class FlightBillsService {
       where: { id },
       relations: {
         user: true,
-        flight: true,
-        voucher: true,
+        flight: { cooperation: { manager: true } },
         passengers: true,
-        cooperation: true,
+        voucher: true,
+        cooperation: { manager: true },
       },
       order: { passengers: { id: 'ASC' } },
     });
@@ -342,46 +344,58 @@ export class FlightBillsService {
   async pay(id: number, userId: number): Promise<FlightBill> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== FlightBillStatus.PENDING) {
-         throw new BadRequestException('Chỉ có thể thanh toán khi đơn hàng đang ở trạng thái PENDING');
+      throw new BadRequestException(
+        'Chỉ có thể thanh toán khi đơn hàng đang ở trạng thái PENDING',
+      );
     }
 
     if (!bill.contactName || !bill.contactPhone || !bill.paymentMethod) {
-         throw new BadRequestException('Vui lòng cập nhật đầy đủ thông tin và phương thức thanh toán');
-    }
-
-    // Log Transaction (Split)
-    const coopId = bill.flight?.cooperation?.id || bill.cooperation?.id;
-    if (coopId) {
-        try {
-            const tx = await this.cooperationPaymentService.logTransaction({
-                cooperationId: coopId,
-                userId: bill.user.id,
-                serviceType: ServiceType.FLIGHT,
-                bookingId: bill.code,
-                totalAmount: parseFloat(bill.total),
-            });
-            
-            // Credit Partner Wallet
-            if (tx) {
-                const ownerUserId = bill.cooperation?.manager?.id || (bill.flight?.cooperation as any)?.manager?.id;
-                const partnerAmount = parseFloat(tx.partnerAmount);
-                if (ownerUserId && partnerAmount > 0) {
-                     await this.walletService.deposit(
-                        ownerUserId,
-                        partnerAmount,
-                        `REVENUE_FLIGHT_${bill.code}`
-                     );
-                }
-            }
-        } catch (e) {
-             // Log error
-        }
+      throw new BadRequestException(
+        'Vui lòng cập nhật đầy đủ thông tin và phương thức thanh toán',
+      );
     }
 
     bill.status = FlightBillStatus.PAID;
-    const saved = await this.billRepo.save(bill);
-    await this.applyStatusTransition(FlightBillStatus.PENDING, saved.status, saved);
-    return saved;
+    const savedBill = await this.billRepo.save(bill);
+
+    // Split and Deposit Revenue
+    const flightCoopId = bill.flight?.cooperation?.id || bill.cooperation?.id;
+    if (flightCoopId) {
+      try {
+        const tx = await this.cooperationPaymentService.logTransaction({
+          cooperationId: flightCoopId,
+          userId: bill.user.id,
+          serviceType: ServiceType.FLIGHT,
+          bookingId: bill.code,
+          totalAmount: parseFloat(bill.total),
+        });
+        if (tx) {
+          const ownerUserId =
+            bill.cooperation?.manager?.id ||
+            bill.flight?.cooperation?.manager?.id;
+          const partnerAmount = parseFloat(tx.partnerAmount);
+          if (ownerUserId && partnerAmount > 0) {
+            await this.walletService.deposit(
+              ownerUserId,
+              partnerAmount,
+              `REVENUE_FLIGHT_${bill.code}`,
+            );
+          }
+        }
+      } catch (e) {
+        this.logger.error(
+          `Failed to log transaction for flight bill ${bill.id}`,
+          e,
+        );
+      }
+    }
+
+    await this.applyStatusTransition(
+      FlightBillStatus.PENDING,
+      savedBill.status,
+      savedBill,
+    );
+    return savedBill;
   }
 
   async remove(

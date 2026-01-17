@@ -273,7 +273,7 @@ export class HotelRoomsService {
 
     const overlappingQuery = this.billDetailRepo
       .createQueryBuilder('detail')
-      .select('COALESCE(SUM(detail.quantity), 0)', 'reserved')
+      .select('COALESCE(COUNT(detail.id), 0)', 'reserved')
       .leftJoin('detail.bill', 'bill')
       .where('detail.room_id = :roomId', { roomId })
       .andWhere('bill.status IN (:...statuses)', {

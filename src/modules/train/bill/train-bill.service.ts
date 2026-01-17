@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -21,6 +22,7 @@ import { ServiceType } from '../../payment/entities/booking-transaction.entity';
 
 @Injectable()
 export class TrainBillsService {
+  private readonly logger = new Logger(TrainBillsService.name);
   constructor(
     @InjectRepository(TrainBill)
     private readonly billRepo: Repository<TrainBill>,
@@ -187,10 +189,10 @@ export class TrainBillsService {
       where: { id },
       relations: {
         user: true,
-        route: true,
+        route: { cooperation: { manager: true } },
         voucher: true,
         details: true,
-        cooperation: true,
+        cooperation: { manager: true },
       },
       order: { details: { id: 'ASC' } },
     });
@@ -334,46 +336,58 @@ export class TrainBillsService {
   async pay(id: number, userId: number): Promise<TrainBill> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== TrainBillStatus.PENDING) {
-        throw new BadRequestException('Chỉ có thể thanh toán khi đơn hàng đang ở trạng thái PENDING');
+      throw new BadRequestException(
+        'Chỉ có thể thanh toán khi đơn hàng đang ở trạng thái PENDING',
+      );
     }
 
     if (!bill.contactName || !bill.contactPhone || !bill.paymentMethod) {
-        throw new BadRequestException('Vui lòng cập nhật đầy đủ thông tin và phương thức thanh toán');
-    }
-
-    // Log Transaction (Split)
-    const coopId = bill.route?.cooperation?.id || bill.cooperation?.id;
-    if (coopId) {
-        try {
-            const tx = await this.cooperationPaymentService.logTransaction({
-                cooperationId: coopId,
-                userId: bill.user.id,
-                serviceType: ServiceType.TRAIN,
-                bookingId: bill.code,
-                totalAmount: parseFloat(bill.total),
-            });
-            
-            // Credit Partner Wallet
-            if (tx) {
-                const ownerUserId = bill.cooperation?.manager?.id || (bill.route?.cooperation as any)?.manager?.id;
-                const partnerAmount = parseFloat(tx.partnerAmount);
-                if (ownerUserId && partnerAmount > 0) {
-                     await this.walletService.deposit(
-                        ownerUserId,
-                        partnerAmount,
-                        `REVENUE_TRAIN_${bill.code}`
-                     );
-                }
-            }
-        } catch (e) {
-             // Log error
-        }
+      throw new BadRequestException(
+        'Vui lòng cập nhật đầy đủ thông tin và phương thức thanh toán',
+      );
     }
 
     bill.status = TrainBillStatus.PAID;
-    const saved = await this.billRepo.save(bill);
-    await this.applyStatusTransition(TrainBillStatus.PENDING, saved.status, saved);
-    return saved;
+    const savedBill = await this.billRepo.save(bill);
+
+    // Split and Deposit Revenue
+    const trainCoopId = bill.route?.cooperation?.id || bill.cooperation?.id;
+    if (trainCoopId) {
+      try {
+        const tx = await this.cooperationPaymentService.logTransaction({
+          cooperationId: trainCoopId,
+          userId: bill.user.id,
+          serviceType: ServiceType.TRAIN,
+          bookingId: bill.code,
+          totalAmount: parseFloat(bill.total),
+        });
+        if (tx) {
+          const ownerUserId =
+            bill.cooperation?.manager?.id ||
+            bill.route?.cooperation?.manager?.id;
+          const partnerAmount = parseFloat(tx.partnerAmount);
+          if (ownerUserId && partnerAmount > 0) {
+            await this.walletService.deposit(
+              ownerUserId,
+              partnerAmount,
+              `REVENUE_TRAIN_${bill.code}`,
+            );
+          }
+        }
+      } catch (e) {
+        this.logger.error(
+          `Failed to log transaction for train bill ${bill.id}`,
+          e,
+        );
+      }
+    }
+
+    await this.applyStatusTransition(
+      TrainBillStatus.PENDING,
+      savedBill.status,
+      savedBill,
+    );
+    return savedBill;
   }
 
   async remove(
