@@ -95,18 +95,6 @@ export class DeliveryBillsController {
     return this.service.update(id, user.userId, dto);
   }
 
-  @Patch(':id/confirm')
-  @ApiOperation({
-    summary: 'Xác nhận thông tin và chọn phương thức thanh toán',
-  })
-  @ApiQuery({ name: 'paymentMethod', required: true })
-  confirm(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-    @Query('paymentMethod') paymentMethod: string,
-  ) {
-    return this.service.confirm(id, user.userId, paymentMethod);
-  }
 
   @Patch(':id/pay')
   @ApiOperation({ summary: 'Thanh toán và lấy trạng thái đang vận chuyển' })

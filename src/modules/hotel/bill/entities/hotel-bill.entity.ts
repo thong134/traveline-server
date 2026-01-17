@@ -15,7 +15,6 @@ import { Voucher } from '../../../voucher/entities/voucher.entity';
 
 export enum HotelBillStatus {
   PENDING = 'pending',
-  CONFIRMED = 'confirmed',
   PAID = 'paid',
   CANCELLED = 'cancelled',
   COMPLETED = 'completed',

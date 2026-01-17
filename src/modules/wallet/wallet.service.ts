@@ -308,6 +308,70 @@ export class WalletService {
     });
   }
 
+  async transfer(
+    fromUserId: number,
+    toUserId: number,
+    amount: number,
+    referenceId?: string,
+  ): Promise<void> {
+    if (fromUserId === toUserId) {
+      throw new BadRequestException('Cannot transfer to self');
+    }
+    const cents = this.toCents(amount);
+
+    await this.dataSource.transaction(async (manager) => {
+      // 1. Deduct from Sender
+      const senderWallet = await manager.getRepository(UserWallet).findOne({
+        where: { user: { id: fromUserId } },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!senderWallet) throw new NotFoundException(`Sender wallet not found`);
+
+      const senderCents = this.decimalToCents(senderWallet.balance);
+      if (senderCents < cents)
+        throw new BadRequestException(`Insufficient balance`);
+
+      senderWallet.balance = this.centsToDecimal(senderCents - cents);
+      await manager.getRepository(UserWallet).save(senderWallet);
+
+      await manager.getRepository(WalletTransaction).save({
+        wallet: senderWallet,
+        amount: this.centsToDecimal(-cents),
+        type: WalletTransactionType.PAYMENT,
+        referenceId,
+      });
+
+      // 2. Add to Receiver
+      let receiverWallet = await manager.getRepository(UserWallet).findOne({
+        where: { user: { id: toUserId } },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!receiverWallet) {
+        // Auto create receiver wallet if not exists (Owner might not have logged in yet)
+        const user = await manager.getRepository(User).findOne({ where: { id: toUserId } });
+        if (!user) throw new NotFoundException(`Receiver user ${toUserId} not found`);
+        
+        receiverWallet = manager.getRepository(UserWallet).create({
+            user,
+            balance: '0.00',
+        });
+        await manager.getRepository(UserWallet).save(receiverWallet);
+      }
+
+      const receiverCents = this.decimalToCents(receiverWallet.balance);
+      receiverWallet.balance = this.centsToDecimal(receiverCents + cents);
+      await manager.getRepository(UserWallet).save(receiverWallet);
+
+      await manager.getRepository(WalletTransaction).save({
+        wallet: receiverWallet,
+        amount: this.centsToDecimal(cents),
+        type: WalletTransactionType.DEPOSIT,
+        referenceId,
+      });
+    });
+  }
+
   private async adjustBalance(params: {
     userId: number;
     delta: bigint;

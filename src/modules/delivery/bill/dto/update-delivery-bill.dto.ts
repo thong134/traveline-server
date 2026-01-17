@@ -55,4 +55,9 @@ export class UpdateDeliveryBillDto {
   @IsInt()
   @Min(0)
   travelPointsUsed?: number;
+
+  @ApiPropertyOptional({ description: 'Payment method' })
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
 }

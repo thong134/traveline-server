@@ -99,22 +99,7 @@ export class HotelBillsService {
       );
     }
 
-    // 10 min timeout for CONFIRMED
-    const confirmedThreshold = new Date(now.getTime() - 10 * 60 * 1000);
-    const confirmedBills = await this.billRepo.find({
-      where: {
-        status: HotelBillStatus.CONFIRMED,
-        updatedAt: LessThan(confirmedThreshold),
-      },
-    });
-
-    for (const bill of confirmedBills) {
-      bill.status = HotelBillStatus.CANCELLED;
-      await this.billRepo.save(bill);
-      this.logger.log(
-        `Hotel Bill ${bill.id} (CONFIRMED) cancelled due to 10min timeout`,
-      );
-    }
+    // 10 min timeout for CONFIRMED block REMOVED
   }
 
   async create(userId: number, dto: CreateHotelBillDto): Promise<HotelBill> {
@@ -217,10 +202,7 @@ export class HotelBillsService {
     dto: UpdateHotelBillDto,
   ): Promise<HotelBill> {
     const bill = await this.findOne(id, userId);
-    if (
-      bill.status !== HotelBillStatus.PENDING &&
-      bill.status !== HotelBillStatus.CONFIRMED
-    ) {
+    if (bill.status !== HotelBillStatus.PENDING) {
       throw new BadRequestException(
         `Cannot update bill in ${bill.status} status`,
       );
@@ -230,6 +212,7 @@ export class HotelBillsService {
       contactName: dto.contactName,
       contactPhone: dto.contactPhone,
       notes: dto.notes,
+      paymentMethod: dto.paymentMethod,
     });
 
     if (dto.voucherCode !== undefined) {
@@ -269,48 +252,60 @@ export class HotelBillsService {
     }
 
     this.calculateTotal(bill);
+
+    // Auto-confirm logic REMOVED. Status stays PENDING until PAID.
+    // We only check if info is complete during PAY.
+
     return this.billRepo.save(bill);
   }
 
-  async confirm(
-    id: number,
-    userId: number,
-    paymentMethod: string,
-  ): Promise<HotelBill> {
-    const bill = await this.findOne(id, userId);
-    if (bill.status !== HotelBillStatus.PENDING)
-      throw new BadRequestException('Not pending');
-
-    if (!bill.contactName || !bill.contactPhone) {
-      throw new BadRequestException('Contact info required');
-    }
-
-    this.calculateTotal(bill);
-    bill.status = HotelBillStatus.CONFIRMED;
-    bill.paymentMethod = paymentMethod;
-    return this.billRepo.save(bill);
-  }
 
   async pay(id: number, userId: number): Promise<HotelBill> {
     const bill = await this.findOne(id, userId);
-    if (bill.status !== HotelBillStatus.CONFIRMED)
-      throw new BadRequestException('Not confirmed');
+    if (bill.status !== HotelBillStatus.PENDING) {
+        throw new BadRequestException('Chỉ có thể thanh toán hóa đơn ở trạng thái PENDING');
+    }
+
+    // Validation: Ensure bill has necessary info before paying
+    if (!bill.contactName || !bill.contactPhone || !bill.paymentMethod) {
+        throw new BadRequestException('Vui lòng cập nhật thông tin liên hệ và phương thức thanh toán trước khi thanh toán');
+    }
 
     bill.status = HotelBillStatus.PAID;
 
-    // Log transaction for cooperation
+    // Log transaction for cooperation and Calculate Splits
+    let partnerAmount = 0;
+    let commissionAmount = 0;
+
     try {
-      await this.cooperationPaymentService.logTransaction({
+      const transaction = await this.cooperationPaymentService.logTransaction({
         cooperationId: bill.cooperation.id,
         userId: bill.user.id,
         serviceType: ServiceType.HOTEL,
         bookingId: bill.code,
         totalAmount: parseFloat(bill.total),
       });
+      if (transaction) {
+          partnerAmount = parseFloat(transaction.partnerAmount);
+          commissionAmount = parseFloat(transaction.commissionAmount);
+      }
     } catch (err) {
       this.logger.error(
         `Failed to log cooperation transaction for bill ${bill.id}: ${err.message}`,
       );
+    }
+
+    // Handle Payment Logging (System receives money, tracks splits)
+    // Actual money movement to Partner will be handled via Payout system based on logged transactions.
+    // UPDATE: As per user request, we credit the Partner's internal wallet immediately (System -> Partner).
+    const ownerUserId = bill.cooperation?.manager?.id;
+    if (ownerUserId && partnerAmount > 0) {
+        // Use deposit to inject funds from System to Owner
+        await this.walletService.deposit(
+            ownerUserId,
+            partnerAmount,
+            `REVENUE_HOTEL_${bill.code}`
+        );
     }
 
     // Points deduction
@@ -365,7 +360,6 @@ export class HotelBillsService {
     const bill = await this.findOne(id, userId);
     if (
       bill.status !== HotelBillStatus.PENDING &&
-      bill.status !== HotelBillStatus.CONFIRMED &&
       bill.status !== HotelBillStatus.PAID
     ) {
       throw new BadRequestException('Cannot cancel');

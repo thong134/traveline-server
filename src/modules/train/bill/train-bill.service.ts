@@ -15,6 +15,9 @@ import { VouchersService } from '../../voucher/voucher.service';
 import { Voucher } from '../../voucher/entities/voucher.entity';
 import { CooperationsService } from '../../cooperation/cooperation.service';
 import { UsersService } from '../../user/user.service';
+import { WalletService } from '../../wallet/wallet.service';
+import { CooperationPaymentService } from '../../cooperation/cooperation-payment.service';
+import { ServiceType } from '../../payment/entities/booking-transaction.entity';
 
 @Injectable()
 export class TrainBillsService {
@@ -29,6 +32,8 @@ export class TrainBillsService {
     private readonly userRepo: Repository<User>,
     private readonly vouchersService: VouchersService,
     private readonly cooperationsService: CooperationsService,
+    private readonly walletService: WalletService,
+    private readonly cooperationPaymentService: CooperationPaymentService,
   ) {}
 
   private formatMoney(value: number | string | undefined): string {
@@ -310,6 +315,8 @@ export class TrainBillsService {
     }
     bill.total = this.formatMoney(finalTotal);
 
+    bill.total = this.formatMoney(finalTotal);
+
     if (dto.status !== undefined) {
       bill.status = dto.status;
     }
@@ -317,10 +324,56 @@ export class TrainBillsService {
       bill.statusReason = dto.statusReason;
     }
 
+    // Auto-confirm logic REMOVED.
     const saved = await this.billRepo.save(bill);
     const updated = await this.findOne(saved.id, userId);
     await this.applyStatusTransition(previousStatus, updated.status, updated);
     return updated;
+  }
+
+  async pay(id: number, userId: number): Promise<TrainBill> {
+    const bill = await this.findOne(id, userId);
+    if (bill.status !== TrainBillStatus.PENDING) {
+        throw new BadRequestException('Chỉ có thể thanh toán khi đơn hàng đang ở trạng thái PENDING');
+    }
+
+    if (!bill.contactName || !bill.contactPhone || !bill.paymentMethod) {
+        throw new BadRequestException('Vui lòng cập nhật đầy đủ thông tin và phương thức thanh toán');
+    }
+
+    // Log Transaction (Split)
+    const coopId = bill.route?.cooperation?.id || bill.cooperation?.id;
+    if (coopId) {
+        try {
+            const tx = await this.cooperationPaymentService.logTransaction({
+                cooperationId: coopId,
+                userId: bill.user.id,
+                serviceType: ServiceType.TRAIN,
+                bookingId: bill.code,
+                totalAmount: parseFloat(bill.total),
+            });
+            
+            // Credit Partner Wallet
+            if (tx) {
+                const ownerUserId = bill.cooperation?.manager?.id || (bill.route?.cooperation as any)?.manager?.id;
+                const partnerAmount = parseFloat(tx.partnerAmount);
+                if (ownerUserId && partnerAmount > 0) {
+                     await this.walletService.deposit(
+                        ownerUserId,
+                        partnerAmount,
+                        `REVENUE_TRAIN_${bill.code}`
+                     );
+                }
+            }
+        } catch (e) {
+             // Log error
+        }
+    }
+
+    bill.status = TrainBillStatus.PAID;
+    const saved = await this.billRepo.save(bill);
+    await this.applyStatusTransition(TrainBillStatus.PENDING, saved.status, saved);
+    return saved;
   }
 
   async remove(
@@ -420,7 +473,7 @@ function updateOptionalFields(bill: TrainBill, dto: UpdateTrainBillDto): void {
     bill.contactEmail = dto.contactEmail;
   }
   if (dto.paymentMethod !== undefined) {
-    bill.paymentMethod = dto.paymentMethod;
+     bill.paymentMethod = dto.paymentMethod;
   }
   if (dto.notes !== undefined) {
     bill.notes = dto.notes;

@@ -23,6 +23,8 @@ import { Voucher } from '../../voucher/entities/voucher.entity';
 import { CooperationsService } from '../../cooperation/cooperation.service';
 import { WalletService } from '../../wallet/wallet.service';
 import { BlockchainService } from '../../blockchain/blockchain.service';
+import { CooperationPaymentService } from '../../cooperation/cooperation-payment.service';
+import { ServiceType } from '../../payment/entities/booking-transaction.entity';
 import { assignDefined } from '../../../common/utils/object.util';
 import { parse, isValid } from 'date-fns';
 
@@ -45,6 +47,7 @@ export class DeliveryBillsService {
     private readonly cooperationsService: CooperationsService,
     private readonly walletService: WalletService,
     private readonly blockchainService: BlockchainService,
+    private readonly cooperationPaymentService: CooperationPaymentService,
   ) {}
 
   private formatMoney(value: number | string | undefined): string {
@@ -84,22 +87,7 @@ export class DeliveryBillsService {
       );
     }
 
-    // 10 min timeout for CONFIRMED
-    const confirmedThreshold = new Date(now.getTime() - 10 * 60 * 1000);
-    const confirmedBills = await this.billRepo.find({
-      where: {
-        status: DeliveryBillStatus.CONFIRMED,
-        updatedAt: LessThan(confirmedThreshold),
-      },
-    });
-
-    for (const bill of confirmedBills) {
-      bill.status = DeliveryBillStatus.CANCELLED;
-      await this.billRepo.save(bill);
-      this.logger.log(
-        `Delivery Bill ${bill.id} (CONFIRMED) cancelled due to 10min timeout`,
-      );
-    }
+    // 10 min timeout for CONFIRMED block REMOVED
   }
 
   private calculateSubtotal(
@@ -222,10 +210,7 @@ export class DeliveryBillsService {
     dto: UpdateDeliveryBillDto,
   ): Promise<DeliveryBill> {
     const bill = await this.findOne(id, userId);
-    if (
-      bill.status !== DeliveryBillStatus.PENDING &&
-      bill.status !== DeliveryBillStatus.CONFIRMED
-    ) {
+    if (bill.status !== DeliveryBillStatus.PENDING) {
       throw new BadRequestException(
         `Cannot update bill in ${bill.status} status`,
       );
@@ -239,6 +224,7 @@ export class DeliveryBillsService {
       receiverName: dto.receiverName,
       receiverPhone: dto.receiverPhone,
       notes: dto.notes,
+      paymentMethod: dto.paymentMethod,
     });
 
     if (dto.voucherCode !== undefined) {
@@ -275,34 +261,58 @@ export class DeliveryBillsService {
     }
 
     this.calculateTotal(bill);
+
+    // Auto-confirm logic REMOVED. Status stays PENDING until PAID.
+
     return this.billRepo.save(bill);
   }
 
-  async confirm(
-    id: number,
-    userId: number,
-    paymentMethod: string,
-  ): Promise<DeliveryBill> {
-    const bill = await this.findOne(id, userId);
-    if (bill.status !== DeliveryBillStatus.PENDING)
-      throw new BadRequestException('Not pending');
-
-    if (!bill.contactName || !bill.contactPhone) {
-      throw new BadRequestException('Contact info required');
-    }
-
-    this.calculateTotal(bill);
-    bill.status = DeliveryBillStatus.CONFIRMED;
-    bill.paymentMethod = paymentMethod;
-    return this.billRepo.save(bill);
-  }
 
   async pay(id: number, userId: number): Promise<DeliveryBill> {
     const bill = await this.findOne(id, userId);
-    if (bill.status !== DeliveryBillStatus.CONFIRMED)
-      throw new BadRequestException('Not confirmed');
+    if (bill.status !== DeliveryBillStatus.PENDING) {
+        throw new BadRequestException('Chỉ có thể thanh toán khi đơn hàng đang ở trạng thái PENDING');
+    }
 
-    bill.status = DeliveryBillStatus.IN_TRANSIT;
+    if (!bill.contactName || !bill.receiverName || !bill.paymentMethod) {
+        throw new BadRequestException('Vui lòng cập nhật đầy đủ thông tin giao hàng và thanh toán');
+    }
+
+    bill.status = DeliveryBillStatus.PAID;
+
+    // Log transaction and Calculate Splits
+    let partnerAmount = 0;
+    let commissionAmount = 0;
+    const coopId = bill.cooperation?.id || bill.vehicle?.cooperation?.id;
+
+    if (coopId) {
+        try {
+            const transaction = await this.cooperationPaymentService.logTransaction({
+                cooperationId: coopId,
+                userId: bill.user.id,
+                serviceType: ServiceType.DELIVERY,
+                bookingId: bill.code,
+                totalAmount: parseFloat(bill.total),
+            });
+             if (transaction) {
+                partnerAmount = parseFloat(transaction.partnerAmount);
+                commissionAmount = parseFloat(transaction.commissionAmount);
+            }
+        } catch (err) {
+            this.logger.error(`Failed to log transaction for bill ${bill.id}`, err);
+        }
+    }
+
+    // Handle Payment Logging (System receives money, tracks splits)
+    // UPDATE: Credit Partner Wallet immediately
+    const ownerUserId = bill.cooperation?.manager?.id || (bill.vehicle?.cooperation as any)?.manager?.id;
+    if (ownerUserId && partnerAmount > 0) {
+        await this.walletService.deposit(
+            ownerUserId,
+            partnerAmount,
+            `REVENUE_DELIVERY_${bill.code}`
+        );
+    }
 
     // Points deduction
     if (bill.travelPointsUsed > 0 && bill.user) {

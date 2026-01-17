@@ -15,6 +15,9 @@ import { User } from '../../user/entities/user.entity';
 import { VouchersService } from '../../voucher/voucher.service';
 import { Voucher } from '../../voucher/entities/voucher.entity';
 import { CooperationsService } from '../../cooperation/cooperation.service';
+import { WalletService } from '../../wallet/wallet.service';
+import { CooperationPaymentService } from '../../cooperation/cooperation-payment.service';
+import { ServiceType } from '../../payment/entities/booking-transaction.entity';
 
 @Injectable()
 export class BusBillsService {
@@ -29,6 +32,8 @@ export class BusBillsService {
     private readonly userRepo: Repository<User>,
     private readonly vouchersService: VouchersService,
     private readonly cooperationsService: CooperationsService,
+    private readonly walletService: WalletService,
+    private readonly cooperationPaymentService: CooperationPaymentService,
   ) {}
 
   private formatMoney(value: number | string | undefined): string {
@@ -144,6 +149,52 @@ export class BusBillsService {
     const persisted = await this.findOne(saved.id, userId);
     await this.applyStatusTransition(null, status, persisted);
     return persisted;
+  }
+
+  async pay(id: number, userId: number): Promise<BusBill> {
+    const bill = await this.findOne(id, userId);
+    if (bill.status !== BusBillStatus.PENDING) {
+        throw new BadRequestException('Chỉ có thể thanh toán khi đơn hàng đang ở trạng thái PENDING');
+    }
+
+    if (!bill.contactName || !bill.contactPhone || !bill.paymentMethod) {
+        throw new BadRequestException('Vui lòng cập nhật đầy đủ thông tin hành khách và thanh toán');
+    }
+
+    // Log Transaction (Split)
+    const coopId = bill.busType?.cooperation?.id || bill.cooperation?.id;
+    if (coopId) {
+        try {
+            const tx = await this.cooperationPaymentService.logTransaction({
+                cooperationId: coopId,
+                userId: bill.user.id,
+                serviceType: ServiceType.BUS,
+                bookingId: bill.code,
+                totalAmount: parseFloat(bill.total),
+            });
+
+            // Credit Partner Wallet
+            if (tx) {
+                const ownerUserId = bill.cooperation?.manager?.id || (bill.busType?.cooperation as any)?.manager?.id;
+                const partnerAmount = parseFloat(tx.partnerAmount);
+                if (ownerUserId && partnerAmount > 0) {
+                     await this.walletService.deposit(
+                        ownerUserId,
+                        partnerAmount,
+                        `REVENUE_BUS_${bill.code}`
+                     );
+                }
+            }
+
+        } catch (e) {
+            // Log error
+        }
+    }
+
+    bill.status = BusBillStatus.PAID;
+    const saved = await this.billRepo.save(bill);
+    await this.applyStatusTransition(BusBillStatus.PENDING, saved.status, saved);
+    return saved;
   }
 
   async findAll(

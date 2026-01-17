@@ -16,7 +16,7 @@ import { Cooperation } from '../../../cooperation/entities/cooperation.entity';
 
 export enum FlightBillStatus {
   PENDING = 'PENDING',
-  CONFIRMED = 'CONFIRMED',
+  PAID = 'PAID',
   CHECKED_IN = 'CHECKED_IN',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',

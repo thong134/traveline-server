@@ -69,16 +69,6 @@ export class HotelBillsController {
     return this.hotelBillsService.update(id, user.userId, dto);
   }
 
-  @Patch(':id/confirm')
-  @ApiOperation({ summary: 'Xác nhận hóa đơn và chọn phương thức thanh toán' })
-  @ApiQuery({ name: 'paymentMethod', required: true })
-  confirm(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-    @Query('paymentMethod') paymentMethod: string,
-  ) {
-    return this.hotelBillsService.confirm(id, user.userId, paymentMethod);
-  }
 
   @Patch(':id/pay')
   @ApiOperation({ summary: 'Thanh toán hóa đơn' })

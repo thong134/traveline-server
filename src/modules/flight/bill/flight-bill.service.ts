@@ -16,6 +16,9 @@ import { VouchersService } from '../../voucher/voucher.service';
 import { Voucher } from '../../voucher/entities/voucher.entity';
 import { CooperationsService } from '../../cooperation/cooperation.service';
 import { UsersService } from '../../user/user.service';
+import { WalletService } from '../../wallet/wallet.service';
+import { CooperationPaymentService } from '../../cooperation/cooperation-payment.service';
+import { ServiceType } from '../../payment/entities/booking-transaction.entity';
 
 @Injectable()
 export class FlightBillsService {
@@ -30,6 +33,8 @@ export class FlightBillsService {
     private readonly userRepo: Repository<User>,
     private readonly vouchersService: VouchersService,
     private readonly cooperationsService: CooperationsService,
+    private readonly walletService: WalletService,
+    private readonly cooperationPaymentService: CooperationPaymentService,
   ) {}
 
   private formatMoney(value: number | string | undefined): string {
@@ -318,6 +323,8 @@ export class FlightBillsService {
     }
     bill.total = this.formatMoney(finalTotal);
 
+    bill.total = this.formatMoney(finalTotal);
+
     if (dto.status !== undefined) {
       bill.status = dto.status;
     }
@@ -325,10 +332,56 @@ export class FlightBillsService {
       bill.statusReason = dto.statusReason;
     }
 
+    // Auto-confirm logic REMOVED.
     const saved = await this.billRepo.save(bill);
     const updated = await this.findOne(saved.id, userId);
     await this.applyStatusTransition(previousStatus, updated.status, updated);
     return updated;
+  }
+
+  async pay(id: number, userId: number): Promise<FlightBill> {
+    const bill = await this.findOne(id, userId);
+    if (bill.status !== FlightBillStatus.PENDING) {
+         throw new BadRequestException('Chỉ có thể thanh toán khi đơn hàng đang ở trạng thái PENDING');
+    }
+
+    if (!bill.contactName || !bill.contactPhone || !bill.paymentMethod) {
+         throw new BadRequestException('Vui lòng cập nhật đầy đủ thông tin và phương thức thanh toán');
+    }
+
+    // Log Transaction (Split)
+    const coopId = bill.flight?.cooperation?.id || bill.cooperation?.id;
+    if (coopId) {
+        try {
+            const tx = await this.cooperationPaymentService.logTransaction({
+                cooperationId: coopId,
+                userId: bill.user.id,
+                serviceType: ServiceType.FLIGHT,
+                bookingId: bill.code,
+                totalAmount: parseFloat(bill.total),
+            });
+            
+            // Credit Partner Wallet
+            if (tx) {
+                const ownerUserId = bill.cooperation?.manager?.id || (bill.flight?.cooperation as any)?.manager?.id;
+                const partnerAmount = parseFloat(tx.partnerAmount);
+                if (ownerUserId && partnerAmount > 0) {
+                     await this.walletService.deposit(
+                        ownerUserId,
+                        partnerAmount,
+                        `REVENUE_FLIGHT_${bill.code}`
+                     );
+                }
+            }
+        } catch (e) {
+             // Log error
+        }
+    }
+
+    bill.status = FlightBillStatus.PAID;
+    const saved = await this.billRepo.save(bill);
+    await this.applyStatusTransition(FlightBillStatus.PENDING, saved.status, saved);
+    return saved;
   }
 
   async remove(
