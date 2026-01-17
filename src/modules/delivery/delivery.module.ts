@@ -13,6 +13,7 @@ import { VouchersModule } from '../voucher/voucher.module';
 import { CooperationsModule } from '../cooperation/cooperation.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { BlockchainModule } from '../blockchain/blockchain.module';
+import { PaymentModule } from '../payment/payment.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { BlockchainModule } from '../blockchain/blockchain.module';
     CooperationsModule,
     WalletModule,
     BlockchainModule,
+    PaymentModule,
   ],
   controllers: [DeliveryVehiclesController, DeliveryBillsController],
   providers: [DeliveryVehiclesService, DeliveryBillsService],

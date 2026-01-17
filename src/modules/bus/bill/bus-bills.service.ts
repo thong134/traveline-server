@@ -18,6 +18,7 @@ import { CooperationsService } from '../../cooperation/cooperation.service';
 import { WalletService } from '../../wallet/wallet.service';
 import { CooperationPaymentService } from '../../cooperation/cooperation-payment.service';
 import { ServiceType } from '../../payment/entities/booking-transaction.entity';
+import { PaymentService } from '../../payment/payment.service';
 
 @Injectable()
 export class BusBillsService {
@@ -34,6 +35,7 @@ export class BusBillsService {
     private readonly cooperationsService: CooperationsService,
     private readonly walletService: WalletService,
     private readonly cooperationPaymentService: CooperationPaymentService,
+    private readonly paymentService: PaymentService,
   ) {}
 
   private formatMoney(value: number | string | undefined): string {
@@ -151,7 +153,7 @@ export class BusBillsService {
     return persisted;
   }
 
-  async pay(id: number, userId: number): Promise<BusBill> {
+  async pay(id: number, userId: number): Promise<any> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== BusBillStatus.PENDING) {
         throw new BadRequestException('Chỉ có thể thanh toán khi đơn hàng đang ở trạng thái PENDING');
@@ -161,34 +163,13 @@ export class BusBillsService {
         throw new BadRequestException('Vui lòng cập nhật đầy đủ thông tin hành khách và thanh toán');
     }
 
-    // Log Transaction (Split)
-    const coopId = bill.busType?.cooperation?.id || bill.cooperation?.id;
-    if (coopId) {
-        try {
-            const tx = await this.cooperationPaymentService.logTransaction({
-                cooperationId: coopId,
-                userId: bill.user.id,
-                serviceType: ServiceType.BUS,
-                bookingId: bill.code,
-                totalAmount: parseFloat(bill.total),
-            });
-
-            // Credit Partner Wallet
-            if (tx) {
-                const ownerUserId = bill.cooperation?.manager?.id || (bill.busType?.cooperation as any)?.manager?.id;
-                const partnerAmount = parseFloat(tx.partnerAmount);
-                if (ownerUserId && partnerAmount > 0) {
-                     await this.walletService.deposit(
-                        ownerUserId,
-                        partnerAmount,
-                        `REVENUE_BUS_${bill.code}`
-                     );
-                }
-            }
-
-        } catch (e) {
-            // Log error
-        }
+    if (bill.paymentMethod === 'momo') {
+        const { payUrl, paymentId } = await this.paymentService.createMomoPayment({
+            billId: bill.id,
+            serviceType: ServiceType.BUS,
+            amount: parseFloat(bill.total),
+        });
+        return { payUrl, paymentId };
     }
 
     bill.status = BusBillStatus.PAID;

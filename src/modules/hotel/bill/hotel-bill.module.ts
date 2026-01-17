@@ -13,6 +13,7 @@ import { CooperationsModule } from '../../cooperation/cooperation.module';
 import { VouchersModule } from '../../voucher/voucher.module';
 import { WalletModule } from '../../wallet/wallet.module';
 import { BlockchainModule } from '../../blockchain/blockchain.module';
+import { PaymentModule } from '../../payment/payment.module';
 
 @Module({
   imports: [
@@ -26,9 +27,9 @@ import { BlockchainModule } from '../../blockchain/blockchain.module';
     ]),
     HotelRoomsModule,
     CooperationsModule,
-    VouchersModule,
     WalletModule,
     BlockchainModule,
+    PaymentModule,
   ],
   controllers: [HotelBillsController],
   providers: [HotelBillsService],

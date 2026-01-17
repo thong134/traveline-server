@@ -12,6 +12,8 @@ export enum PaymentMethodType {
   VISA = 'VISA',
 }
 
+import { ServiceType } from './booking-transaction.entity';
+
 export enum PaymentStatus {
   PENDING = 'PENDING',
   SUCCESS = 'SUCCESS',
@@ -24,8 +26,14 @@ export class Payment {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'int' })
-  rentalId: number;
+  @Column({ type: 'int', nullable: true })
+  rentalId?: number;
+
+  @Column({ type: 'enum', enum: ServiceType, nullable: true })
+  serviceType?: ServiceType;
+
+  @Column({ type: 'int', nullable: true })
+  billId?: number;
 
   @Column({ type: 'enum', enum: PaymentMethodType })
   method: PaymentMethodType;

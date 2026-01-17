@@ -19,6 +19,7 @@ import { UsersService } from '../../user/user.service';
 import { WalletService } from '../../wallet/wallet.service';
 import { CooperationPaymentService } from '../../cooperation/cooperation-payment.service';
 import { ServiceType } from '../../payment/entities/booking-transaction.entity';
+import { PaymentService } from '../../payment/payment.service';
 
 @Injectable()
 export class TrainBillsService {
@@ -36,6 +37,7 @@ export class TrainBillsService {
     private readonly cooperationsService: CooperationsService,
     private readonly walletService: WalletService,
     private readonly cooperationPaymentService: CooperationPaymentService,
+    private readonly paymentService: PaymentService,
   ) {}
 
   private formatMoney(value: number | string | undefined): string {
@@ -333,7 +335,7 @@ export class TrainBillsService {
     return updated;
   }
 
-  async pay(id: number, userId: number): Promise<TrainBill> {
+  async pay(id: number, userId: number): Promise<any> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== TrainBillStatus.PENDING) {
       throw new BadRequestException(
@@ -347,41 +349,19 @@ export class TrainBillsService {
       );
     }
 
+    if (bill.paymentMethod === 'momo') {
+        const { payUrl, paymentId } = await this.paymentService.createMomoPayment({
+            billId: bill.id,
+            serviceType: ServiceType.TRAIN,
+            amount: parseFloat(bill.total),
+        });
+        return { payUrl, paymentId };
+    }
+
     bill.status = TrainBillStatus.PAID;
     const savedBill = await this.billRepo.save(bill);
 
-    // Split and Deposit Revenue
-    const trainCoopId = bill.route?.cooperation?.id || bill.cooperation?.id;
-    if (trainCoopId) {
-      try {
-        const tx = await this.cooperationPaymentService.logTransaction({
-          cooperationId: trainCoopId,
-          userId: bill.user.id,
-          serviceType: ServiceType.TRAIN,
-          bookingId: bill.code,
-          totalAmount: parseFloat(bill.total),
-        });
-        if (tx) {
-          const ownerUserId =
-            bill.cooperation?.manager?.id ||
-            bill.route?.cooperation?.manager?.id;
-          const partnerAmount = parseFloat(tx.partnerAmount);
-          if (ownerUserId && partnerAmount > 0) {
-            await this.walletService.deposit(
-              ownerUserId,
-              partnerAmount,
-              `REVENUE_TRAIN_${bill.code}`,
-            );
-          }
-        }
-      } catch (e) {
-        this.logger.error(
-          `Failed to log transaction for train bill ${bill.id}`,
-          e,
-        );
-      }
-    }
-
+    // Legacy logic for non-momo (if any)
     await this.applyStatusTransition(
       TrainBillStatus.PENDING,
       savedBill.status,

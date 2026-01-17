@@ -42,6 +42,7 @@ import { WalletService } from '../wallet/wallet.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { parse, isValid } from 'date-fns';
 import { PaymentService } from '../payment/payment.service';
+import { ServiceType } from '../payment/entities/booking-transaction.entity';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 import { FptAiService } from '../../common/fpt-ai/fpt-ai.service';
 import axios from 'axios';
@@ -397,12 +398,11 @@ export class RentalBillsService {
     }
 
     if (bill.paymentMethod === 'momo') {
-      const { payUrl, paymentId } = await this.paymentService.createMomoPayment(
-        {
-          rentalId: bill.id,
-          amount: totalAmount,
-        },
-      );
+      const { payUrl, paymentId } = await this.paymentService.createMomoPayment({
+        billId: bill.id,
+        serviceType: ServiceType.RENTAL,
+        amount: parseFloat(bill.total),
+      });
       this.logger.log(
         `Created MoMo payment ${paymentId} for rental bill ${bill.id}`,
       );
@@ -421,8 +421,9 @@ export class RentalBillsService {
       }
 
       const { payUrl, paymentId } = await this.paymentService.createQrPayment({
-        rentalId: bill.id,
-        amount: totalAmount,
+        billId: bill.id,
+        serviceType: ServiceType.RENTAL,
+        amount: parseFloat(bill.total),
         qrData,
       });
       this.logger.log(

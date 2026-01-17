@@ -25,6 +25,7 @@ import { WalletService } from '../../wallet/wallet.service';
 import { BlockchainService } from '../../blockchain/blockchain.service';
 import { CooperationPaymentService } from '../../cooperation/cooperation-payment.service';
 import { ServiceType } from '../../payment/entities/booking-transaction.entity';
+import { PaymentService } from '../../payment/payment.service';
 import { assignDefined } from '../../../common/utils/object.util';
 import { parse, isValid } from 'date-fns';
 
@@ -48,6 +49,7 @@ export class DeliveryBillsService {
     private readonly walletService: WalletService,
     private readonly blockchainService: BlockchainService,
     private readonly cooperationPaymentService: CooperationPaymentService,
+    private readonly paymentService: PaymentService,
   ) {}
 
   private formatMoney(value: number | string | undefined): string {
@@ -268,7 +270,7 @@ export class DeliveryBillsService {
   }
 
 
-  async pay(id: number, userId: number): Promise<DeliveryBill> {
+  async pay(id: number, userId: number): Promise<any> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== DeliveryBillStatus.PENDING) {
         throw new BadRequestException('Chỉ có thể thanh toán khi đơn hàng đang ở trạng thái PENDING');
@@ -278,69 +280,16 @@ export class DeliveryBillsService {
         throw new BadRequestException('Vui lòng cập nhật đầy đủ thông tin giao hàng và thanh toán');
     }
 
+    if (bill.paymentMethod === 'momo') {
+        const { payUrl, paymentId } = await this.paymentService.createMomoPayment({
+            billId: bill.id,
+            serviceType: ServiceType.DELIVERY,
+            amount: parseFloat(bill.total),
+        });
+        return { payUrl, paymentId };
+    }
+
     bill.status = DeliveryBillStatus.PAID;
-
-    // Log transaction and Calculate Splits
-    let partnerAmount = 0;
-    let commissionAmount = 0;
-    const coopId = bill.cooperation?.id || bill.vehicle?.cooperation?.id;
-
-    if (coopId) {
-        try {
-            const transaction = await this.cooperationPaymentService.logTransaction({
-                cooperationId: coopId,
-                userId: bill.user.id,
-                serviceType: ServiceType.DELIVERY,
-                bookingId: bill.code,
-                totalAmount: parseFloat(bill.total),
-            });
-             if (transaction) {
-                partnerAmount = parseFloat(transaction.partnerAmount);
-                commissionAmount = parseFloat(transaction.commissionAmount);
-            }
-
-            // Credit Partner Wallet
-            const ownerUserId = bill.cooperation?.manager?.id || bill.vehicle?.cooperation?.manager?.id;
-            if (ownerUserId && partnerAmount > 0) {
-                 await this.walletService.deposit(
-                    ownerUserId,
-                    partnerAmount,
-                    `REVENUE_DELIVERY_${bill.code}`
-                 );
-            }
-        } catch (err) {
-            this.logger.error(`Failed to log transaction for bill ${bill.id}`, err);
-        }
-    }
-
-    // Handle Payment Logging (System receives money, tracks splits)
-    // UPDATE: Credit Partner Wallet immediately
-    const ownerUserId = bill.cooperation?.manager?.id || (bill.vehicle?.cooperation as any)?.manager?.id;
-    if (ownerUserId && partnerAmount > 0) {
-        await this.walletService.deposit(
-            ownerUserId,
-            partnerAmount,
-            `REVENUE_DELIVERY_${bill.code}`
-        );
-    }
-
-    // Points deduction
-    if (bill.travelPointsUsed > 0 && bill.user) {
-      const user = await this.userRepo.findOne({ where: { id: bill.user.id } });
-      if (user) {
-        user.travelPoint = Math.max(
-          0,
-          user.travelPoint - bill.travelPointsUsed,
-        );
-        await this.userRepo.save(user);
-      }
-    }
-
-    // Voucher increment
-    if (bill.voucher?.id) {
-      await this.vouchersService.incrementUsage(bill.voucher.id);
-    }
-
     return this.billRepo.save(bill);
   }
 

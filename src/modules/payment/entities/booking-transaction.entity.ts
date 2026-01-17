@@ -13,6 +13,7 @@ export enum ServiceType {
   TRAIN = 'TRAIN',
   FLIGHT = 'FLIGHT',
   TOUR = 'TOUR',
+  RENTAL = 'RENTAL',
 }
 
 export enum TransactionPaymentStatus {

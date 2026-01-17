@@ -19,6 +19,7 @@ import type { RequestUser } from '../auth/decorators/current-user.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { UserRole } from '../user/entities/user-role.enum';
 import { CreateVisaPaymentDto } from './dto/create-visa-payment.dto';
+import { ServiceType } from './entities/booking-transaction.entity';
 
 @ApiTags('payments')
 @Controller('payments')
@@ -100,17 +101,19 @@ export class PaymentController {
 
   @RequireAuth()
   @Post('momo/create')
-  @ApiOperation({ summary: 'Tạo yêu cầu thanh toán MoMo cho rental' })
-  createMomo(@Body() body: { rentalId: number; amount: number }) {
+  @ApiOperation({ summary: 'Tạo yêu cầu thanh toán MoMo cho đơn hàng' })
+  createMomo(@Body() body: { billId: number; serviceType: ServiceType; amount: number }) {
     if (
       !body ||
-      typeof body.rentalId !== 'number' ||
+      typeof body.billId !== 'number' ||
+      !body.serviceType ||
       typeof body.amount !== 'number'
     ) {
-      throw new BadRequestException('rentalId và amount bắt buộc');
+      throw new BadRequestException('billId, serviceType và amount bắt buộc');
     }
     return this.paymentService.createMomoPayment({
-      rentalId: body.rentalId,
+      billId: body.billId,
+      serviceType: body.serviceType,
       amount: body.amount,
     });
   }
@@ -139,14 +142,14 @@ export class PaymentController {
   @Post('qr/confirm')
   @ApiOperation({ summary: 'Xác nhận thanh toán QR (thủ công/webhook)' })
   confirmQr(
-    @Body() body: { paymentId?: number; rentalId: number; amount?: number },
+    @Body() body: { paymentId?: number; billId: number; amount?: number },
   ) {
-    if (!body || typeof body.rentalId !== 'number') {
-      throw new BadRequestException('rentalId bắt buộc');
+    if (!body || typeof body.billId !== 'number') {
+      throw new BadRequestException('billId bắt buộc');
     }
     return this.paymentService.confirmQrPayment({
       paymentId: body.paymentId,
-      rentalId: body.rentalId,
+      billId: body.billId,
       amount: body.amount,
     });
   }

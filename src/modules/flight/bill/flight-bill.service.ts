@@ -20,6 +20,7 @@ import { UsersService } from '../../user/user.service';
 import { WalletService } from '../../wallet/wallet.service';
 import { CooperationPaymentService } from '../../cooperation/cooperation-payment.service';
 import { ServiceType } from '../../payment/entities/booking-transaction.entity';
+import { PaymentService } from '../../payment/payment.service';
 
 @Injectable()
 export class FlightBillsService {
@@ -37,6 +38,7 @@ export class FlightBillsService {
     private readonly cooperationsService: CooperationsService,
     private readonly walletService: WalletService,
     private readonly cooperationPaymentService: CooperationPaymentService,
+    private readonly paymentService: PaymentService,
   ) {}
 
   private formatMoney(value: number | string | undefined): string {
@@ -341,7 +343,7 @@ export class FlightBillsService {
     return updated;
   }
 
-  async pay(id: number, userId: number): Promise<FlightBill> {
+  async pay(id: number, userId: number): Promise<any> {
     const bill = await this.findOne(id, userId);
     if (bill.status !== FlightBillStatus.PENDING) {
       throw new BadRequestException(
@@ -355,41 +357,19 @@ export class FlightBillsService {
       );
     }
 
+    if (bill.paymentMethod === 'momo') {
+        const { payUrl, paymentId } = await this.paymentService.createMomoPayment({
+            billId: bill.id,
+            serviceType: ServiceType.FLIGHT,
+            amount: parseFloat(bill.total),
+        });
+        return { payUrl, paymentId };
+    }
+
     bill.status = FlightBillStatus.PAID;
     const savedBill = await this.billRepo.save(bill);
 
-    // Split and Deposit Revenue
-    const flightCoopId = bill.flight?.cooperation?.id || bill.cooperation?.id;
-    if (flightCoopId) {
-      try {
-        const tx = await this.cooperationPaymentService.logTransaction({
-          cooperationId: flightCoopId,
-          userId: bill.user.id,
-          serviceType: ServiceType.FLIGHT,
-          bookingId: bill.code,
-          totalAmount: parseFloat(bill.total),
-        });
-        if (tx) {
-          const ownerUserId =
-            bill.cooperation?.manager?.id ||
-            bill.flight?.cooperation?.manager?.id;
-          const partnerAmount = parseFloat(tx.partnerAmount);
-          if (ownerUserId && partnerAmount > 0) {
-            await this.walletService.deposit(
-              ownerUserId,
-              partnerAmount,
-              `REVENUE_FLIGHT_${bill.code}`,
-            );
-          }
-        }
-      } catch (e) {
-        this.logger.error(
-          `Failed to log transaction for flight bill ${bill.id}`,
-          e,
-        );
-      }
-    }
-
+    // Legacy logic for non-momo (if any)
     await this.applyStatusTransition(
       FlightBillStatus.PENDING,
       savedBill.status,
