@@ -41,4 +41,16 @@ export class CreateRestaurantBookingDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({ description: 'Tên liên hệ' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  contactName: string;
+
+  @ApiProperty({ description: 'Số điện thoại liên hệ' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  contactPhone: string;
 }

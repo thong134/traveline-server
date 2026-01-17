@@ -96,7 +96,9 @@ export class RestaurantBookingsService {
       durationMinutes: dto.durationMinutes,
       numberOfGuests: dto.numberOfGuests ?? 1,
       notes: dto.notes,
-      status: RestaurantBookingStatus.PENDING,
+      contactName: dto.contactName,
+      contactPhone: dto.contactPhone,
+      status: RestaurantBookingStatus.CONFIRMED,
     });
 
     return this.bookingRepo.save(booking);
@@ -119,40 +121,6 @@ export class RestaurantBookingsService {
     return booking;
   }
 
-  async update(
-    id: number,
-    userId: number,
-    dto: UpdateRestaurantBookingDto,
-  ): Promise<RestaurantBooking> {
-    const booking = await this.findOne(id, userId);
-    if (booking.status !== RestaurantBookingStatus.PENDING) {
-      throw new BadRequestException(
-        `Cannot update booking in ${booking.status} status`,
-      );
-    }
-
-    assignDefined(booking, {
-      contactName: dto.contactName,
-      contactPhone: dto.contactPhone,
-      numberOfGuests: dto.numberOfGuests,
-      notes: dto.notes,
-    });
-
-    return this.bookingRepo.save(booking);
-  }
-
-  async confirm(id: number, userId: number): Promise<RestaurantBooking> {
-    const booking = await this.findOne(id, userId);
-    if (booking.status !== RestaurantBookingStatus.PENDING) {
-      throw new BadRequestException('Not pending');
-    }
-    if (!booking.contactName || !booking.contactPhone) {
-      throw new BadRequestException('Contact info required');
-    }
-    booking.status = RestaurantBookingStatus.CONFIRMED;
-    return this.bookingRepo.save(booking);
-  }
-
   async cancel(id: number, userId: number): Promise<RestaurantBooking> {
     const booking = await this.findOne(id, userId);
     if (
@@ -161,7 +129,7 @@ export class RestaurantBookingsService {
         RestaurantBookingStatus.CANCELLED,
       ].includes(booking.status)
     ) {
-      throw new BadRequestException('Finished');
+      throw new BadRequestException('Đặt bàn đã hoàn thành hoặc đã hủy');
     }
     booking.status = RestaurantBookingStatus.CANCELLED;
     return this.bookingRepo.save(booking);

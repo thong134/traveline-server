@@ -18,7 +18,6 @@ import {
 } from '@nestjs/swagger';
 import { RestaurantBookingsService } from './restaurant-booking.service';
 import { CreateRestaurantBookingDto } from './dto/create-restaurant-booking.dto';
-import { UpdateRestaurantBookingDto } from './dto/update-restaurant-booking.dto';
 import { RestaurantBookingStatus } from './entities/restaurant-booking.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -61,26 +60,7 @@ export class RestaurantBookingsController {
     return this.service.findOne(id, user.userId);
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Cập nhật thông tin liên hệ cho đặt bàn' })
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateRestaurantBookingDto,
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.service.update(id, user.userId, dto);
-  }
-
-  @Patch(':id/confirm')
-  @ApiOperation({ summary: 'Xác nhận đặt bàn' })
-  confirm(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.service.confirm(id, user.userId);
-  }
-
-  @Patch(':id/cancel')
+  @Post(':id/cancel')
   @ApiOperation({ summary: 'Hủy đặt bàn' })
   cancel(
     @Param('id', ParseIntPipe) id: number,
