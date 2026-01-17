@@ -21,6 +21,8 @@ import { TravelRoutesModule } from '../travel-route/travel-route.module';
 import { CooperationsModule } from '../cooperation/cooperation.module';
 import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 import { FeedbackModule } from '../feedback/feedback.module';
+import { EateriesModule } from '../eatery/eatery.module';
+import { DestinationsModule } from '../destination/destination.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { FeedbackModule } from '../feedback/feedback.module';
     TravelRoutesModule,
     CooperationsModule,
     FeedbackModule,
+    EateriesModule,
+    DestinationsModule,
     TypeOrmModule.forFeature([
       Destination,
       Cooperation,

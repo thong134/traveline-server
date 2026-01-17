@@ -1079,7 +1079,7 @@ export class RentalBillsService {
     );
     let finalAmount = totalFromDetails;
 
-    // 1. Voucher
+    // 1. Voucher (Applied FIRST as requested)
     if (bill.voucher) {
       const discount = this.vouchersService.calculateDiscountAmount(
         bill.voucher,
@@ -1088,7 +1088,7 @@ export class RentalBillsService {
       finalAmount -= discount;
     }
 
-    // 2. TravelPoint (1:1)
+    // 2. TravelPoint (1:1) (Applied SECOND)
     if (bill.travelPointsUsed > 0) {
       finalAmount = Math.max(0, finalAmount - bill.travelPointsUsed);
     }
@@ -1277,15 +1277,41 @@ export class RentalBillsService {
     } else if (action === 'refund' && shouldUseBlockchain) {
       await this.blockchainService.adminRefundForRental(bill.id);
     } else if (action === 'release' && ownerUserId) {
+      // --- FIX: Subsidize Owner for Vouchers/Points ---
+      // Owner should receive full amount (Price + Shipping) regardless of user discounts
+      const detailsTotal = bill.details.reduce(
+        (sum, d) => sum + parseFloat(d.price),
+        0,
+      );
+      const shipping = parseFloat(bill.shippingFee || '0');
+      const expectedRevenue = detailsTotal + shipping;
+      
+      // Calculate subsidy (Difference between what owner expects and what user paid/released)
+      // Note: totalAmount = bill.total (User's paid amount after discounts)
+      const subsidy = expectedRevenue - totalAmount;
+
+      if (subsidy > 0.01) { // Floating point tolerance
+        await this.walletService.reward(
+            ownerUserId,
+            subsidy,
+            `subsidy:${bill.id}`
+        );
+        this.logger.log(`Subsidized ${subsidy} to owner ${ownerUserId} for bill ${bill.id} (Vouchers/Points coverage)`);
+      }
+      // -----------------------------------------------
+
       this.logger.log(
         `Automatically released funds to owner ${ownerUserId} for bill ${bill.code}`,
       );
 
       // Notify Owner about Payout
+      // Total received = Released (User Paid) + Subsidy = Expected Revenue
+      const totalReceived = totalAmount + Math.max(0, subsidy);
+      
       await this.notificationService.createNotification(
         ownerUserId,
         'Thanh toán doanh thu',
-        `Hệ thống đã chuyển ${totalAmount.toLocaleString('vi-VN')}đ doanh thu từ đơn hàng ${bill.code} vào tài khoản của bạn.`,
+        `Hệ thống đã chuyển ${totalReceived.toLocaleString('vi-VN')}đ doanh thu từ đơn hàng ${bill.code} vào tài khoản của bạn.`,
         NotificationType.REMINDER,
         {
           billId: bill.id.toString(),

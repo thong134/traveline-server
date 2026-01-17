@@ -96,44 +96,5 @@ export class ChatController {
       images,
     });
   }
-  @Post('classify-image')
-  @ApiOperation({ summary: 'Test endpoint: Phân loại ảnh (Direct)' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-          description: 'Ảnh cần phân loại',
-        },
-      },
-      required: ['file'],
-    },
-  })
-  @UseInterceptors(FileInterceptor('file'))
-  async classifyImage(@UploadedFile() file: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException('Vui lòng chọn ảnh để phân loại');
-    }
-    return this.chatService.classifyImageOnly(file);
-  }
 
-  @Post('search-destinations')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Smart Search: Tìm địa điểm chi tiết qua chat logic',
-  })
-  async searchDestinations(
-    @Body() dto: DestinationSearchDto,
-    @CurrentUser() user: RequestUser,
-  ) {
-    return this.chatService.handleDestinationSearchApi(
-      dto.message,
-      dto.lang,
-      user.userId,
-    );
-  }
 }
