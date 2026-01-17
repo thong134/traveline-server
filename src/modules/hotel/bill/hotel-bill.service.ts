@@ -446,6 +446,7 @@ export class HotelBillsService {
       .leftJoinAndSelect('details.room', 'room')
       .leftJoinAndSelect('bill.cooperation', 'cooperation')
       .leftJoinAndSelect('bill.voucher', 'voucher')
+      .addSelect('bill.total')
       .orderBy('bill.createdAt', 'DESC')
       .getMany();
   }
