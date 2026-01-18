@@ -35,6 +35,11 @@ export interface ChatResponse {
     type: 'destination' | 'eatery' | 'route' | 'service';
     data: any[];
   }[];
+  actions?: {
+    label: string;
+    screen: string; // e.g., 'route_suggestion', 'destination_detail'
+    params?: any;
+  }[];
 }
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 
@@ -222,16 +227,19 @@ export class ChatService {
 
       RULES:
       1. **ALWAYS USE TOOLS** to fetch data. Do not answer from your own knowledge unless it's general advice.
-      2. **QUERY OPTIMIZATION**: When calling tools, use **bare keywords**. 
-         - Strip adjectives like "nổi bật", "đình đám", "ngon", "rẻ". 
-         - Example: "điểm du lịch nổi bật tại Đà Nẵng" -> call 'search_destinations' with query="Đà Nẵng".
-      3. **IMAGE ANALYSIS**: If the user sends an image:
-         - FIRST, describe what you see (keywords, style, type of place) in your response effectively "saving" the visual context.
-         - THEN, call the appropriate tool OR ask for clarification.
-      4. **REWARD POINTS**: Every successful check-in at a destination in a travel route yields **200 travel points**.
-      5. If the user asks for a recommendation without a location, ask for the province first.
-      6. For "App Policy" questions, use 'get_app_policy'.
-      7. Speak in the user's language (Vietnamese primarily).
+      2. **QUERY OPTIMIZATION**: When calling tools, use bare keywords. Strip adjectives. 
+      3. **RESPONSE STYLE (UI-FRIENDLY)**: 
+         - Use a friendly, conversational tone.
+         - **CONCISENESS**: When tools return a list of places, the frontend will display them as **Cards**. 
+         - **DO NOT** repeat detailed descriptions or addresses in your text if cards are visible. 
+      4. **SUGGESTED ACTIONS (DEEP LINKS)**: 
+         - When you suggest a route, recommend an action to 'Xem chi tiết lộ trình' (screen: 'route_suggestion').
+         - When you suggest a specific service, recommend an action to 'Đặt dịch vụ' (screen: 'service_booking').
+         - To provide an action, include a special block at the end of your text like this: [ACTION: label|screen|params_json]. 
+      5. **FEEDBACK ANALYSIS**: When a user asks for an opinion or advice about a place, use 'get_feedback_stats'.
+      6. **IMAGE ANALYSIS**: Describe the image briefly, then call a tool or ask for the province.
+      7. **REWARD RULES**: 1 pt / 100 VNĐ; 200 pts / Check-in; 500 pts / Shared route use; 20 pts / Review; 10 pts / Interaction.
+      8. Speak in the user's language (Vietnamese primarily).
       
       CURRENT USER CONTEXT:
       - Location: ${user?.address || 'Unknown'}
@@ -289,7 +297,7 @@ export class ChatService {
                const resultText = toolOutput.result;
                if (toolOutput.entities && toolOutput.entities.length > 0 && toolOutput.type) {
                    collectedEntities.push({
-                       type: toolOutput.type,
+                       type: toolOutput.type as any,
                        data: toolOutput.entities
                    });
                }
@@ -308,16 +316,31 @@ export class ChatService {
            functionCalls = response.functionCalls();
         }
 
-        const textState = response.text();
+        let textResult = response.text();
+        const actions: any[] = [];
         
-        // Save interaction
+        // Parse [ACTION: label|screen|params] from text
+        const actionRegex = /\[ACTION:\s*([^|\]]+)\|([^|\]]+)(?:\|([^\]]+))?\]/g;
+        textResult = textResult.replace(actionRegex, (match, label, screen, params) => {
+           try {
+              actions.push({
+                 label: label.trim(),
+                 screen: screen.trim(),
+                 params: params ? JSON.parse(params.trim()) : undefined
+              });
+           } catch (e) {}
+           return ''; // Strip action from text
+        }).trim();
+
+        // Save interaction to DB
         await this.saveMessage(userId, sessionId, 'user', message);
-        await this.saveMessage(userId, sessionId, 'model', textState);
+        await this.saveMessage(userId, sessionId, 'model', textResult);
 
         return {
           source: 'ai',
-          text: textState,
+          text: textResult,
           relatedEntities: collectedEntities.length > 0 ? collectedEntities : undefined,
+          actions: actions.length > 0 ? actions : undefined,
         };
 
       } catch (e: any) {
@@ -413,14 +436,54 @@ export class ChatService {
            };
         }
 
-        case 'get_feedback_stats':
-           return { result: "Feedback stats not fully implemented yet, but advise user based on general knowledge." };
+        case 'get_feedback_stats': {
+           const type = args.type || 'destination';
+           let objectId: number | undefined;
+           
+           // Simple name matching to find ID
+           if (type === 'destination') {
+             const found = await this.destinationsService.findAll({ q: args.name, limit: 1 });
+             objectId = found[0]?.id;
+           } else if (type === 'eatery') {
+             const found = await this.eateriesService.findAll({ keyword: args.name });
+             objectId = found[0]?.id;
+           } else if (type === 'cooperation') {
+             const found = await this.cooperationsService.findAll({ q: args.name });
+             objectId = found[0]?.id;
+           }
+
+           if (!objectId) return { result: `Không tìm thấy thông tin cụ thể về ${args.name} để xem đánh giá.` };
+
+           const feedbacks = await this.feedbackService.findByObject({
+             destinationId: type === 'destination' ? objectId : undefined,
+             eateryId: type === 'eatery' ? objectId : undefined,
+             cooperationId: type === 'cooperation' ? objectId : undefined,
+             status: 'approved'
+           });
+
+           if (feedbacks.length === 0) return { result: `Chưa có lượt đánh giá nào cho ${args.name}. Bạn có thể là người đầu tiên!` };
+
+           const avgRating = feedbacks.reduce((acc, f) => acc + (f.star || 0), 0) / feedbacks.length;
+           const comments = feedbacks.slice(0, 3).map(f => f.comment).filter(Boolean);
+           
+           return { 
+             result: {
+               name: args.name,
+               rating: avgRating.toFixed(1),
+               totalReviews: feedbacks.length,
+               notableComments: comments,
+               advice: avgRating >= 4 ? "Đáng để trải nghiệm" : avgRating >= 3 ? "Bình thường, cân nhắc" : "Nên xem xét kỹ"
+             } 
+           };
+        }
 
         case 'get_user_stats': {
            if (!user) return { result: "Login required" };
            const stats = {
-             name: user.fullName,
+             name: user.fullName || user.username,
              travelPoint: user.travelPoint,
+             address: user.address,
+             hobbies: user.hobbies,
              trips: await this.travelRoutesService.findByUser(user.id).then(r => r.length),
            };
            return { result: stats };
@@ -438,12 +501,36 @@ export class ChatService {
     }
   }
 
+  async classifyImage(file: Express.Multer.File) {
+    const formData = new FormData();
+    // In Node.js environment with Recent versions, we can use Blob or just pass buffer
+    // To satisfy TS lint in this env:
+    const blob = new Blob([new Uint8Array(file.buffer)], { type: file.mimetype });
+    formData.append('image', blob, file.originalname);
+
+    try {
+      const response = await this.httpService.axiosRef.post(
+        'http://localhost:8000/vision/classify',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      this.logger.error('Failed to classify image via AI service', error);
+      throw new BadRequestException('AI Service classification failed');
+    }
+  }
+
   private getAppPolicy(topic: string) {
     const policies = {
-      rental_rule: "Quy trình thuê xe: 1. Chọn xe trên app. 2. Đặt cọc. 3. Khi nhận xe cần xác thực FaceID qua app. 4. Trả xe đúng giờ (nên trả trước 30p để kiểm tra).",
-      checkin_rule: "Để check-in, bạn cần đến vị trí địa điểm trong bán kính 100m - 500m và bấm nút 'Check-in' trên app để xác nhận sự hiện diện.",
-      points_rule: "Mỗi lần check-in thành công tại một địa điểm trong lộ trình, bạn nhận được **200 điểm thưởng**. Điểm có thể dùng trừ tiền thuê xe hoặc đổi voucher.",
-      registration: "Để tham gia hệ thống với tư cách Đối tác (Chủ xe, Khách sạn), vui lòng truy cập mục 'Hợp tác' trên menu chính.",
+      rental_rule: `Lưu ý khi thuê xe:\n1. Chọn xe gần vị trí của bạn để giảm phí ship.\n2. Đặt cọc tùy theo yêu cầu của từng chủ xe.\n3. Đợi chủ xe xác nhận đã giao xe rồi mới tiến hành FaceID và nhận xe.\n4. Chụp ảnh/video xe lúc nhận và trả để tránh tranh chấp hư hỏng.\n5. Trả xe: Chỉ có thể xác nhận trả sớm nhất là 30 phút trước giờ kết thúc. Trả trễ sẽ bị phụ thu phí.`,
+      checkin_rule: "Khoảng cách check-in hợp lệ là 100m - 500m so với tọa độ đích.",
+      points_rule: `Cách tích lũy điểm thưởng:\n- Thanh toán dịch vụ: 1 điểm cho mỗi 100 VNĐ.\n- Check-in địa điểm trong lộ trình: 200 điểm.\n- Lộ trình bạn chia sẻ được người khác sử dụng: 500 điểm/lượt.\n- Đánh giá dịch vụ: 20 điểm.\n- Tương tác (Like/Reply) đánh giá: 10 điểm.`,
+      registration: "Vào mục 'Hợp tác' để đăng ký làm Đối tác (Chủ xe, Khách sạn, Nhà hàng).",
     };
     return (policies as any)[topic] || "Chưa có thông tin cụ thể về chủ đề này. Bạn cần hỗ trợ gì khác không?";
   }

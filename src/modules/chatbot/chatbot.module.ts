@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 import { ChatController } from './chatbot.controller';
+import { AiController } from './ai.controller';
 import { ChatService } from './chatbot.service';
 import { Destination } from '../destination/entities/destinations.entity';
 import { Cooperation } from '../cooperation/entities/cooperation.entity';
@@ -54,7 +55,7 @@ import { DestinationsModule } from '../destination/destination.module';
       Flight,
     ]),
   ],
-  controllers: [ChatController],
+  controllers: [ChatController, AiController],
   providers: [ChatService],
   exports: [ChatService],
 })
