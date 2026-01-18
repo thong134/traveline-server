@@ -36,15 +36,15 @@ export class NotificationService implements OnModuleInit {
   // ... init methods ...
 
   async findMyNotifications(userId: number, type?: NotificationType): Promise<Notification[]> {
-    const qb = this.notificationRepo.createQueryBuilder('notification');
-    qb.where('notification.user_id = :userId', { userId });
-    
+    const whereCondition: any = { user: { id: userId } };
     if (type) {
-      qb.andWhere('notification.type = :type', { type });
+      whereCondition.type = type;
     }
-    
-    qb.orderBy('notification.createdAt', 'DESC');
-    const notifications = await qb.getMany();
+
+    const notifications = await this.notificationRepo.find({
+      where: whereCondition,
+      order: { createdAt: 'DESC' },
+    });
 
     // Enrich anniversary notifications with full route details
     const enriched = await Promise.all(notifications.map(async (notif) => {

@@ -119,6 +119,13 @@ export class FeedbackService {
 
     await this.assignFeedbackFields(feedback, resolved);
     const saved = await this.feedbackRepo.save(feedback);
+    
+    // Sync user feedbackTimes
+    const feedbackCount = await this.feedbackRepo.count({
+      where: { user: { id: userId } },
+    });
+    await this.userRepo.update({ id: userId }, { feedbackTimes: feedbackCount });
+
     await this.recalculateDestinationRating(saved.destination?.id);
     await this.recalculateTravelRouteRating(saved.travelRoute?.id);
     await this.recalculateCooperationRating(saved.cooperation?.id);
@@ -230,7 +237,20 @@ export class FeedbackService {
     const travelRouteId = feedback.travelRoute?.id;
     const cooperationId = feedback.cooperation?.id;
     const eateryId = feedback.eatery?.id;
+    const feedbackUserId = feedback.user?.id;
+
     await this.feedbackRepo.remove(feedback);
+
+    if (feedbackUserId) {
+      const feedbackCount = await this.feedbackRepo.count({
+        where: { user: { id: feedbackUserId } },
+      });
+      await this.userRepo.update(
+        { id: feedbackUserId },
+        { feedbackTimes: feedbackCount },
+      );
+    }
+
     if (destinationId) {
       await this.recalculateDestinationRating(destinationId);
     }

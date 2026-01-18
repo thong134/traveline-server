@@ -39,6 +39,7 @@ interface TravelRouteQueryOptions {
   province?: string;
 }
 
+import { UsersService } from '../user/user.service';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../notification/entities/notification.entity';
 
@@ -1924,12 +1925,14 @@ export class TravelRoutesService {
       updates.totalTravelPoints = totalPoints;
 
       if (diff > 0 && route.user?.id) {
-        // Award points to actual user balance
-        await this.userRepo.increment(
-          { id: route.user.id },
-          'travelPoint',
-          diff,
-        );
+        // Award points and exp to actual user balance
+        const user = await this.userRepo.findOne({ where: { id: route.user.id } });
+        if (user) {
+          user.travelPoint += diff;
+          user.travelExp += diff;
+          user.userTier = UsersService.resolveTier(user.travelExp);
+          await this.userRepo.save(user);
+        }
 
         // Notify User
         await this.notificationService.createNotification(
@@ -1956,6 +1959,8 @@ export class TravelRoutesService {
         oldStatus !== TravelRouteStatus.COMPLETED &&
         route.user?.id
       ) {
+        const userRepo = manager.getRepository(User);
+        
         await this.notificationService.createNotification(
           route.user.id,
           'Lộ trình hoàn tất!',
@@ -1968,8 +1973,14 @@ export class TravelRoutesService {
           },
         );
 
-        // Increment completed travel trips count
-        await this.userRepo.increment({ id: route.user.id }, 'travelTrip', 1);
+        // Recalculate total completed trips for accuracy
+        const completedCount = await routeRepo.count({
+          where: {
+            user: { id: route.user.id },
+            status: TravelRouteStatus.COMPLETED,
+          },
+        });
+        await userRepo.update({ id: route.user.id }, { travelTrip: completedCount });
       }
     }
 

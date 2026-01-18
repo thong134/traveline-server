@@ -134,7 +134,7 @@ const CHAT_TOOLS: Tool[] = [
       },
       {
         name: 'get_app_policy',
-        description: 'Get information about app policies, rules, or how-to guides.',
+        description: 'Get information about app policies, rules, reward points (200 pts/check-in), or registration.',
         parameters: {
           type: SchemaType.OBJECT,
           properties: {
@@ -222,16 +222,16 @@ export class ChatService {
 
       RULES:
       1. **ALWAYS USE TOOLS** to fetch data. Do not answer from your own knowledge unless it's general advice.
-      2. **IMAGE ANALYSIS**: If the user sends an image:
+      2. **QUERY OPTIMIZATION**: When calling tools, use **bare keywords**. 
+         - Strip adjectives like "nổi bật", "đình đám", "ngon", "rẻ". 
+         - Example: "điểm du lịch nổi bật tại Đà Nẵng" -> call 'search_destinations' with query="Đà Nẵng".
+      3. **IMAGE ANALYSIS**: If the user sends an image:
          - FIRST, describe what you see (keywords, style, type of place) in your response effectively "saving" the visual context.
-         - THEN, call the appropriate tool OR ask for clarification (e.g., "I see a beach resort. Which province do you want to find similar places in?").
-         - If you are asking for clarification, MAKE SURE to include the image description in your text so you remember it next turn.
-      3. If the user asks for a recommendation without a location, ask for the province first.
-      4. For "App Policy" questions, use 'get_app_policy'.
-      5. Speak in the user's language (Vietnamese primarily).
-      6. Result Presentation:
-         - Return a list with images if available (the tool result will have them).
-         - Be concise but helpful.
+         - THEN, call the appropriate tool OR ask for clarification.
+      4. **REWARD POINTS**: Every successful check-in at a destination in a travel route yields **200 travel points**.
+      5. If the user asks for a recommendation without a location, ask for the province first.
+      6. For "App Policy" questions, use 'get_app_policy'.
+      7. Speak in the user's language (Vietnamese primarily).
       
       CURRENT USER CONTEXT:
       - Location: ${user?.address || 'Unknown'}
@@ -440,12 +440,12 @@ export class ChatService {
 
   private getAppPolicy(topic: string) {
     const policies = {
-      rental_rule: "Bạn cần đặt cọc trước khi thuê. Khi nhận xe cần xác thực khuôn mặt (FaceID). Khi trả xe phải trả trước giờ hẹn 30 phút để tránh phí phạt.",
-      checkin_rule: "Khoảng cách check-in địa điểm hợp lệ là trong bán kính 100m - 500m tùy địa điểm.",
-      points_rule: "Mỗi lần check-in thành công bạn nhận được điểm thưởng. Điểm này dùng để đổi voucher hoặc trừ tiền thuê xe.",
-      registration: "Để đăng ký làm đối tác (Cho thuê xe, Khách sạn), vui lòng vào mục 'Hợp tác' trong menu.",
+      rental_rule: "Quy trình thuê xe: 1. Chọn xe trên app. 2. Đặt cọc. 3. Khi nhận xe cần xác thực FaceID qua app. 4. Trả xe đúng giờ (nên trả trước 30p để kiểm tra).",
+      checkin_rule: "Để check-in, bạn cần đến vị trí địa điểm trong bán kính 100m - 500m và bấm nút 'Check-in' trên app để xác nhận sự hiện diện.",
+      points_rule: "Mỗi lần check-in thành công tại một địa điểm trong lộ trình, bạn nhận được **200 điểm thưởng**. Điểm có thể dùng trừ tiền thuê xe hoặc đổi voucher.",
+      registration: "Để tham gia hệ thống với tư cách Đối tác (Chủ xe, Khách sạn), vui lòng truy cập mục 'Hợp tác' trên menu chính.",
     };
-    return (policies as any)[topic] || "Chưa có thông tin về chủ đề này.";
+    return (policies as any)[topic] || "Chưa có thông tin cụ thể về chủ đề này. Bạn cần hỗ trợ gì khác không?";
   }
 
   private async getHistory(userId?: number, sessionId?: string): Promise<Content[]> {
