@@ -3,6 +3,8 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -34,12 +36,16 @@ export class RestaurantBooking {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @ManyToOne(() => RestaurantTable, (table) => table.bookings, {
+  @ManyToMany(() => RestaurantTable, (table) => table.bookings, {
     nullable: false,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'table_id' })
-  table: RestaurantTable;
+  @JoinTable({
+    name: 'restaurant_booking_tables',
+    joinColumn: { name: 'booking_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'table_id', referencedColumnName: 'id' },
+  })
+  tables: RestaurantTable[];
 
   @ManyToOne(
     () => Cooperation,

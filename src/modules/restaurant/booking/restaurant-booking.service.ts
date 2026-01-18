@@ -69,61 +69,54 @@ export class RestaurantBookingsService {
   async create(
     userId: number,
     dto: CreateRestaurantBookingDto,
-  ): Promise<RestaurantBooking[]> {
+  ): Promise<RestaurantBooking> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
-    const bookings: RestaurantBooking[] = [];
-    
-    // Determine items to process
-    // If dto.items is provided, use it. Otherwise fall back to tableId (quantity 1).
-    const items = (dto.items && dto.items.length > 0)
-      ? dto.items
-      : [{ tableId: dto.tableId!, quantity: 1 }];
-
-    for (const item of items) {
-      if (!item.tableId) continue;
-
-      const table = await this.tableRepo.findOne({
-        where: { id: item.tableId },
-        relations: ['cooperation'],
-      });
-      if (!table) throw new NotFoundException(`Restaurant table ${item.tableId} not found`);
-
-      // Check guests capacity if applicable (for now using dto.numberOfGuests for ALL tables?)
-      // Note: numberOfGuests is global for the booking request.
-      // If we have multiple tables, how do we check? 
-      // Simplified: Check if total guests > total capacity? Or check per table?
-      // For now, let's skip strict guest check per table or assume dto.numberOfGuests applies to the whole group, 
-      // but we store it in each booking row.
-      // Or we can say "numberOfGuests" is the TOTAL.
-      // We will perform the check against the specific table being booked if we assume one table holds them?
-      // Actually, if we book 2 tables, maybe the guests are split.
-      // Let's just create the bookings without strict guest-per-table check for now to avoid blocking.
-      
-      const quantity = item.quantity || 1;
-      
-      for (let i = 0; i < quantity; i++) {
-        const booking = this.bookingRepo.create({
-          code: this.generateBookingCode(),
-          user,
-          table,
-          cooperation: table.cooperation,
-          checkInDate: this.parseCustomDate(dto.checkInDate),
-          durationMinutes: dto.durationMinutes,
-          numberOfGuests: dto.numberOfGuests ?? 1, // Store total guests or fallback? 
-          notes: dto.notes,
-          contactName: dto.contactName,
-          contactPhone: dto.contactPhone,
-          status: RestaurantBookingStatus.CONFIRMED, // Or PENDING based on logic
-        });
-        
-        await this.bookingRepo.save(booking);
-        bookings.push(booking);
-      }
+    if (!dto.tableIds || dto.tableIds.length === 0) {
+      throw new BadRequestException('Vui lòng chọn ít nhất một bàn');
     }
 
-    return bookings;
+    const tables = await this.tableRepo.find({
+      where: dto.tableIds.map((id) => ({ id })),
+      relations: ['cooperation'],
+    });
+
+    if (tables.length !== dto.tableIds.length) {
+      throw new BadRequestException('Một hoặc nhiều bàn không tồn tại');
+    }
+
+    // Kiểm tra xem tất cả các bàn có thuộc cùng một nhà hàng (cooperation) không
+    const cooperationIds = new Set(tables.map((t) => t.cooperation?.id));
+    if (cooperationIds.size > 1) {
+      throw new BadRequestException('Tất cả các bàn phải thuộc cùng một nhà hàng');
+    }
+
+    const cooperation = tables[0].cooperation;
+
+    // Kiểm tra tổng sức chứa nếu cần
+    const totalCapacity = tables.reduce((sum, t) => sum + (t.maxPeople || 0), 0);
+    if (dto.numberOfGuests && dto.numberOfGuests > totalCapacity) {
+      throw new BadRequestException(
+        `Số lượng khách (${dto.numberOfGuests}) vượt quá tổng sức chứa của các bàn (${totalCapacity})`,
+      );
+    }
+
+    const booking = this.bookingRepo.create({
+      code: this.generateBookingCode(),
+      user,
+      tables,
+      cooperation,
+      checkInDate: this.parseCustomDate(dto.checkInDate),
+      durationMinutes: dto.durationMinutes,
+      numberOfGuests: dto.numberOfGuests ?? 1,
+      notes: dto.notes,
+      contactName: dto.contactName,
+      contactPhone: dto.contactPhone,
+      status: RestaurantBookingStatus.CONFIRMED,
+    });
+
+    return this.bookingRepo.save(booking);
   }
 
   private generateBookingCode(): string {
@@ -135,7 +128,7 @@ export class RestaurantBookingsService {
   async findOne(id: number, userId: number): Promise<RestaurantBooking> {
     const booking = await this.bookingRepo.findOne({
       where: { id },
-      relations: ['user', 'table', 'cooperation'],
+      relations: ['user', 'tables', 'cooperation'],
     });
     if (!booking)
       throw new NotFoundException(`Restaurant booking ${id} not found`);
@@ -167,7 +160,7 @@ export class RestaurantBookingsService {
       qb.andWhere('booking.status = :status', { status: params.status });
     return qb
       .leftJoinAndSelect('booking.user', 'user')
-      .leftJoinAndSelect('booking.table', 'table')
+      .leftJoinAndSelect('booking.tables', 'tables')
       .orderBy('booking.createdAt', 'DESC')
       .getMany();
   }

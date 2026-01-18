@@ -33,7 +33,7 @@ export class RestaurantBookingsController {
 
   @RequireVerification()
   @Post()
-  @ApiOperation({ summary: 'Tạo đặt bàn nhà hàng (pending)' })
+  @ApiOperation({ summary: 'Tạo đặt bàn nhà hàng (xác nhận luôn)' })
   create(
     @Body() dto: CreateRestaurantBookingDto,
     @CurrentUser() user: RequestUser,

@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
+  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -46,7 +47,7 @@ export class RestaurantTable {
   @Column({ default: true })
   active: boolean;
 
-  @OneToMany(() => RestaurantBooking, (booking) => booking.table)
+  @ManyToMany(() => RestaurantBooking, (booking) => booking.tables)
   bookings: RestaurantBooking[];
 
   @CreateDateColumn({ type: 'timestamptz' })
