@@ -555,6 +555,21 @@ export class ChatService {
     }));
   }
 
+  async deleteChatHistory(userId?: number, sessionId?: string) {
+    const qb = this.messageRepo.createQueryBuilder()
+      .delete()
+      .from(ChatMessage);
+      
+    if (userId) {
+      qb.where('user_id = :userId', { userId });
+    } else if (sessionId) {
+      qb.where('session_id = :sessionId', { sessionId });
+    } else {
+      return;
+    }
+    await qb.execute();
+  }
+
   private async getHistory(userId?: number, sessionId?: string): Promise<Content[]> {
     if (!userId && !sessionId) return [];
     

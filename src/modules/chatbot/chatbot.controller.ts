@@ -3,6 +3,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Query,
   UploadedFile,
   UploadedFiles,
@@ -108,5 +109,17 @@ export class ChatController {
     @Query('sessionId') sessionId?: string,
   ) {
     return this.chatService.getChatHistory(user.userId, sessionId);
+  }
+
+  @Delete('history')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Xóa lịch sử trò chuyện' })
+  async deleteHistory(
+    @CurrentUser() user: RequestUser,
+    @Query('sessionId') sessionId?: string,
+  ) {
+    await this.chatService.deleteChatHistory(user.userId, sessionId);
+    return { success: true };
   }
 }
