@@ -7,14 +7,36 @@ import {
   MaxLength,
   Min,
   IsNotEmpty,
+  ValidateNested,
+  IsArray,
 } from 'class-validator';
 
-export class CreateRestaurantBookingDto {
-  @ApiProperty({ description: 'Restaurant table id being booked' })
-  @Type(() => Number)
+export class RestaurantBookingItemDto {
+  @ApiProperty({ description: 'Table ID' })
   @IsInt()
   @Min(1)
   tableId: number;
+
+  @ApiProperty({ description: 'Quantity of tables', default: 1 })
+  @IsInt()
+  @Min(1)
+  quantity: number;
+}
+
+export class CreateRestaurantBookingDto {
+  @ApiPropertyOptional({ description: 'Single table ID (deprecated if items used)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  tableId?: number;
+
+  @ApiPropertyOptional({ type: [RestaurantBookingItemDto], description: 'List of tables to book' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RestaurantBookingItemDto)
+  items?: RestaurantBookingItemDto[];
 
   @ApiProperty({
     description: 'Check-in datetime (ISO or dd:MM:yyyy HH:mm)',

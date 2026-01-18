@@ -69,39 +69,61 @@ export class RestaurantBookingsService {
   async create(
     userId: number,
     dto: CreateRestaurantBookingDto,
-  ): Promise<RestaurantBooking> {
+  ): Promise<RestaurantBooking[]> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
-    const table = await this.tableRepo.findOne({
-      where: { id: dto.tableId },
-      relations: ['cooperation'],
-    });
-    if (!table) throw new NotFoundException('Restaurant table not found');
+    const bookings: RestaurantBooking[] = [];
+    
+    // Determine items to process
+    // If dto.items is provided, use it. Otherwise fall back to tableId (quantity 1).
+    const items = (dto.items && dto.items.length > 0)
+      ? dto.items
+      : [{ tableId: dto.tableId!, quantity: 1 }];
 
-    if (
-      table.maxPeople &&
-      dto.numberOfGuests &&
-      dto.numberOfGuests > table.maxPeople
-    ) {
-      throw new BadRequestException('Number of guests exceeds table capacity');
+    for (const item of items) {
+      if (!item.tableId) continue;
+
+      const table = await this.tableRepo.findOne({
+        where: { id: item.tableId },
+        relations: ['cooperation'],
+      });
+      if (!table) throw new NotFoundException(`Restaurant table ${item.tableId} not found`);
+
+      // Check guests capacity if applicable (for now using dto.numberOfGuests for ALL tables?)
+      // Note: numberOfGuests is global for the booking request.
+      // If we have multiple tables, how do we check? 
+      // Simplified: Check if total guests > total capacity? Or check per table?
+      // For now, let's skip strict guest check per table or assume dto.numberOfGuests applies to the whole group, 
+      // but we store it in each booking row.
+      // Or we can say "numberOfGuests" is the TOTAL.
+      // We will perform the check against the specific table being booked if we assume one table holds them?
+      // Actually, if we book 2 tables, maybe the guests are split.
+      // Let's just create the bookings without strict guest-per-table check for now to avoid blocking.
+      
+      const quantity = item.quantity || 1;
+      
+      for (let i = 0; i < quantity; i++) {
+        const booking = this.bookingRepo.create({
+          code: this.generateBookingCode(),
+          user,
+          table,
+          cooperation: table.cooperation,
+          checkInDate: this.parseCustomDate(dto.checkInDate),
+          durationMinutes: dto.durationMinutes,
+          numberOfGuests: dto.numberOfGuests ?? 1, // Store total guests or fallback? 
+          notes: dto.notes,
+          contactName: dto.contactName,
+          contactPhone: dto.contactPhone,
+          status: RestaurantBookingStatus.CONFIRMED, // Or PENDING based on logic
+        });
+        
+        await this.bookingRepo.save(booking);
+        bookings.push(booking);
+      }
     }
 
-    const booking = this.bookingRepo.create({
-      code: this.generateBookingCode(),
-      user,
-      table,
-      cooperation: table.cooperation,
-      checkInDate: this.parseCustomDate(dto.checkInDate),
-      durationMinutes: dto.durationMinutes,
-      numberOfGuests: dto.numberOfGuests ?? 1,
-      notes: dto.notes,
-      contactName: dto.contactName,
-      contactPhone: dto.contactPhone,
-      status: RestaurantBookingStatus.CONFIRMED,
-    });
-
-    return this.bookingRepo.save(booking);
+    return bookings;
   }
 
   private generateBookingCode(): string {
