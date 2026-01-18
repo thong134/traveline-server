@@ -12,6 +12,7 @@ import {
   differenceInDays,
   differenceInMonths,
   differenceInYears,
+  format,
 } from 'date-fns';
 import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import { TravelRoute, TravelRouteStatus } from './entities/travel-route.entity';
@@ -1393,14 +1394,17 @@ export class TravelRoutesService {
     // Normalize province (handle unaccented inputs like "Phu Yen" -> "Phú Yên")
     const validProvince = await this.normalizeProvince(dto.province);
 
+    const startDateFn = this.parseDateInput(dto.startDate);
+    const endDateFn = this.parseDateInput(dto.endDate);
+
     try {
       const resp = await firstValueFrom(
         this.httpService.post('/recommend/route', {
           hobbies: uniqueHobbies,
           favorites: user.favoriteDestinationIds || [],
           province: validProvince,
-          startDate: dto.startDate,
-          endDate: dto.endDate,
+          startDate: startDateFn ? format(startDateFn, 'dd/MM/yyyy') : dto.startDate,
+          endDate: endDateFn ? format(endDateFn, 'dd/MM/yyyy') : dto.endDate,
         }),
       );
       const data = resp.data;
@@ -1439,13 +1443,16 @@ export class TravelRoutesService {
     if (dto.startDate && dto.endDate && dto.province) {
       try {
         const startCoords = dto.startCoordinates;
+        const startDateFn = this.parseDateInput(dto.startDate);
+        const endDateFn = this.parseDateInput(dto.endDate);
+
         const resp = await firstValueFrom(
           this.httpService.post('/recommend/route', {
             hobbies: uniqueHobbies,
             favorites: user.favoriteDestinationIds || [],
             province: dto.province,
-            startDate: dto.startDate,
-            endDate: dto.endDate,
+            startDate: startDateFn ? format(startDateFn, 'dd/MM/yyyy') : dto.startDate,
+            endDate: endDateFn ? format(endDateFn, 'dd/MM/yyyy') : dto.endDate,
             start_lat: startCoords?.latitude,
             start_long: startCoords?.longitude,
           }),
