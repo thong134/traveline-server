@@ -115,8 +115,8 @@ export class HealthController {
           { 
             hobbies: ['Nature'], 
             province: 'Đà Nẵng',
-            startDate: '2024-01-01',
-            endDate: '2024-01-03'
+            startDate: '01/01/2024',
+            endDate: '03/01/2024'
           },
           { timeout: 90000 }
         ),
