@@ -32,6 +32,7 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { ProvincesModule } from './modules/province/province.module';
 import { MapModule } from './common/map/map.module';
 import { FptAiModule } from './common/fpt-ai/fpt-ai.module';
+import { HealthModule } from './modules/health/health.module';
 import { StatisticsModule } from './modules/statistics/statistics.module';
 
 @Module({
@@ -86,6 +87,7 @@ import { StatisticsModule } from './modules/statistics/statistics.module';
     MapModule,
     FptAiModule,
     StatisticsModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

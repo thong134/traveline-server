@@ -133,12 +133,10 @@ export class FeedbackService {
       this.configService.get<string>('AI_SERVICE_URL') ??
       'http://localhost:8000';
 
-    const observable = this.httpService.post(
-      `${baseUrl}/moderation/predict/${lang}`,
-      {
-        text,
-      },
-    );
+    const cleanUrl = baseUrl.replace(/\/+$/, ''); // Remove trailing slashes
+    const observable = this.httpService.post(`${cleanUrl}/moderation/predict`, {
+      text,
+    });
     const response: AxiosResponse = await lastValueFrom(observable);
     return response.data;
   }

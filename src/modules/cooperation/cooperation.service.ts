@@ -18,6 +18,7 @@ import { UploadContractDto } from './dto/upload-contract.dto';
 import { UpdateCooperationDto } from './dto/update-cooperation.dto';
 import { User } from '../user/entities/user.entity';
 import { assignDefined } from '../../common/utils/object.util';
+import { calculateDistance } from '../../common/utils/location.util';
 import { UsersService } from '../user/user.service';
 
 @Injectable()
@@ -387,30 +388,24 @@ export class CooperationsService {
     query: { lat: number; lng: number; radius?: number },
   ) {
     const radius = query.radius ?? 10;
+    
+    // Fetch all active cooperations of the given type
     const cooperations = await this.cooperationRepo.find({
       where: { type, status: CooperationStatus.ACTIVE },
     });
 
-    const nearbyPromises = cooperations.map(async (coop) => {
-      if (!coop.latitude || !coop.longitude) return null;
-
-      const distanceKm = await this.mapService.getDistance(
-        query.lat,
-        query.lng,
-        parseFloat(coop.latitude.toString()),
-        parseFloat(coop.longitude.toString()),
-      );
-
-      return {
-        ...coop,
-        distanceKm: parseFloat(distanceKm.toFixed(2)),
-      };
-    });
-
-    const nearby = (await Promise.all(nearbyPromises))
-      .filter(
-        (item): item is any => item !== null && item.distanceKm <= radius,
-      )
+    const nearby = cooperations
+      .filter((coop) => coop.latitude && coop.longitude)
+      .map((coop) => {
+        const distanceKm = calculateDistance(
+          query.lat,
+          query.lng,
+          Number(coop.latitude),
+          Number(coop.longitude),
+        );
+        return { ...coop, distanceKm };
+      })
+      .filter((item) => item.distanceKm <= radius)
       .sort((a, b) => a.distanceKm - b.distanceKm);
 
     return nearby;
