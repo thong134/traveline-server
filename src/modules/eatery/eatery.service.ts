@@ -55,50 +55,41 @@ export class EateriesService {
   async searchNearby(query: {
     latitude: number;
     longitude: number;
-  }): Promise<Eatery[]> {
+  }): Promise<(Eatery & { distance: number })[]> {
     this.logger.log(`Searching nearby eateries: ${JSON.stringify(query)}`);
+
+    const NEARBY_RADIUS_KM = 50; // Bán kính tìm kiếm
+    const MAX_RESULTS = 30; // Giới hạn số kết quả trả về
+
+    // Fetch tất cả eateries có tọa độ và tính Haversine distance (instant)
     const allEateries = await this.repo.find({
-      where: {
-        // We can't easily filter by lat/long in DB without PostGIS
-        // So we fetch all (assuming small dataset like 50 records)
-        // For larger datasets, we'd need bounding box query here.
-      }
+      where: {},
     });
 
-    const PRE_FILTER_RADIUS = 50; // 50km
-    const OSRM_RADIUS = 20; // 20km
-
-    // 1. Haversine Pre-filter
-    const candidates = allEateries.filter(e => {
-      if (!e.latitude || !e.longitude) return false;
-      const d = calculateDistance(query.latitude, query.longitude, e.latitude, e.longitude);
-      return d <= PRE_FILTER_RADIUS;
-    });
-
-    this.logger.log(`Pre-filtered ${candidates.length}/${allEateries.length} eateries.`);
-
-    // 2. OSRM Filter
-    const results = await Promise.all(candidates.map(async (e) => {
-      try {
-        const dist = await this.mapService.getDistance(
+    const withDistance = allEateries
+      .filter(e => e.latitude != null && e.longitude != null)
+      .map(e => ({
+        ...e,
+        distance: calculateDistance(
           query.latitude,
           query.longitude,
           e.latitude!,
-          e.longitude!
-        );
-        return { ...e, distance: dist }; // Attach distance to entity (need to extend type or ignore TS)
-      } catch (err) {
-        this.logger.error(`OSRM error for eatery ${e.id}`, err);
-        return null;
-      }
-    }));
+          e.longitude!,
+        ),
+      }));
 
-    const validResults = results
-      .filter((e): e is Eatery & { distance: number } => e !== null && e.distance <= OSRM_RADIUS)
-      .sort((a, b) => a.distance - b.distance);
+    // Lọc theo bán kính + sắp xếp + giới hạn số lượng
+    const results = withDistance
+      .filter(e => e.distance <= NEARBY_RADIUS_KM)
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, MAX_RESULTS);
 
-    return validResults;
+    this.logger.log(`Found ${results.length} nearby eateries`);
+
+    return results;
   }
+
+
 
   async random(query: {
     province?: string;
