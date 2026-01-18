@@ -1098,6 +1098,17 @@ export class RentalBillsService {
     const shipping = parseFloat(bill.shippingFee || '0');
     finalAmount += shipping;
 
+    // 4. Overtime Fee
+    const overtime = parseFloat(bill.overtimeFee || '0');
+    finalAmount += overtime;
+
+    // --- OWNER TOTAL CALCULATION ---
+    // Owner receives: Vehicle Price + Shipping + Overtime
+    // Without deducting Voucher or TravelPoints
+    const ownerAmount = totalFromDetails + shipping + overtime;
+    bill.ownerTotal = this.formatMoney(ownerAmount);
+    // -------------------------------
+
     bill.total = this.formatMoney(finalAmount);
   }
 

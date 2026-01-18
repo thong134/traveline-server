@@ -111,6 +111,10 @@ export class RentalBill {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   total: string;
 
+  @ApiProperty({ description: 'Tổng tiền thực nhận của chủ xe (không trừ voucher/points)' })
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  ownerTotal: string;
+
   @ManyToOne(() => Voucher, (voucher: Voucher) => voucher.rentalBills, {
     nullable: true,
     onDelete: 'SET NULL',

@@ -346,12 +346,12 @@ export class AdministrativeMappingService {
       .createQueryBuilder('commune')
       .leftJoinAndSelect('commune.province', 'province')
       .where(
-        '(LOWER(commune.name) = :cName OR LOWER(commune.fullName) = :cName)',
-        { cName: nCommune },
+        '(commune.name ILIKE :cName OR commune.fullName ILIKE :cName OR commune.name ILIKE :cLike OR commune.fullName ILIKE :cLike)',
+        { cName: nCommune, cLike: `%${nCommune}%` },
       )
       .andWhere(
-        '(LOWER(province.name) = :pName OR LOWER(province.fullName) = :pName)',
-        { pName: nProvince },
+        '(province.name ILIKE :pName OR province.fullName ILIKE :pName OR province.name ILIKE :pLike OR province.fullName ILIKE :pLike)',
+        { pName: nProvince, pLike: `%${nProvince}%` },
       );
 
     const validCommune = await qb.getOne();
