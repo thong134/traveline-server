@@ -77,12 +77,13 @@ export class RestaurantBookingsService {
       throw new BadRequestException('Vui lòng chọn ít nhất một bàn');
     }
 
+    const uniqueTableIds = [...new Set(dto.tableIds)];
     const tables = await this.tableRepo.find({
-      where: dto.tableIds.map((id) => ({ id })),
+      where: uniqueTableIds.map((id) => ({ id })),
       relations: ['cooperation'],
     });
 
-    if (tables.length !== dto.tableIds.length) {
+    if (tables.length !== uniqueTableIds.length) {
       throw new BadRequestException('Một hoặc nhiều bàn không tồn tại');
     }
 
