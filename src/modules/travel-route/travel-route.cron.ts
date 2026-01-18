@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TravelRoute, TravelRouteStatus } from './entities/travel-route.entity';
 import { Repository } from 'typeorm';
+import { Notification, NotificationType } from '../notification/entities/notification.entity';
 import { NotificationService } from '../notification/notification.service';
 import { TravelRoutesService } from './travel-route.service';
 import {
@@ -22,6 +23,8 @@ export class TravelRouteCronService {
   constructor(
     @InjectRepository(TravelRoute)
     private readonly routeRepo: Repository<TravelRoute>,
+    @InjectRepository(Notification)
+    private readonly notificationRepo: Repository<Notification>,
     private readonly notificationService: NotificationService,
     private readonly travelRouteService: TravelRoutesService,
   ) {}
@@ -67,6 +70,22 @@ export class TravelRouteCronService {
 
       if (period) {
         this.logger.log(`Route ${route.id} matches ${period} anniversary!`);
+        
+        // Check if already sent today
+        const alreadySent = await this.notificationRepo
+          .createQueryBuilder('n')
+          .where('n.user_id = :userId', { userId: route.user.id })
+          .andWhere('n.type = :type', { type: NotificationType.ANNIVERSARY })
+          .andWhere("n.data->>'routeId' = :routeId", { routeId: route.id.toString() })
+          .andWhere("n.data->>'period' = :period", { period })
+          .andWhere('n.createdAt >= :today', { today: new Date(new Date().setHours(0,0,0,0)) })
+          .getOne();
+
+        if (alreadySent) {
+          this.logger.log(`Route ${route.id} anniversary already notified today. Skipping.`);
+          continue;
+        }
+
         await this.sendAnniversaryNotification(route, period);
         notificationsSent++;
 

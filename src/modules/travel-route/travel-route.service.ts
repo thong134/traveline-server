@@ -1844,6 +1844,7 @@ export class TravelRoutesService {
       where: { id: routeId },
       relations: { stops: true, clonedFromRoute: true, user: true },
       order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
+      lock: { mode: 'pessimistic_write' },
     });
     if (!route) {
       return;

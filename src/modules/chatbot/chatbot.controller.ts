@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Post,
+  Get,
+  Query,
   UploadedFile,
   UploadedFiles,
   UseGuards,
@@ -97,4 +99,14 @@ export class ChatController {
     });
   }
 
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lấy lịch sử trò chuyện' })
+  async getHistory(
+    @CurrentUser() user: RequestUser,
+    @Query('sessionId') sessionId?: string,
+  ) {
+    return this.chatService.getChatHistory(user.userId, sessionId);
+  }
 }

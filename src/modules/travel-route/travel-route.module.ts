@@ -8,13 +8,14 @@ import { TravelRoute } from './entities/travel-route.entity';
 import { RouteStop } from './entities/route-stop.entity';
 import { Destination } from '../destination/entities/destinations.entity';
 import { User } from '../user/entities/user.entity';
+import { Notification } from '../notification/entities/notification.entity';
 import { CloudinaryModule } from '../../common/cloudinary/cloudinary.module';
 import { TravelRouteCronService } from './travel-route.cron';
 import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TravelRoute, RouteStop, Destination, User]),
+    TypeOrmModule.forFeature([TravelRoute, RouteStop, Destination, User, Notification]),
     CloudinaryModule,
     forwardRef(() => NotificationModule),
     HttpModule.registerAsync({

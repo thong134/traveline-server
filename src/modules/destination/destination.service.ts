@@ -107,12 +107,12 @@ export class DestinationsService {
       qb.andWhere('destination.available = :available', { available });
     }
     if (typeof params?.hasTourTickets === 'boolean') {
-      qb.andWhere('destination.has_tour_tickets = :hasTourTickets', {
+      qb.andWhere('destination.hasTourTickets = :hasTourTickets', {
         hasTourTickets: params.hasTourTickets,
       });
     }
     if (params?.cooperationId) {
-      qb.andWhere('destination.cooperation_id = :cooperationId', {
+      qb.andWhere('destination.cooperationId = :cooperationId', {
         cooperationId: params.cooperationId,
       });
     }

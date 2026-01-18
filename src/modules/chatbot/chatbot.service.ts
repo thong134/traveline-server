@@ -535,6 +535,26 @@ export class ChatService {
     return (policies as any)[topic] || "Chưa có thông tin cụ thể về chủ đề này. Bạn cần hỗ trợ gì khác không?";
   }
 
+  async getChatHistory(userId?: number, sessionId?: string) {
+    const where: any = {};
+    if (userId) {
+       where.user = { id: userId };
+    } else {
+       where.sessionId = sessionId;
+    }
+    const messages = await this.messageRepo.find({
+      where,
+      order: { createdAt: 'ASC' }, // Ascending for display
+      take: 50, // Increase limit for history view
+    });
+    
+    return messages.map(m => ({
+      role: m.role,
+      content: m.content,
+      createdAt: m.createdAt,
+    }));
+  }
+
   private async getHistory(userId?: number, sessionId?: string): Promise<Content[]> {
     if (!userId && !sessionId) return [];
     
