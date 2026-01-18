@@ -47,7 +47,7 @@ export class HealthController {
     try {
       // 1. Check Health Endpoint
       const healthRes = await firstValueFrom(
-        this.httpService.get(`${baseUrl}/health`, { timeout: 15000 }), // Longer timeout for cold start
+        this.httpService.get(`${baseUrl}/health`, { timeout: 20000 }), // 20s for basic ping
       );
       results.ping.status = 'ok';
       results.ping.latency = `${Date.now() - start}ms`;
@@ -66,11 +66,12 @@ export class HealthController {
 
     try {
       // 2. Check Moderation Endpoint (to see specific service error)
+      // Increase timeout to 90s because first load needs to read large model files
       const modRes = await firstValueFrom(
         this.httpService.post(
           `${baseUrl}/moderation/predict`,
           { text: 'ping' },
-          { timeout: 15000 }
+          { timeout: 90000 } 
         ),
       );
       results.moderation_check.status = 'ok';
