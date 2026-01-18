@@ -342,22 +342,51 @@ export class AdministrativeMappingService {
     const nProvince = this.normalizeText(province);
     const nCommune = this.normalizeText(commune);
 
-    const qb = this.reformCommuneRepo
-      .createQueryBuilder('commune')
-      .leftJoinAndSelect('commune.province', 'province')
+    // STAGE 1: Find commune candidates by Name (Both Normalized & Original)
+    const communeCandidates = await this.reformCommuneRepo
+      .createQueryBuilder('c')
+      .leftJoinAndSelect('c.province', 'p')
       .where(
-        '(commune.name ILIKE :cName OR commune.fullName ILIKE :cName OR commune.name ILIKE :cLike OR commune.fullName ILIKE :cLike)',
-        { cName: nCommune, cLike: `%${nCommune}%` },
+        '(c.name ILIKE :cName OR c.fullName ILIKE :cName OR c.name ILIKE :cLike OR c.fullName ILIKE :cLike OR c.name ILIKE :cOriginal OR c.fullName ILIKE :cOriginal)',
+        { 
+          cName: nCommune, 
+          cLike: `%${nCommune}%`,
+          cOriginal: `%${(commune || '').trim()}%` // Include original accented text
+        },
       )
-      .andWhere(
-        '(province.name ILIKE :pName OR province.fullName ILIKE :pName OR province.name ILIKE :pLike OR province.fullName ILIKE :pLike)',
-        { pName: nProvince, pLike: `%${nProvince}%` },
-      );
+      .getMany();
 
-    const validCommune = await qb.getOne();
+    if (!communeCandidates.length) {
+      throw new NotFoundException(
+        `Reform unit "${commune}" not found. (Database checked for: ${nCommune})`,
+      );
+    }
+
+    // STAGE 2: Filter by Province
+    const validCommune = communeCandidates.find((c) => {
+      const pName = this.normalizeText(c.province?.name);
+      const pFullName = this.normalizeText(c.province?.fullName);
+      // Check absolute equality or "contains" logic for province too
+      // Also check against original province input
+      return (
+        pName === nProvince ||
+        pFullName === nProvince ||
+        pName?.includes(nProvince) ||
+        pFullName?.includes(nProvince) ||
+        nProvince.includes(pName!) ||
+        pName?.toLowerCase().includes(province.toLowerCase().trim()) || 
+        pFullName?.toLowerCase().includes(province.toLowerCase().trim())
+      );
+    });
 
     if (!validCommune) {
-      throw new NotFoundException('Reform unit not found');
+      // Found communes but not in this province
+      const foundIn = communeCandidates
+        .map((c) => c.province?.fullName || c.province?.name)
+        .join(', ');
+      throw new NotFoundException(
+        `Reform unit "${commune}" found in [${foundIn}] but not in "${province}".`,
+      );
     }
 
     const mappings = await this.findByNewCommune(validCommune.code);
@@ -1082,5 +1111,15 @@ export class AdministrativeMappingService {
     ].filter((part): part is string => Boolean(part && part.length));
 
     return components.join(', ');
+  }
+
+  async debugSearchCommunes(term: string) {
+    const termLike = `%${term}%`;
+    return this.reformCommuneRepo
+      .createQueryBuilder('c')
+      .leftJoinAndSelect('c.province', 'p')
+      .where('c.name ILIKE :term OR c.fullName ILIKE :term', { term: termLike })
+      .limit(20)
+      .getMany();
   }
 }

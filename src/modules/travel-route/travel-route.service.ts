@@ -1967,6 +1967,9 @@ export class TravelRoutesService {
             type: 'route_completed',
           },
         );
+
+        // Increment completed travel trips count
+        await this.userRepo.increment({ id: route.user.id }, 'travelTrip', 1);
       }
     }
 

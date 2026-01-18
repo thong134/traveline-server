@@ -565,4 +565,52 @@ export class DestinationsService {
       };
     }
   }
+
+  async seedTicketData() {
+    const listToSeed = [
+      { name: 'Đầm Sen', price: 150000, open: '08:00', close: '18:00' },
+      { name: 'Suối Tiên', price: 120000, open: '08:00', close: '17:00' },
+      { name: 'Bà Nà', price: 850000, open: '07:30', close: '21:00' },
+      { name: 'VinWonders', price: 950000, open: '09:00', close: '20:00' },
+      { name: 'Hạ Long', price: 290000, open: '07:00', close: '18:00' },
+      { name: 'Phong Nha', price: 150000, open: '08:00', close: '16:30' },
+      { name: 'Núi Thần Tài', price: 400000, open: '08:30', close: '17:30' },
+    ];
+
+    const results: string[] = [];
+
+    for (const item of listToSeed) {
+      // Find destinations matching the name
+      const destinations = await this.repo
+        .createQueryBuilder('d')
+        .where('d.name ILIKE :name', { name: `%${item.name}%` })
+        .getMany();
+
+      for (const dest of destinations) {
+        dest.hasTourTickets = true;
+        dest.ticketPrice = item.price;
+        dest.tourPriceRange = `${item.price.toLocaleString('vi-VN')}đ`;
+        dest.openTime = item.open;
+        dest.closeTime = item.close;
+        await this.repo.save(dest);
+        results.push(`Updated ${dest.name} (ID: ${dest.id}) with price ${item.price}`);
+      }
+    }
+
+    if (results.length === 0) {
+      // Fallback: If no matches, seed some random ones
+      const randomDestinations = await this.repo.find({ take: 5 });
+      for (const dest of randomDestinations) {
+         dest.hasTourTickets = true;
+         dest.ticketPrice = 200000;
+         dest.tourPriceRange = '200.000đ';
+         dest.openTime = '08:00';
+         dest.closeTime = '17:00';
+         await this.repo.save(dest);
+         results.push(`Updated random ${dest.name} (ID: ${dest.id}) with price 200000`);
+      }
+    }
+
+    return results;
+  }
 }

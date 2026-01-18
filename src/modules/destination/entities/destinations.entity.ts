@@ -23,6 +23,9 @@ export class Destination {
   @Column({ nullable: true })
   tourPriceRange?: string;
 
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  ticketPrice: number;
+
   @Column({ nullable: true })
   cooperationId?: number;
 

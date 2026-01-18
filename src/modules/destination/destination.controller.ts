@@ -477,4 +477,11 @@ export class DestinationsController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.destinationsService.remove(id);
   }
+
+  @Post('seed-tickets')
+  @RequireAuth(UserRole.Admin)
+  @ApiOperation({ summary: 'Seed fake ticket data (DEBUG ONLY)' })
+  seedTickets() {
+    return this.destinationsService.seedTicketData();
+  }
 }

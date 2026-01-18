@@ -5,6 +5,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdministrativeMappingService } from './mapping.service';
@@ -134,5 +135,11 @@ export class AdministrativeMappingController {
     @Body() dto: EnrichDestinationsDto = new EnrichDestinationsDto(),
   ) {
     return this.service.enrichDestinations(dto);
+  }
+
+  @Get('debug/communes')
+  @ApiOperation({ summary: 'Debug tìm kiếm tên xã mới' })
+  debugCommunes(@Query('q') q: string) {
+    return this.service.debugSearchCommunes(q);
   }
 }
