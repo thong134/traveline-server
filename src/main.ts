@@ -29,7 +29,7 @@ async function createServer(): Promise<INestApplication> {
     );
 
     app.enableCors({
-      origin: ['http://localhost:3001', '*'],
+      origin: ['http://localhost:3001', 'https://travelineweb.netlify.app'],
       credentials: true,
     });
 
