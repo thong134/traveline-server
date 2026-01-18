@@ -23,7 +23,7 @@ import { NotificationModule } from '../notification/notification.module';
       useFactory: (configService: ConfigService) => {
         const rawUrl =
           configService.get<string>('AI_SERVICE_URL') ??
-          'http://localhost:8000';
+          'https://ai-model-service-u3xb.onrender.com';
         return {
           baseURL: rawUrl.replace(/\/+$/, ''),
           timeout: 90_000,
