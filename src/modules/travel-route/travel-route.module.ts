@@ -20,13 +20,16 @@ import { NotificationModule } from '../notification/notification.module';
     HttpModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        baseURL:
-          configService.get<string>('AI_MODEL_SERVICE_URL') ??
-          'http://localhost:8000',
-        timeout: 10_000,
-        maxRedirects: 2,
-      }),
+      useFactory: (configService: ConfigService) => {
+        const rawUrl =
+          configService.get<string>('AI_SERVICE_URL') ??
+          'http://localhost:8000';
+        return {
+          baseURL: rawUrl.replace(/\/+$/, ''),
+          timeout: 90_000,
+          maxRedirects: 2,
+        };
+      },
     }),
   ],
   controllers: [TravelRoutesController],
