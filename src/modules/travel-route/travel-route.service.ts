@@ -184,19 +184,19 @@ export class TravelRoutesService {
     qb.orderBy('route.createdAt', 'DESC')
       .addOrderBy('stops.dayOrder', 'ASC')
       .addOrderBy('stops.sequence', 'ASC');
-    const routes = await qb.getMany();
-    return Promise.all(routes.map((route) => this.findOne(route.id)));
+
+    return qb.getMany();
   }
 
   async findByUser(userId: number): Promise<TravelRoute[]> {
-    const routes = await this.routeRepo.find({
+    return this.routeRepo.find({
       where: { user: { id: userId }, isPublic: false },
-      select: { id: true },
+      relations: { stops: { destination: true }, user: true },
       order: {
         createdAt: 'DESC',
+        stops: { dayOrder: 'ASC', sequence: 'ASC' },
       },
     });
-    return Promise.all(routes.map((route) => this.findOne(route.id)));
   }
 
   async findDrafts(province?: string): Promise<TravelRoute[]> {
@@ -204,6 +204,7 @@ export class TravelRoutesService {
       .createQueryBuilder('route')
       .leftJoinAndSelect('route.stops', 'stops')
       .leftJoinAndSelect('stops.destination', 'destination')
+      .leftJoinAndSelect('route.user', 'user')
       .where('route.isPublic = :isPublic', { isPublic: true });
 
     if (province) {
@@ -214,8 +215,7 @@ export class TravelRoutesService {
       .addOrderBy('stops.dayOrder', 'ASC')
       .addOrderBy('stops.sequence', 'ASC');
 
-    const routes = await qb.getMany();
-    return Promise.all(routes.map((route) => this.findOne(route.id)));
+    return qb.getMany();
   }
 
   async useClone(
