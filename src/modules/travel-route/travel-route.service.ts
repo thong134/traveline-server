@@ -223,7 +223,7 @@ export class TravelRoutesService {
     userId: number,
     payload: { startDate: Date; endDate: Date; name?: string },
   ): Promise<TravelRoute> {
-    const savedId = await this.dataSource.transaction(async (manager) => {
+    return this.dataSource.transaction(async (manager) => {
       const routeRepo = manager.getRepository(TravelRoute);
       const stopRepo = manager.getRepository(RouteStop);
       const userRepo = manager.getRepository(User);
@@ -253,7 +253,13 @@ export class TravelRoutesService {
       });
 
       if (existingClone) {
-        return existingClone.id; // Return existing ID instead of creating new one
+        // If exists, just return it (or we could update dates here if needed)
+        const finalRoute = await routeRepo.findOne({
+          where: { id: existingClone.id },
+          relations: { stops: { destination: true }, user: true },
+          order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
+        });
+        return finalRoute!;
       }
 
       // Create a fresh personal copy
@@ -300,10 +306,18 @@ export class TravelRoutesService {
       }
 
       await this.updateRouteAggregates(savedRoute.id, manager);
-      return savedRoute.id;
-    });
+      
+      const finalRoute = await routeRepo.findOne({
+        where: { id: savedRoute.id },
+        relations: { stops: { destination: true }, user: true },
+        order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
+      });
 
-    return this.findOne(savedId);
+      if (!finalRoute) {
+        throw new NotFoundException(`Travel route ${savedRoute.id} not found after clone`);
+      }
+      return finalRoute;
+    });
   }
 
   async findFavoritesByUser(userId: number): Promise<TravelRoute[]> {
@@ -1489,12 +1503,13 @@ export class TravelRoutesService {
   }
 
   async claimSuggestedRoute(userId: number, data: any): Promise<TravelRoute> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException(`User ${userId} not found`);
-
     return this.dataSource.transaction(async (manager) => {
       const routeRepo = manager.getRepository(TravelRoute);
       const stopRepo = manager.getRepository(RouteStop);
+      const userRepo = manager.getRepository(User);
+
+      const user = await userRepo.findOne({ where: { id: userId } });
+      if (!user) throw new NotFoundException(`User ${userId} not found`);
 
       const route = new TravelRoute();
       route.user = user;
@@ -1520,9 +1535,10 @@ export class TravelRoutesService {
             stop.notes = s.notes;
             stop.status = RouteStopStatus.UPCOMING;
 
-            if (s.destinationId) {
+            const destId = s.destinationId ?? s.destination?.id;
+            if (destId) {
               const dest = await manager.findOne(Destination, {
-                where: { id: s.destinationId },
+                where: { id: Number(destId) },
               });
               if (dest) {
                 stop.destination = dest;
@@ -1533,6 +1549,8 @@ export class TravelRoutesService {
         );
         await stopRepo.save(stops);
       }
+
+      await this.updateRouteAggregates(savedRoute.id, manager);
 
       const finalRoute = await manager.findOne(TravelRoute, {
         where: { id: savedRoute.id },
@@ -1970,13 +1988,15 @@ export class TravelRoutesService {
         );
 
         // Recalculate total completed trips for accuracy
-        const completedCount = await routeRepo.count({
-          where: {
-            user: { id: route.user.id },
-            status: TravelRouteStatus.COMPLETED,
-          },
-        });
-        await userRepo.update({ id: route.user.id }, { travelTrip: completedCount });
+        if (route.user?.id) {
+          const completedCount = await routeRepo.count({
+            where: {
+              user: { id: route.user.id },
+              status: TravelRouteStatus.COMPLETED,
+            },
+          });
+          await userRepo.update({ id: route.user.id }, { travelTrip: completedCount });
+        }
       }
     }
 
