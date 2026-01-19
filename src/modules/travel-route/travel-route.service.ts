@@ -513,7 +513,15 @@ export class TravelRoutesService {
         }
       }
 
-      return this.findOne(id);
+      const finalRoute = await repo.findOne({
+        where: { id },
+        relations: { stops: { destination: true }, user: true },
+        order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
+      });
+      if (!finalRoute) {
+        throw new NotFoundException(`Travel route ${id} not found after update`);
+      }
+      return finalRoute;
     });
   }
 
@@ -1829,7 +1837,6 @@ export class TravelRoutesService {
       where: { id: routeId },
       relations: { stops: true, clonedFromRoute: true, user: true },
       order: { stops: { dayOrder: 'ASC', sequence: 'ASC' } },
-      lock: { mode: 'pessimistic_write' },
     });
     if (!route) {
       return;
@@ -1912,12 +1919,15 @@ export class TravelRoutesService {
 
       if (diff > 0 && route.user?.id) {
         // Award points and exp to actual user balance
-        const user = await this.userRepo.findOne({ where: { id: route.user.id } });
+        const userRepo = manager.getRepository(User);
+        const user = await userRepo.findOne({
+          where: { id: route.user.id },
+        });
         if (user) {
           user.travelPoint += diff;
           user.travelExp += diff;
           user.userTier = UsersService.resolveTier(user.travelExp);
-          await this.userRepo.save(user);
+          await userRepo.save(user);
         }
 
         // Notify User

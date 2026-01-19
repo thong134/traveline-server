@@ -333,8 +333,16 @@ export class ChatService {
         }).trim();
 
         // Save interaction to DB
-        await this.saveMessage(userId, sessionId, 'user', message);
-        await this.saveMessage(userId, sessionId, 'model', textResult);
+        await this.saveMessage(userId, sessionId, 'user', message, {
+           images: options?.images?.map(img => img.type === 'url' ? img.data : null).filter(Boolean) || []
+        });
+
+        const botMetadata = {
+            source: 'ai',
+            relatedEntities: collectedEntities,
+            actions: actions,
+        };
+        await this.saveMessage(userId, sessionId, 'model', textResult, botMetadata);
 
         return {
           source: 'ai',
@@ -552,6 +560,7 @@ export class ChatService {
       role: m.role,
       content: m.content,
       createdAt: m.createdAt,
+      metadata: m.metadata,
     }));
   }
 
@@ -592,12 +601,19 @@ export class ChatService {
     }));
   }
 
-  private async saveMessage(userId: number | undefined, sessionId: string, role: 'user' | 'model', content: string) {
+  private async saveMessage(
+    userId: number | undefined, 
+    sessionId: string, 
+    role: 'user' | 'model', 
+    content: string,
+    metadata?: any
+  ) {
      await this.messageRepo.save({
        user: userId ? { id: userId } : undefined,
        sessionId,
        role: role === 'user' ? 'user' : 'assistant', // Map to DB enum
        content,
+       metadata: metadata || {},
        createdAt: new Date(),
      });
   }
