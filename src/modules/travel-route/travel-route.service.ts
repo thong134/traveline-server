@@ -414,7 +414,6 @@ export class TravelRoutesService {
   }
 
   async findOne(id: number): Promise<TravelRoute> {
-    await this.refreshRouteState(id);
     const route = await this.routeRepo.findOne({
       where: { id },
       relations: { stops: { destination: true }, user: true },
@@ -427,7 +426,6 @@ export class TravelRoutesService {
   }
 
   async getStopDetail(routeId: number, stopId: number): Promise<RouteStop> {
-    await this.refreshRouteState(routeId);
     return this.getStopOrFail(routeId, stopId, undefined, {
       withDestination: true,
     });
@@ -453,21 +451,8 @@ export class TravelRoutesService {
       where: { user: { id: userId }, isPublic: false },
       order: { startDate: 'ASC', id: 'DESC' },
     });
-    await Promise.all(routes.map((route) => this.refreshRouteState(route.id)));
 
-    const refreshed = await this.routeRepo.find({
-      select: {
-        id: true,
-        name: true,
-        startDate: true,
-        endDate: true,
-        status: true,
-      },
-      where: { user: { id: userId }, isPublic: false },
-      order: { startDate: 'ASC', id: 'DESC' },
-    });
-
-    return refreshed.map((route) => ({
+    return routes.map((route) => ({
       id: route.id,
       name: route.name,
       startDate: route.startDate ?? null,
