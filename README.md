@@ -1,115 +1,125 @@
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  <h1 align="center">Traveline Server</h1>
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+<p align="center">
+  The robust backend service powering the <b>Traveline</b> ecosystem - a smart, AI-driven travel planning and management platform.
 </p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+## 📖 Introduction
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+**Traveline Server** is built with [NestJS](https://nestjs.com/) and serves as the core API for the Traveline mobile app and web administration dashboard. It integrates advanced features like AI-powered route planning, real-time chatbot assistance, and comprehensive travel resource management (destinations, eateries, accommodations).
 
-## Project setup
+## ✨ Key Features
 
-```bash
-$ npm install
-```
+- **🔐 Authentication & Security**: Secure JWT-based authentication for Users, Admins, and Coordinators.
+- **🗺️ Smart Travel Planning**:
+  - AI-driven itinerary generation using **Gemini AI**.
+  - Route optimization and scheduling.
+  - Interactive map integration.
+- **🏨 Resource Management**:
+  - **Destinations**: Rich data with descriptions, images, and geolocation.
+  - **Eateries & Accommodation**: Detailed catalogs with filtering and reviews.
+  - **Vietnam Administrative Units**: Full database of provinces, districts, and wards (including reform mappings).
+- **💸 Payments & Transactions**: Integrated payment gateways (VNPAY) and digital wallet management.
+- **🤖 Intelligent Chatbot**: Context-aware assistant for user queries and recommendations.
+- **📊 Admin Dashboard APIs**: Statistics, reporting, and content moderation tools.
+- **☁️ Cloud Integration**:
+  - **Cloudinary**: High-performance image storage and optimization.
+  - **Firebase**: Push notifications and background services.
 
-## Vietnam administrative mapping seed
+## 🛠️ Technology Stack
 
-1. Populate the file `src/data/admin-mapping.json` with an array of mapping definitions. Each entry links one or more legacy units (before the reform) to a single reform unit. You can omit `district`, `ward` or `newCommuneCode` when they are not needed. A few illustrative cases:
+- **Framework**: [NestJS](https://nestjs.com/) (Node.js)
+- **Language**: TypeScript
+- **Database**: PostgreSQL
+- **ORM**: TypeORM
+- **AI/ML**: Google Gemini API
+- **Storage**: Cloudinary
+- **Caching & Queues**: Redis (optional/if enabled)
 
-```json
-[
-  {
-    "newProvinceCode": "08",
-    "old": [
-      { "province": "02" },
-      { "province": "08" }
-    ],
-    "note": "Hop nhat toan bo tinh Ha Giang (02) vao tinh Tuyen Quang (08).",
-    "resolutionRef": "NQ/2025/QH15-08"
-  },
-  {
-    "newProvinceCode": "31",
-    "old": [
-      { "province": "30" },
-      { "province": "31" }
-    ],
-    "note": "Sap nhap tinh Hai Duong (30) vao Thanh pho Hai Phong (31).",
-    "resolutionRef": "NQ/2025/QH15-HP"
-  },
-  {
-    "newProvinceCode": "01",
-    "newCommuneCode": "00070",
-    "old": [
-      { "province": "01", "district": "002", "ward": "00061" },
-      { "province": "01", "district": "002", "ward": "00052" },
-      { "province": "01", "district": "002", "ward": "00046" },
-      { "province": "01", "district": "002", "ward": "00049" },
-      { "province": "01", "district": "002", "ward": "00064" },
-      { "province": "01", "district": "002", "ward": "00043" },
-      { "province": "01", "district": "002", "ward": "00058" },
-      { "province": "01", "district": "002", "ward": "00055" },
-      { "province": "01", "district": "002", "ward": "00073" },
-      { "province": "01", "district": "001", "ward": "00019" },
-      { "province": "01", "district": "002", "ward": "00040" },
-      { "province": "01", "district": "002", "ward": "00076" },
-      { "province": "01", "district": "002", "ward": "00070" },
-      { "province": "01", "district": "002", "ward": "00079" }
-    ],
-    "note": "Tao phuong Hoan Kiem (00070) tu cac phuong Hang Bac, Hang Bo, Hang Buom, Hang Dao, Hang Gai, Hang Ma, Ly Thai To va mot phan cua Cua Dong, Cua Nam, Dien Bien, Dong Xuan, Hang Bong, Hang Trong, Trang Tien.",
-    "resolutionRef": "NQ/2025/QH15-HN"
-  }
-]
-```
+## 🚀 Getting Started
 
-   - When a legacy unit is split across multiple reform units, repeat the legacy code in multiple entries and use the `note` field to document the split.
-   - The helper APIs under `vn-admin/legacy` and `vn-admin/reform` let you search by name to confirm the correct codes before populating the JSON.
+### Prerequisites
 
-2. Execute the seed command:
+- [Node.js](https://nodejs.org/) (v16 or higher)
+- [PostgreSQL](https://www.postgresql.org/)
+- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
 
-```bash
-ts-node scripts/run-seed-admin-mapping.ts
-```
+### Installation
 
-3. Verify the inserted data by inspecting the database, for example with psql:
+1. **Clone the repository**
 
-```sql
-SELECT COUNT(*) AS total_mappings FROM vn_admin_unit_mappings;
-SELECT * FROM vn_admin_unit_mappings ORDER BY id DESC LIMIT 10;
-```
+   ```bash
+   git clone https://github.com/your-username/traveline-server.git
+   cd traveline-server
+   ```
 
-## Compile and run the project
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Configure Environment**
+   Create a `.env` file in the root directory. You can use the example below as a template:
+
+   ```env
+   # Database Configuration
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_USER=postgres
+   DB_PASS=your_password
+   DB_NAME=traveline
+
+   # Authentication
+   JWT_SECRET=your_jwt_secret_key
+
+   # General
+   PORT=3000
+   FRONTEND_RETURN_URL=http://localhost:3000
+
+   # Cloud Services (Add your keys)
+   CLOUDINARY_CLOUD_NAME=...
+   CLOUDINARY_API_KEY=...
+   CLOUDINARY_API_SECRET=...
+
+   # AI Services
+   GEMINI_API_KEY=...
+   ```
+
+4. **Run Database Migrations (if applicable)**
+   ```bash
+   # If using TypeORM migrations
+   npm run migration:run
+   ```
+
+### Running the Application
 
 ```bash
 # development
 $ npm run start
 
-# watch mode
+# watch mode (recommended for dev)
 $ npm run start:dev
 
 # production mode
 $ npm run start:prod
 ```
 
-## Run tests
+## 🇻🇳 Vietnam Administrative Mapping Seed
+
+This project includes a specialized seeding tool to populate Vietnam's administrative data, handling both legacy and reformed units.
+
+1. **Prepare Data**: Ensure `scripts/run-seed-admin-mapping.ts` is configured correctly.
+2. **Execute Seed**:
+   ```bash
+   # Run the seed script using ts-node
+   npx ts-node scripts/run-seed-admin-mapping.ts
+   ```
+
+## 🧪 Testing
 
 ```bash
 # unit tests
@@ -122,42 +132,12 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
-## Deployment
+## 📞 Support
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+For any inquiries or issues, please contact the development team or open an issue on the repository.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+---
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+<p align="center">
+  Built with ❤️ by the Traveline Team
+</p>
